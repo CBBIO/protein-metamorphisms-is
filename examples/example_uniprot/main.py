@@ -8,7 +8,6 @@ logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
 
-
 if __name__ == "__main__":
     config = read_yaml_config("./config.yaml")
     DATABASE_URI = \
@@ -24,5 +23,6 @@ if __name__ == "__main__":
     Session = sessionmaker(bind=engine)
     session = Session()
 
-    cargar_codigos_acceso(criterio_busqueda=config['criterio_busqueda'],limite=config['limit'], session=session)
+    cargar_codigos_acceso(
+        criterio_busqueda=config['criterio_busqueda'], limite=config['limit'], session=session)
     extraer_entradas(session=session)

@@ -1,4 +1,3 @@
-import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import quote
 import requests
@@ -11,7 +10,7 @@ from protein_data_handler.models.uniprot import (
     Accession,
     GOTerm,
     PDBReference,
-    Proteina, Base,
+    Proteina
 )
 
 logger = logging.getLogger(__name__)
@@ -231,10 +230,3 @@ def almacenar_entrada(data, session):
         # Manejar o re-lanzar la excepción según sea necesario
     finally:
         session.close()
-
-
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-
-
-
