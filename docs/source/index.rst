@@ -1,13 +1,15 @@
-Title
-=====
+======================
+Protein Data Handler
+======================
 
-Section
--------
+Este proyecto proporciona herramientas para manejar datos de proteínas, incluyendo búsqueda, descarga y almacenamiento de información de proteínas desde UniProt.
 
-Subsection
-~~~~~~~~~~
+Contenidos
+==========
 
 .. toctree::
    :maxdepth: 2
 
-   template.rst
+   uniprot
+   database
+   yaml

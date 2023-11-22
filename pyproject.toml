@@ -1,13 +1,17 @@
 [tool.poetry]
-name = "python-poetry-template"
+name = "protein-data-handler"
 version = "1.0.0"
-description = "Plantilla para desarrollo fluido en Python"
+description = "Comprehensive Python Module for Protein Data Management: Designed for streamlined integration and processing of protein information from both UniProt and PDB. Equipped with features for concurrent data fetching, robust error handling, and database synchronization."
 authors = ["frapercan <frapercan1@alum.us.es>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.10"
 docopt = "^0.6.2"
+bio = "^1.6.0"
+biopython = "^1.81"
+sqlalchemy = "^2.0.23"
+pyyaml = "^6.0.1"
 
 
 [tool.poetry.dev-dependencies]
@@ -20,6 +24,10 @@ sphinx = "^7.2.6"
 sphinx-rtd-theme = "^1.2.0"
 
 
+[tool.poetry.group.dev.dependencies]
+autopep8 = "^2.0.4"
+black = "^23.11.0"
+
 [tool.coverage.run]
 omit = ["*/site-packages/*"]
 
@@ -28,8 +36,9 @@ fail_under = 100
 
 [tool.taskipy.tasks]
 html_docs = "make html -C docs"
-lint = "poetry run flake8 python_poetry_template"
-coverage = "poetry run coverage run -m --source=python_poetry_template pytest tests && poetry run coverage report -m"
+lint = "poetry run flake8 protein_data_handler"
+autopep = "autopep8 --in-place --recursive . --max-line-length=79"
+coverage = "poetry run coverage run -m --source=protein_data_handler pytest tests && poetry run coverage report -m"
 
 
 
