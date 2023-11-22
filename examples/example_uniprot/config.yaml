@@ -1,0 +1,8 @@
+DB_USERNAME: usuario
+DB_PASSWORD: clave
+DB_HOST: localhost
+DB_PORT: 5433
+DB_NAME: BioData
+
+criterio_busqueda: '(structure_3d:true) AND (reviewed:true)'
+limit: 10
