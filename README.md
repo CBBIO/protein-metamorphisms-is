@@ -1,6 +1,6 @@
 [![codecov](https://codecov.io/gh/frapercan/python-poetry-template/graph/badge.svg?token=hqzrADVeRy)](https://codecov.io/gh/frapercan/protein-data-handler)
 [![PyPI version](https://badge.fury.io/py/protein-data-handler.svg)](https://badge.fury.io/py/protein-data-handler)
-[![Documentation Status](https://readthedocs.org/projects/protein-data-handler/badge/?version=latest)](https://protein-data-handler.readthedocs.io/en/latest/?badge=latest)
+[![Documentation Status](https://readthedocs.org/projects/protein-data-handler/badge/?version=latest)](https://protein-data-handler.readthedocs.io/es/latest/?badge=latest)
 ![Linting Status](https://github.com/frapercan/protein-data-handler/actions/workflows/test-lint.yml/badge.svg?branch=main)
 
 # Manejador de Datos de Proteínas
