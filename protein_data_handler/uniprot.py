@@ -188,7 +188,7 @@ def almacenar_entrada(data, session):
             )
             if accession is None:
                 accession = Accession(accession_code=accession_code)
-            accession.proteina_id = proteina.id
+            accession.proteina_entry_name = proteina.entry_name
             session.add(accession)
 
         # Procesar cada referencia cruzada
