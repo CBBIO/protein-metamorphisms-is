@@ -15,7 +15,7 @@ Modelos ORM
 Proteina
 ^^^^^^^^
 
-.. autoclass:: protein_data_handler.models.Proteina
+.. autoclass:: protein_data_handler.models.uniprot.Proteina
    :members:
    :undoc-members:
    :show-inheritance:
@@ -23,24 +23,23 @@ Proteina
 Accession
 ^^^^^^^^^
 
-.. autoclass:: protein_data_handler.models.Accession
+.. autoclass:: protein_data_handler.models.uniprot.Accession
    :members:
    :undoc-members:
    :show-inheritance:
 
 PDBReference
-^^^^^^^^^
+^^^^^^^^^^^^
 
-.. autoclass:: protein_data_handler.models.PDBReference
+.. autoclass:: protein_data_handler.models.uniprot.PDBReference
    :members:
    :undoc-members:
    :show-inheritance:
 
 GOTerm
-^^^^^^^^^
+^^^^^^
 
-.. autoclass:: protein_data_handler.models.GOTerm
+.. autoclass:: protein_data_handler.models.uniprot.GOTerm
    :members:
    :undoc-members:
    :show-inheritance:
-
