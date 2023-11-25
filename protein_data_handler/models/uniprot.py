@@ -9,14 +9,17 @@ class Proteina(Base):
         Representa una proteína con sus propiedades y relaciones.
 
         Attributes:
-            entry_name (str): Nombre de entrada único para la proteína, sirve como clave primaria.
+            entry_name (str): Nombre de entrada único para la proteína, sirve
+            como clave primaria.
             data_class (str): Clase de datos de la proteína.
             molecule_type (str): Tipo de molécula de la proteína.
             sequence_length (int): Longitud de la secuencia de la proteína.
             accessions (relationship): Relación con la entidad 'Accession'.
             created_date (Date): Fecha de creación del registro de la proteína.
-            sequence_update_date (Date): Fecha de la última actualización de la secuencia.
-            annotation_update_date (Date): Fecha de la última actualización de la anotación.
+            sequence_update_date (Date): Fecha de la última actualización
+            de la secuencia.
+            annotation_update_date (Date): Fecha de la última actualización de
+             la anotación.
             description (str): Descripción de la proteína.
             gene_name (str): Nombre del gen asociado a la proteína.
             organism (str): Organismo del que proviene la proteína.
@@ -26,7 +29,8 @@ class Proteina(Base):
             host_organism (str): Organismo huésped de la proteína.
             host_taxonomy_id (str): ID de taxonomía del organismo huésped.
             comments (str): Comentarios adicionales sobre la proteína.
-            pdb_references (relationship): Relación con la entidad 'PDBReference'.
+            pdb_references (relationship): Relación con la entidad
+            'PDBReference'.
             go_terms (relationship): Relación con la entidad 'GOTerm'.
             keywords (str): Palabras clave asociadas a la proteína.
             protein_existence (int): Indicador de la existencia de la proteína.
@@ -68,7 +72,8 @@ class Accession(Base):
         Attributes:
             id (int): Identificador único para el acceso.
             accession_code (str): Código de acceso único para la proteína.
-            proteina_entry_name (str): Nombre de entrada de la proteína asociada.
+            proteina_entry_name (str): Nombre de entrada de la proteína
+             asociada.
             proteina (relationship): Relación con la entidad 'Proteina'.
         """
     __tablename__ = "accessions"
@@ -80,14 +85,17 @@ class Accession(Base):
 
 class PDBReference(Base):
     """
-        Representa una referencia a la base de datos de estructuras de proteínas (PDB).
+        Representa una referencia a la base de datos de estructuras de
+        proteínas (PDB).
 
         Attributes:
             id (int): Identificador único para la referencia PDB.
             pdb_id (str): Identificador único en la base de datos PDB.
-            proteina_entry_name (str): Nombre de entrada de la proteína asociada.
+            proteina_entry_name (str): Nombre de entrada de la proteína
+            asociada.
             proteina (relationship): Relación con la entidad 'Proteina'.
-            method (str): Método utilizado para la determinación de la estructura.
+            method (str): Método utilizado para la determinación de la
+            estructura.
             resolution (str): Resolución de la estructura.
             chains (str): Cadenas involucradas en la estructura.
         """
@@ -110,7 +118,8 @@ class GOTerm(Base):
         Attributes:
             id (int): Identificador único para el término GO.
             go_id (str): Identificador único en Gene Ontology.
-            proteina_entry_name (str): Nombre de entrada de la proteína asociada.
+            proteina_entry_name (str): Nombre de entrada de la
+            proteína asociada.
             proteina (relationship): Relación con la entidad 'Proteina'.
             category (str): Categoría del término GO.
             description (str): Descripción del término GO.
