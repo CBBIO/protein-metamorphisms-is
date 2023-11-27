@@ -48,13 +48,13 @@ def cargar_codigos_acceso(criterio_busqueda, limite, session):
     try:
         respuesta = requests.get(url)
         respuesta.raise_for_status()
-        accession_codes = respuesta.text.strip().split("\n")
-        logger.info(f"Número de IDs encontrados: {len(accession_codes)}")
+        entry_names = respuesta.text.strip().split("\n")
+        logger.info(f"Número de IDs encontrados: {len(entry_names)}")
 
         # Guardar en la base de datos
-        for accession_code in accession_codes:
-            accession = Accession(accession_code=accession_code)
-            session.add(accession)
+        for entry_name in entry_names:
+            proteina = Proteina(entry_name=entry_name)
+            session.add(proteina)
         session.commit()
     except Exception as e:
         session.rollback()
@@ -102,17 +102,17 @@ def extraer_entradas(session, max_workers=10):
 
     logger.info("Iniciando la descarga de entradas de UniProt.")
 
-    accessions = session.query(Accession).all()
-    logger.info(f"Total de proteínas a descargar: {len(accessions)}")
+    proteinas = session.query(Proteina).all()
+    logger.info(f"Total de proteínas a descargar: {len(proteinas)}")
 
     # Usar ThreadPoolExecutor para manejar múltiples descargas simultáneamente
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         # Crear un futuro para cada descarga de proteína
         future_to_uniprot_id = {
             executor.submit(
-                descargar_registro, accession.accession_code
-            ): accession
-            for accession in accessions
+                descargar_registro, proteina.entry_name
+            ): proteina
+            for proteina in proteinas
         }
 
         # Procesar los resultados a medida que se completan
