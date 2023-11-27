@@ -1,0 +1,4 @@
+server: "https://files.wwpdb.org/"
+pdb: "./data"
+file_format: "mmCif"
+

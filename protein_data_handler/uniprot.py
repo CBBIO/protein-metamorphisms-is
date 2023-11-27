@@ -141,7 +141,6 @@ def almacenar_entrada(data, session):
     :type session: sqlalchemy.orm.session.Session
     :raises Exception: Por errores en operaciones de base de datos.
     """
-
     try:
         # Buscar si la proteína ya existe
         proteina = (
@@ -159,6 +158,7 @@ def almacenar_entrada(data, session):
         proteina.molecule_type = data.molecule_type
         proteina.sequence_length = data.sequence_length
         proteina.created_date = data.created[0]
+        proteina.sequence = data.sequence
         proteina.sequence_update_date = data.sequence_update[0]
         proteina.annotation_update_date = data.annotation_update[0]
         proteina.description = data.description

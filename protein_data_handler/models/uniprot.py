@@ -40,6 +40,7 @@ class Proteina(Base):
     entry_name = Column(String, primary_key=True, unique=True, nullable=False)
     data_class = Column(String)
     molecule_type = Column(String)
+    sequence = Column(String)
     sequence_length = Column(Integer)
     accessions = relationship(
         "Accession", back_populates="proteina"
