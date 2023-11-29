@@ -12,6 +12,7 @@ Contenidos
 
    uniprot
    pdb
+   fasta
    database
    yaml
    parser

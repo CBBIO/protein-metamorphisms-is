@@ -1,3 +1,4 @@
+import pprint
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import quote
 import requests
@@ -78,7 +79,6 @@ def descargar_registro(accession_code):
     try:
         handle = ExPASy.get_sprot_raw(accession_code)
         record = SwissProt.read(handle)
-        # Procesar y guardar la información aquí
         return record
 
     except Exception as e:
