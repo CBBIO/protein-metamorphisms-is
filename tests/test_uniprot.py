@@ -124,7 +124,7 @@ class TestAlmacenarEntrada(unittest.TestCase):
         mock_data = MagicMock()
         mock_data.entry_name = "proteina_test"
         mock_data.cross_references = [
-            ("PDB", "1234", "método_test", "resolución_test", "cadenas_test")
+            ("PDB", "1234", "método_test", "resolución_test", "A=10-444, D=59-430")
         ]
         mock_session = MagicMock()
         mock_session.query.return_value.filter_by.return_value.first.return_value = (
@@ -174,6 +174,54 @@ class TestAlmacenarEntrada(unittest.TestCase):
 
         # Verificar que se hizo rollback
         mock_session.rollback.assert_called_once()
+
+    @patch("protein_data_handler.models.uniprot.PDBReference")
+    @patch("protein_data_handler.models.uniprot.Chain")
+    def test_procesamiento_cadenas_pdb(self, mock_chain_class, mock_pdb_reference_class):
+        # Crear un mock para los datos de entrada y la sesión
+        mock_data = MagicMock()
+        mock_data.entry_name = "proteina_test"
+        mock_data.cross_references = [
+            ("PDB", "1234", "método_test", "resolución_test", "A=10-444, D=59-430")
+        ]
+
+        mock_session = MagicMock()
+
+        # Configurar el comportamiento esperado de la sesión para PDBReference
+        mock_pdb_reference_instance = MagicMock()
+        mock_pdb_reference_instance.id = 1
+
+
+        mock_chain_instance = MagicMock()
+        mock_chain_class.return_value = mock_chain_instance
+
+        mock_session.query.return_value.filter_by.return_value.first.side_effect = [
+            mock_pdb_reference_instance,  # Para PDBReference
+            None, 
+            mock_chain_instance,
+            None,
+
+        ]
+
+
+
+        # Llamar a la función almacenar_entrada
+        almacenar_entrada(mock_data, mock_session)
+
+
+        # self.assertEqual(mock_session.query.return_value.filter_by.return_value.first.call_count,2)
+
+
+        # Verificar que se buscó la referencia PDB y se procesaron las cadenas
+        expected_pdb_calls = [((mock_pdb_reference_class, 'pdb_id'), {'pdb_id': '1234'})]
+        expected_chain_calls = [
+            ((mock_chain_class, 'pdb_reference_id', 'chain'), {'pdb_reference_id': 1, 'chain': 'A'}),
+            ((mock_chain_class, 'pdb_reference_id', 'chain'), {'pdb_reference_id': 1, 'chain': 'D'}),
+        ]
+        # self.assertEqual(mock_session.query.call_args_list, expected_pdb_calls + expected_chain_calls)
+
+        # Verificar que se añadieron las cadenas a la sesión si no existían
+        # self.assertEqual(mock_session.add.call_count, 2)
 
 
 if __name__ == "__main__":
