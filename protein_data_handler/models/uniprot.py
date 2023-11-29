@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, Date, ForeignKey
+from sqlalchemy import (Column, Integer, String, Date, ForeignKey, DateTime,
+                        func, Float)
 from sqlalchemy.orm import relationship, declarative_base
 
 Base = declarative_base()
@@ -64,6 +65,8 @@ class Proteina(Base):
     keywords = Column(String)  # Similar a comments
     protein_existence = Column(Integer)
     seqinfo = Column(String)
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, onupdate=func.now())
 
 
 class Accession(Base):
@@ -82,6 +85,8 @@ class Accession(Base):
     accession_code = Column(String, unique=True, nullable=False)
     proteina_entry_name = Column(String, ForeignKey("proteinas.entry_name"))
     proteina = relationship("Proteina", back_populates="accessions")
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, onupdate=func.now())
 
 
 class PDBReference(Base):
@@ -108,8 +113,22 @@ class PDBReference(Base):
 
     # Método utilizado para la determinación de la estructura
     method = Column(String)
-    resolution = Column(String)  # Resolución de la estructura
-    chains = Column(String)  # Cadenas involucradas
+    resolution = Column(Float)  # Resolución de la estructura
+    chains = relationship("Chain", back_populates="pdb_reference")
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, onupdate=func.now())
+
+
+class Chain(Base):
+    __tablename__ = "chains"
+    id = Column(Integer, primary_key=True)
+    pdb_reference_id = Column(Integer, ForeignKey('pdb_references.id'))
+    chain = Column(String)
+    seq_start = Column(Integer)
+    seq_end = Column(Integer)
+    pdb_reference = relationship("PDBReference", back_populates="chains")
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, onupdate=func.now())
 
 
 class GOTerm(Base):
@@ -132,3 +151,5 @@ class GOTerm(Base):
     proteina = relationship("Proteina", back_populates="go_terms")
     category = Column(String)
     description = Column(String)
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, onupdate=func.now())

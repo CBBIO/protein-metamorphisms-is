@@ -6,11 +6,12 @@ import logging
 
 from Bio import ExPASy, SwissProt
 
+from protein_data_handler.helpers.parser.parser import extract_float
 from protein_data_handler.models.uniprot import (
     Accession,
     GOTerm,
     PDBReference,
-    Proteina
+    Proteina, Chain
 )
 
 logger = logging.getLogger(__name__)
@@ -203,11 +204,32 @@ def almacenar_entrada(data, session):
                     pdb_ref = PDBReference(
                         pdb_id=reference[1],
                         method=reference[2],
-                        resolution=reference[3],
-                        chains=reference[4],
+                        resolution=extract_float(reference[3]),
                         proteina=proteina,
                     )
                     session.add(pdb_ref)
+                chains = reference[4].split(',')
+                for chain_obj in chains:
+                    chain_obj = chain_obj.strip()
+                    chain_name, seq_range = chain_obj.split('=')
+                    start, end = seq_range.split('-')
+                    start = int(start)
+                    end = int(end)
+
+                    pdb_id = (session.query(PDBReference)
+                              .filter_by(pdb_id=reference[1]).first().id)
+
+                    chain = (
+                        session.query(Chain)
+                        .filter_by(pdb_reference_id=pdb_id, chain=chain_name)
+                        .first()
+                    )
+                    if chain is None:
+                        chain = Chain(pdb_reference_id=pdb_id,
+                                      chain=chain_name,
+                                      seq_start=start,
+                                      seq_end=end)
+                        session.add(chain)
             elif reference[0] == "GO":
                 go_term = (
                     session.query(GOTerm).filter_by(go_id=reference[1]).first()
