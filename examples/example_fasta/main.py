@@ -23,12 +23,11 @@ def main():
 
     query = session.query(PDBReference).filter(PDBReference.resolution < config.get("resolution_threshold",2.5)).all()
     pdb_ids = [pdb_ref.pdb_id for pdb_ref in query]
-
     # Inicializa FastaDownloader
-    fasta_downloader = FastaDownloader(session)
+    fasta_downloader = FastaDownloader(session,config['data_dir'])
 
     # Descarga los archivos FASTA
-    fasta_downloader.download_fastas(pdb_ids,config['max_workers'],config['data_dir'])
+    fasta_downloader.download_fastas(pdb_ids,config['max_workers'])
 
 if __name__ == "__main__":
     main()

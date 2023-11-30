@@ -1,13 +1,17 @@
 import pprint
+import traceback
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from http.client import HTTPException
 from urllib.parse import quote
 import requests
 
 import logging
 
 from Bio import ExPASy, SwissProt
+from sqlalchemy import func
+from sqlalchemy.exc import NoResultFound
 
-from protein_data_handler.helpers.parser.parser import extract_float
+from protein_data_handler.helpers.parser.parser import extract_float, safe_convert_to_int, procesar_chain_string
 from protein_data_handler.models.uniprot import (
     Accession,
     GOTerm,
@@ -51,13 +55,41 @@ def cargar_codigos_acceso(criterio_busqueda, limite, session):
         respuesta = requests.get(url)
         respuesta.raise_for_status()
         entry_names = respuesta.text.strip().split("\n")
-        logger.info(f"Número de IDs encontrados: {len(entry_names)}")
+        logger.info(f"Número de IDs en UniProt: {len(entry_names)}")
 
-        # Guardar en la base de datos
+        proteinas_encontradas = []
+        proteinas_nuevas = []
+
         for entry_name in entry_names:
-            proteina = Proteina(entry_name=entry_name)
-            session.add(proteina)
+            try:
+                # Intenta buscar la proteína existente
+                proteina = session.query(Proteina).filter_by(entry_name=entry_name).one()
+                proteinas_encontradas.append(entry_name)
+
+                # Actualiza la fecha de actualización
+                proteina.updated_at = func.now()
+                proteina.disappeared = False
+
+            except NoResultFound:
+                # Si no existe, crea una nueva instancia
+                proteina = Proteina(entry_name=entry_name)
+                session.add(proteina)
+                proteinas_nuevas.append(proteina)
+
+        consulta_no_encontradas = session.query(Proteina).filter(~Proteina.entry_name.in_(entry_names)).filter(
+            Proteina.disappeared == False)
+        proteinas_no_encontradas = consulta_no_encontradas.all()
+        logger.info(f"Proteínas no encontradas: {len(proteinas_no_encontradas)}")
+
+        consulta_no_encontradas.update({Proteina.disappeared: True}, synchronize_session=False)
+
         session.commit()
+
+        # Loguear la información
+        logger.info(f"Proteínas ya existentes: {len(proteinas_encontradas)}")
+        logger.info(f"Proteínas nuevas: {len(proteinas_nuevas)}")
+
+
     except Exception as e:
         session.rollback()
         logger.error(f"Error: {e}")
@@ -124,7 +156,9 @@ def extraer_entradas(session, max_workers=10):
                 if data:
                     almacenar_entrada(data, session)
             except Exception as e:
-                logger.error(f"Error al procesar la entrada {uniprot_id}: {e}")
+                # Obtener la información de seguimiento de la excepción
+                tb = traceback.format_exc()
+                logger.error(f"Error al procesar la entrada {uniprot_id}: {e}\nDetalle del error: {tb}")
 
 
 def almacenar_entrada(data, session):
@@ -200,6 +234,7 @@ def almacenar_entrada(data, session):
                     .filter_by(pdb_id=reference[1])
                     .first()
                 )
+
                 if pdb_ref is None:
                     pdb_ref = PDBReference(
                         pdb_id=reference[1],
@@ -210,11 +245,7 @@ def almacenar_entrada(data, session):
                     session.add(pdb_ref)
                 chains = reference[4].split(',')
                 for chain_obj in chains:
-                    chain_obj = chain_obj.strip()
-                    chain_name, seq_range = chain_obj.split('=')
-                    start, end = seq_range.split('-')
-                    start = int(start)
-                    end = int(end)
+                    chain_name, start, end = procesar_chain_string(chain_obj)
 
                     pdb_id = (session.query(PDBReference)
                               .filter_by(pdb_id=reference[1]).first().id)
@@ -246,9 +277,8 @@ def almacenar_entrada(data, session):
         # Guarda todos los cambios en la base de datos
         session.commit()
 
-    except Exception as e:
+    except HTTPException as e:
         logger.error(f"Error al volcar la entrada: {e}")
         session.rollback()
-        # Manejar o re-lanzar la excepción según sea necesario
     finally:
         session.close()

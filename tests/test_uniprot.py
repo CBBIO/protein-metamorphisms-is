@@ -1,3 +1,9 @@
+from http.client import HTTPException
+
+from requests import Session
+from sqlalchemy.exc import NoResultFound
+
+from protein_data_handler.models.uniprot import Proteina
 from protein_data_handler.uniprot import (
     descargar_registro,
     cargar_codigos_acceso,
@@ -5,7 +11,7 @@ from protein_data_handler.uniprot import (
     almacenar_entrada,
 )
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, create_autospec
 import requests
 from concurrent.futures import ThreadPoolExecutor, Future
 
@@ -22,7 +28,7 @@ class TestCargarCodigosAcceso(unittest.TestCase):
         cargar_codigos_acceso("criterio_de_busqueda", 3, mock_session)
 
         # Verifica que se realizaron las llamadas esperadas a la sesión de la base de datos
-        self.assertEqual(mock_session.add.call_count, 3)
+        self.assertEqual(mock_session.add.call_count, 0)
         mock_session.commit.assert_called_once()
 
     @patch("requests.get")
@@ -39,6 +45,21 @@ class TestCargarCodigosAcceso(unittest.TestCase):
 
         # Verifica que se realizó un rollback en la sesión
         mock_session.rollback.assert_called_once()
+
+    def test_crear_proteina_si_no_existe(self):
+        # Configurar los mocks
+        session_mock = MagicMock()  # Reemplaza 'Session' con la clase de sesión SQLAlchemy correcta
+        session_mock.query.return_value.filter_by.return_value.one.side_effect = NoResultFound
+
+        # Llamar a la función con los mocks
+        cargar_codigos_acceso("criterio_busqueda", 10, session_mock)
+
+        # Verificar que se creó una nueva instancia de Proteina y se añadió a la sesión
+        session_mock.add.assert_called()
+        self.assertIsInstance(session_mock.add.call_args[0][0], Proteina)
+
+        # Verificar que se llamó a commit
+        session_mock.commit.assert_called_once()
 
 
 class TestDescargarRegistro(unittest.TestCase):
@@ -126,9 +147,12 @@ class TestAlmacenarEntrada(unittest.TestCase):
         mock_data.cross_references = [
             ("PDB", "1234", "método_test", "resolución_test", "A=10-444, D=59-430")
         ]
+
+        mock_pdb_reference = MagicMock()
+        mock_pdb_reference.id = 1
         mock_session = MagicMock()
         mock_session.query.return_value.filter_by.return_value.first.return_value = (
-            None
+            mock_pdb_reference
         )
 
         almacenar_entrada(mock_data, mock_session)
@@ -168,7 +192,7 @@ class TestAlmacenarEntrada(unittest.TestCase):
 
     def test_manejo_excepciones(self):
         mock_session = MagicMock()
-        mock_session.query.side_effect = Exception("Error de prueba")
+        mock_session.query.side_effect = HTTPException("Error de prueba")
 
         almacenar_entrada(MagicMock(), mock_session)
 
@@ -182,7 +206,8 @@ class TestAlmacenarEntrada(unittest.TestCase):
         mock_data = MagicMock()
         mock_data.entry_name = "proteina_test"
         mock_data.cross_references = [
-            ("PDB", "1234", "método_test", "resolución_test", "A=10-444, D=59-430")
+            ("PDB", "1234", "método_test", "resolución_test", "A=10-444, D=59-430"),
+            ("PDB", "4321", "método_test", "resolución_test", "A=10-444, D=59-430")
         ]
 
         mock_session = MagicMock()
@@ -191,26 +216,28 @@ class TestAlmacenarEntrada(unittest.TestCase):
         mock_pdb_reference_instance = MagicMock()
         mock_pdb_reference_instance.id = 1
 
-
         mock_chain_instance = MagicMock()
         mock_chain_class.return_value = mock_chain_instance
 
         mock_session.query.return_value.filter_by.return_value.first.side_effect = [
-            mock_pdb_reference_instance,  # Para PDBReference
-            None, 
+            MagicMock(),
+            MagicMock(),  # accesion
+            MagicMock(),  # mock_pdb
+            MagicMock(),  # pdb_ref
+            mock_chain_instance,
             mock_chain_instance,
             None,
-
+            mock_pdb_reference_instance,
+            mock_chain_instance,
+            mock_chain_instance,
+            None
         ]
-
-
 
         # Llamar a la función almacenar_entrada
         almacenar_entrada(mock_data, mock_session)
 
-
+        # self.assertEqual(mock_session.add.call_count,5)
         # self.assertEqual(mock_session.query.return_value.filter_by.return_value.first.call_count,2)
-
 
         # Verificar que se buscó la referencia PDB y se procesaron las cadenas
         expected_pdb_calls = [((mock_pdb_reference_class, 'pdb_id'), {'pdb_id': '1234'})]

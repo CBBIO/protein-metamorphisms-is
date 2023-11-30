@@ -19,6 +19,8 @@ Proteina
    :members:
    :undoc-members:
    :show-inheritance:
+   :no-index:
+
 
 Accession
 ^^^^^^^^^
@@ -27,6 +29,7 @@ Accession
    :members:
    :undoc-members:
    :show-inheritance:
+   :no-index:
 
 PDBReference
 ^^^^^^^^^^^^
@@ -35,6 +38,7 @@ PDBReference
    :members:
    :undoc-members:
    :show-inheritance:
+   :no-index:
 
 GOTerm
 ^^^^^^
@@ -43,3 +47,14 @@ GOTerm
    :members:
    :undoc-members:
    :show-inheritance:
+   :no-index:
+
+Chain
+^^^^^^
+
+.. autoclass:: protein_data_handler.models.uniprot.Chain
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :no-index:
+

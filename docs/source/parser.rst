@@ -1,5 +1,5 @@
 parser
-====
+========
 
 El módulo `parser` proporciona funcionalidades para transformar cadenas de texto.
 

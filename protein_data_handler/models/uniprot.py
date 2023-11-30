@@ -1,5 +1,5 @@
 from sqlalchemy import (Column, Integer, String, Date, ForeignKey, DateTime,
-                        func, Float)
+                        func, Float, Boolean)
 from sqlalchemy.orm import relationship, declarative_base
 
 Base = declarative_base()
@@ -65,6 +65,7 @@ class Proteina(Base):
     keywords = Column(String)  # Similar a comments
     protein_existence = Column(Integer)
     seqinfo = Column(String)
+    disappeared = Column(Boolean)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, onupdate=func.now())
 
@@ -120,6 +121,24 @@ class PDBReference(Base):
 
 
 class Chain(Base):
+    """
+    Representa una cadena individual dentro de una estructura de proteína en la base de datos PDB.
+
+    Esta clase se utiliza para almacenar información sobre cadenas específicas que forman parte de una estructura de proteína, como se registra en la base de datos de estructuras de proteínas (PDB).
+
+    Attributes:
+        id (int): Identificador único para cada cadena en la base de datos.
+        pdb_reference_id (int): Clave foránea que referencia al identificador único de la estructura de proteína en la base de datos PDB a la que pertenece esta cadena.
+        chain (str): Identificador de la cadena dentro de la estructura de proteína. Por ejemplo, 'A', 'B', etc.
+        seq_start (int): Posición inicial de la secuencia de la cadena en la estructura de proteína.
+        seq_end (int): Posición final de la secuencia de la cadena en la estructura de proteína.
+        pdb_reference (relationship): Relación con la entidad 'PDBReference' que representa la estructura completa de la proteína a la que pertenece esta cadena.
+        created_at (DateTime): Fecha y hora de creación del registro de la cadena.
+        updated_at (DateTime): Fecha y hora de la última actualización del registro de la cadena.
+
+    La relación con 'PDBReference' permite asociar cada cadena con su estructura de proteína correspondiente en la base de datos PDB.
+    """
+
     __tablename__ = "chains"
     id = Column(Integer, primary_key=True)
     pdb_reference_id = Column(Integer, ForeignKey('pdb_references.id'))

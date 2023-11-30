@@ -12,13 +12,16 @@ class FastaDownloader:
     Clase para descargar archivos FASTA de la base de datos de PDB.
     """
 
-    def __init__(self, session):
+    def __init__(self, session,data_dir):
         """
         Inicializa el descargador de FASTA con una sesión de base de datos.
         """
         self.session = session
+        self.data_dir = data_dir
+        if not os.path.exists(data_dir):
+            os.makedirs(data_dir, exist_ok=True)
 
-    def download_fastas(self, pdb_ids, max_workers=10, data_dir="./fasta"):
+    def download_fastas(self, pdb_ids, max_workers=10):
         """
         Descarga archivos FASTA para un conjunto de IDs de PDB utilizando múltiples hilos.
         """
@@ -27,14 +30,13 @@ class FastaDownloader:
             raise ValueError("pdb_ids debe ser una lista de cadenas de texto.")
 
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            executor.map(self.download_fasta, [pdb_ids, data_dir])
+            executor.map(self.download_fasta, pdb_ids)
 
-    def download_fasta(self, pdb_id,data_dir):
+    def download_fasta(self, pdb_id):
         """
         Descarga un archivo FASTA individual de la base de datos de PDB.
         """
-        if not os.path.exists(data_dir):
-            os.makedirs(data_dir, exist_ok=True)
+
 
         if not isinstance(pdb_id, str):
             raise ValueError("pdb_id debe ser una cadena de texto.")
@@ -44,7 +46,7 @@ class FastaDownloader:
             response = requests.get(url)
             response.raise_for_status()
 
-            file_path = os.path.join(data_dir, f"{pdb_id}.fasta")
+            file_path = os.path.join(self.data_dir, f"{pdb_id}.fasta")
             with open(file_path, "w") as file:
                 file.write(response.text)
             logging.info(f"Archivo FASTA descargado para {pdb_id} en {file_path}")
