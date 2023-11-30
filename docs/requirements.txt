@@ -2,3 +2,6 @@ sphinx_rtd_theme
 sphinx
 sphinx_rtd_theme
 readthedocs-sphinx-search
+sqlalchemy
+bio
+pyyaml
