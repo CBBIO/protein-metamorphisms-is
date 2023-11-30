@@ -1,5 +1,3 @@
-import pprint
-import traceback
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from http.client import HTTPException
 from urllib.parse import quote
@@ -11,7 +9,9 @@ from Bio import ExPASy, SwissProt
 from sqlalchemy import func
 from sqlalchemy.exc import NoResultFound
 
-from protein_data_handler.helpers.parser.parser import extract_float, safe_convert_to_int, procesar_chain_string
+from protein_data_handler.helpers.parser.parser import (extract_float,
+                                                        procesar_chain_string)
+
 from protein_data_handler.models.uniprot import (
     Accession,
     GOTerm,
@@ -63,7 +63,10 @@ def cargar_codigos_acceso(criterio_busqueda, limite, session):
         for entry_name in entry_names:
             try:
                 # Intenta buscar la proteína existente
-                proteina = session.query(Proteina).filter_by(entry_name=entry_name).one()
+                proteina = (session.query(Proteina)
+                            .filter_by(entry_name=entry_name)
+                            .one())
+
                 proteinas_encontradas.append(entry_name)
 
                 # Actualiza la fecha de actualización
@@ -76,19 +79,24 @@ def cargar_codigos_acceso(criterio_busqueda, limite, session):
                 session.add(proteina)
                 proteinas_nuevas.append(proteina)
 
-        consulta_no_encontradas = session.query(Proteina).filter(~Proteina.entry_name.in_(entry_names)).filter(
-            Proteina.disappeared == False)
-        proteinas_no_encontradas = consulta_no_encontradas.all()
-        logger.info(f"Proteínas no encontradas: {len(proteinas_no_encontradas)}")
+        consulta_no_encontradas = (
+            session.query(Proteina)
+            .filter(~Proteina.entry_name.in_(entry_names))
+            .filter(not Proteina.disappeared)
+        )
 
-        consulta_no_encontradas.update({Proteina.disappeared: True}, synchronize_session=False)
+        proteinas_no_encontradas = consulta_no_encontradas.all()
+        logger.info(f"Proteínas no encontradas: "
+                    f"{len(proteinas_no_encontradas)}")
+
+        consulta_no_encontradas.update({Proteina.disappeared: True},
+                                       synchronize_session=False)
 
         session.commit()
 
         # Loguear la información
         logger.info(f"Proteínas ya existentes: {len(proteinas_encontradas)}")
         logger.info(f"Proteínas nuevas: {len(proteinas_nuevas)}")
-
 
     except Exception as e:
         session.rollback()
@@ -157,8 +165,7 @@ def extraer_entradas(session, max_workers=10):
                     almacenar_entrada(data, session)
             except Exception as e:
                 # Obtener la información de seguimiento de la excepción
-                tb = traceback.format_exc()
-                logger.error(f"Error al procesar la entrada {uniprot_id}: {e}\nDetalle del error: {tb}")
+                logger.error(f"Error al procesar la entrada {uniprot_id}: {e}")
 
 
 def almacenar_entrada(data, session):
