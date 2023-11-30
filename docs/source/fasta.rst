@@ -1,9 +1,9 @@
-parser
-========
+fasta
+=====
 
 El módulo `parser` proporciona funcionalidades para transformar cadenas de texto.
 
 Funciones
 ---------
 
-.. autofunction:: protein_data_handler.helpers.parser.parser.extract_float
+.. autoclass:: protein_data_handler.fasta.FastaDownloader

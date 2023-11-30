@@ -18,7 +18,6 @@ if __name__ == "__main__":
          f"{config['DB_NAME']}")
     engine = create_engine(DATABASE_URI)
     Base.metadata.drop_all(engine)
-
     Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
     session = Session()
