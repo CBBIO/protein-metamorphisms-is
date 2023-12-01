@@ -3,7 +3,7 @@ from http.client import HTTPException
 from requests import Session
 from sqlalchemy.exc import NoResultFound
 
-from protein_data_handler.models.uniprot import Proteina
+from protein_data_handler.models.uniprot import Proteina, Accession
 from protein_data_handler.uniprot import (
     descargar_registro,
     cargar_codigos_acceso,
@@ -62,7 +62,7 @@ class TestCargarCodigosAcceso(unittest.TestCase):
 
         # Verificar que se creó una nueva instancia de Proteina y se añadió a la sesión
         session_mock.add.assert_called()
-        self.assertIsInstance(session_mock.add.call_args[0][0], Proteina)
+        self.assertIsInstance(session_mock.add.call_args[0][0], Accession)
 
         # Verificar que se llamó a commit
         session_mock.commit.assert_called_once()

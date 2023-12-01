@@ -86,6 +86,7 @@ class Accession(Base):
     accession_code = Column(String, unique=True, nullable=False)
     proteina_entry_name = Column(String, ForeignKey("proteinas.entry_name"))
     proteina = relationship("Proteina", back_populates="accessions")
+    disappeared = Column(Boolean)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, onupdate=func.now())
 
