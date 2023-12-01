@@ -49,54 +49,52 @@ def cargar_codigos_acceso(criterio_busqueda, limite, session):
         f"query={criterio_busqueda_codificado}"
         f"&format=list&size={limite}"
     )
-
     logger.info(f"URL solicitada: {url}")
     try:
         respuesta = requests.get(url)
         respuesta.raise_for_status()
-        entry_names = respuesta.text.strip().split("\n")
-        logger.info(f"Número de IDs en UniProt: {len(entry_names)}")
+        accessions = respuesta.text.strip().split("\n")
+        logger.info(f"Número de Accessions en UniProt: {len(accessions)}")
 
-        proteinas_encontradas = []
-        proteinas_nuevas = []
+        accessions_encontradas = []
+        accessions_nuevas = []
 
-        for entry_name in entry_names:
+        for accession_code in accessions:
             try:
-                # Intenta buscar la proteína existente
-                proteina = (session.query(Proteina)
-                            .filter_by(entry_name=entry_name)
-                            .one())
+                accession = (session.query(Accession)
+                             .filter_by(accession_code=accession_code)
+                             .one())
 
-                proteinas_encontradas.append(entry_name)
+                accessions_encontradas.append(accession_code)
 
                 # Actualiza la fecha de actualización
-                proteina.updated_at = func.now()
-                proteina.disappeared = False
+                accession.updated_at = func.now()
+                accession.disappeared = False
 
             except NoResultFound:
                 # Si no existe, crea una nueva instancia
-                proteina = Proteina(entry_name=entry_name)
-                session.add(proteina)
-                proteinas_nuevas.append(proteina)
+                accession = Accession(accession_code=accession_code)
+                session.add(accession)
+                accessions_nuevas.append(accession)
 
         consulta_no_encontradas = (
-            session.query(Proteina)
-            .filter(~Proteina.entry_name.in_(entry_names))
-            .filter(not Proteina.disappeared)
+            session.query(Accession)
+            .filter(~Accession.accession_code.in_(accessions))
+            .filter(not Accession.disappeared)
         )
 
-        proteinas_no_encontradas = consulta_no_encontradas.all()
-        logger.info(f"Proteínas no encontradas: "
-                    f"{len(proteinas_no_encontradas)}")
+        accessions_no_encontradas = consulta_no_encontradas.all()
+        logger.info(f"Accesions no encontrados: "
+                    f"{len(accessions_no_encontradas)}")
 
-        consulta_no_encontradas.update({Proteina.disappeared: True},
+        consulta_no_encontradas.update({Accession.disappeared: True},
                                        synchronize_session=False)
 
         session.commit()
 
         # Loguear la información
-        logger.info(f"Proteínas ya existentes: {len(proteinas_encontradas)}")
-        logger.info(f"Proteínas nuevas: {len(proteinas_nuevas)}")
+        logger.info(f"Accessions ya existentes: {len(accessions_encontradas)}")
+        logger.info(f"Accessions nuevas: {len(accessions_nuevas)}")
 
     except Exception as e:
         session.rollback()
@@ -143,17 +141,17 @@ def extraer_entradas(session, max_workers=10):
 
     logger.info("Iniciando la descarga de entradas de UniProt.")
 
-    proteinas = session.query(Proteina).all()
-    logger.info(f"Total de proteínas a descargar: {len(proteinas)}")
+    accessions = session.query(Accession).all()
+    logger.info(f"Total de proteínas a descargar: {len(accessions)}")
 
     # Usar ThreadPoolExecutor para manejar múltiples descargas simultáneamente
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         # Crear un futuro para cada descarga de proteína
         future_to_uniprot_id = {
             executor.submit(
-                descargar_registro, proteina.entry_name
-            ): proteina
-            for proteina in proteinas
+                descargar_registro, accession.accession_code
+            ): accession
+            for accession in accessions
         }
 
         # Procesar los resultados a medida que se completan
