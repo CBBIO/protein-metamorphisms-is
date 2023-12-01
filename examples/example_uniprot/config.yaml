@@ -4,5 +4,5 @@ DB_HOST: localhost
 DB_PORT: 5432
 DB_NAME: BioData
 
-criterio_busqueda: '(structure_3d:true) AND (reviewed:true) AND (date_modified:[2022-12-15 TO 2023-12-27])'
+criterio_busqueda: '(structure_3d:true) AND (reviewed:true)'
 limit: 10

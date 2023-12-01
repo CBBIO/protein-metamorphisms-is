@@ -1,9 +1,8 @@
 from http.client import HTTPException
 
-from requests import Session
 from sqlalchemy.exc import NoResultFound
 
-from protein_data_handler.models.uniprot import Proteina, Accession
+from protein_data_handler.models.uniprot import Accession
 from protein_data_handler.uniprot import (
     descargar_registro,
     cargar_codigos_acceso,
@@ -11,9 +10,8 @@ from protein_data_handler.uniprot import (
     almacenar_entrada,
 )
 import unittest
-from unittest.mock import patch, MagicMock, create_autospec
+from unittest.mock import patch, MagicMock
 import requests
-from concurrent.futures import ThreadPoolExecutor, Future
 
 
 class TestCargarCodigosAcceso(unittest.TestCase):

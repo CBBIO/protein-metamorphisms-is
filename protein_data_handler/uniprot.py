@@ -1,4 +1,3 @@
-import traceback
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from http.client import HTTPException
 from urllib.parse import quote
@@ -100,8 +99,6 @@ def cargar_codigos_acceso(criterio_busqueda, limite, session):
     except Exception as e:
         session.rollback()
         logger.error(f"Error: {e}")
-        logger.error("Traceback completo:")
-        logger.error(traceback.format_exc())
 
 
 def descargar_registro(accession_code):

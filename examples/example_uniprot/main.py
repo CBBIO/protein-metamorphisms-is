@@ -22,6 +22,6 @@ if __name__ == "__main__":
     Session = sessionmaker(bind=engine)
     session = Session()
 
-    # cargar_codigos_acceso(
-    #     criterio_busqueda=config['criterio_busqueda'], limite=config['limit'], session=session)
+    cargar_codigos_acceso(
+        criterio_busqueda=config['criterio_busqueda'], limite=config['limit'], session=session)
     extraer_entradas(session=session)
