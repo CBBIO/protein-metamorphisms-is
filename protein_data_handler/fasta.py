@@ -8,7 +8,7 @@ logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
 
-class FastaDownloader:
+class FastaHandler:
     """
     Clase para descargar archivos FASTA de la base de datos de PDB
         (Protein Data Bank).
@@ -24,7 +24,7 @@ class FastaDownloader:
     :type data_dir: str
     """
 
-    def __init__(self, session, data_dir):
+    def __init__(self, session, data_dir, output_dir):
         """
         Inicializa el descargador de FASTA con una sesión de base de datos y un
             directorio de datos.
@@ -35,8 +35,13 @@ class FastaDownloader:
         """
         self.session = session
         self.data_dir = data_dir
+        self.output_dir = output_dir
+
         if not os.path.exists(data_dir):
             os.makedirs(data_dir, exist_ok=True)
+
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir, exist_ok=True)
 
     def download_fastas(self, pdb_ids, max_workers=10):
         """
@@ -87,3 +92,34 @@ class FastaDownloader:
             logging.error(f"Error al descargar FASTA para {pdb_id}: {e}")
         except IOError as e:
             logging.error(f"Error al escribir el archivo para {pdb_id}: {e}")
+
+    def merge_fastas(self, pdb_ids, merge_name):
+        """
+        Combina archivos FASTA para un conjunto de IDs de PDB en un único
+        archivo. Descarga los archivos FASTA que no están presentes en el
+        directorio local.
+
+        :param pdb_ids: Lista de identificadores de PDB para los cuales
+            combinar los archivos FASTA.
+        :type pdb_ids: list[str]
+        """
+        missing_files = []
+        for pdb_id in pdb_ids:
+            file_path = os.path.join(self.data_dir, f"{pdb_id}.fasta")
+            if not os.path.isfile(file_path):
+                missing_files.append(pdb_id)
+
+        if missing_files:
+            logging.info("Descargando archivos FASTA faltantes.")
+            self.download_fastas(missing_files)
+
+        with (open(os.path.join(self.output_dir, f"{merge_name}.fasta"), 'w')
+              as outfile):
+            for pdb_id in pdb_ids:
+                file_path = os.path.join(self.data_dir, f"{pdb_id}.fasta")
+                if os.path.isfile(file_path):
+                    with open(file_path, 'r') as infile:
+                        outfile.write(infile.read())
+                        outfile.write('\n')
+                else:
+                    logging.warning(f"Archivo no encontrado: {file_path}")
