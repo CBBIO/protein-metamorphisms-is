@@ -46,10 +46,16 @@ class TestCargarCodigosAcceso(unittest.TestCase):
         # Verifica que se realizó un rollback en la sesión
         mock_session.rollback.assert_called_once()
 
-    def test_crear_proteina_si_no_existe(self):
+    @patch("requests.get")
+    def test_crear_proteina_si_no_existe(self,mock_get):
         # Configurar los mocks
         session_mock = MagicMock()  # Reemplaza 'Session' con la clase de sesión SQLAlchemy correcta
         session_mock.query.return_value.filter_by.return_value.one.side_effect = NoResultFound
+
+
+        mock_get.return_value.ok = True
+        mock_get.return_value.text = "ABC123\nDEF456\nGHI789"
+        mock_session = MagicMock()
 
         # Llamar a la función con los mocks
         cargar_codigos_acceso("criterio_busqueda", 10, session_mock)

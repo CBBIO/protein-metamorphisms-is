@@ -1,9 +1,13 @@
-fasta
-=====
+FastaHandler
+===============
 
-El módulo `parser` proporciona funcionalidades para transformar cadenas de texto.
+El módulo `fasta` proporciona la clase `FastaHandler` para descargar archivos FASTA de la base de datos de PDB.
 
-Funciones
----------
+Clase FastaHandler
+---------------------
 
-.. autoclass:: protein_data_handler.fasta.FastaDownloader
+.. autoclass:: protein_data_handler.fasta.FastaHandler
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
