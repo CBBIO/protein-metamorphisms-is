@@ -2,7 +2,12 @@ import os
 import requests
 from concurrent.futures import ThreadPoolExecutor
 import logging
+
+from Bio import SeqIO
 from requests.exceptions import RequestException
+
+from protein_data_handler.helpers.parser.parser import extract_and_parse_fasta
+from protein_data_handler.models.uniprot import PDBChain, Proteina, PDBReference
 
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
@@ -61,9 +66,11 @@ class FastaHandler:
             raise ValueError("pdb_ids debe ser una lista de cadenas de texto.")
 
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            executor.map(self.download_fasta, pdb_ids)
+            executor.map(self.download_and_store_fasta, pdb_ids)
 
-    def download_fasta(self, pdb_id):
+        self.session.commit()
+
+    def download_and_store_fasta(self, pdb_id):
         """
         Descarga un archivo FASTA individual de la base de datos de PDB.
 
@@ -74,7 +81,6 @@ class FastaHandler:
         :raises RequestException: Si ocurre un error en la solicitud HTTP.
         :raises IOError: Si ocurre un error al escribir el archivo descargado.
         """
-
         if not isinstance(pdb_id, str):
             raise ValueError("pdb_id debe ser una cadena de texto.")
 
@@ -92,6 +98,15 @@ class FastaHandler:
             logging.error(f"Error al descargar FASTA para {pdb_id}: {e}")
         except IOError as e:
             logging.error(f"Error al escribir el archivo para {pdb_id}: {e}")
+
+        chains = extract_and_parse_fasta(file_path)
+        for chain in chains:
+            pdb_id, chain, sequence = chain
+
+            pdb_id = self.session.query(PDBReference).filter_by(pdb_id=pdb_id).first().id
+            fasta_sequence = PDBChain(pdb_reference_id=pdb_id, chain=chain, sequence=sequence)
+
+            self.session.add(fasta_sequence)
 
     def merge_fastas(self, pdb_ids, merge_name):
         """

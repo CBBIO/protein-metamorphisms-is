@@ -116,12 +116,13 @@ class PDBReference(Base):
     # Método utilizado para la determinación de la estructura
     method = Column(String)
     resolution = Column(Float)  # Resolución de la estructura
-    chains = relationship("Chain", back_populates="pdb_reference")
+    uniprot_chains = relationship("UniprotChain", back_populates="pdb_reference")
+    pdb_chains = relationship("PDBChain", back_populates="pdb_reference")
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, onupdate=func.now())
 
 
-class Chain(Base):
+class UniprotChain(Base):
     """
     Representa una cadena individual dentro de una estructura de proteína
     en la base de datos PDB.
@@ -154,16 +155,39 @@ class Chain(Base):
     estructura de proteína correspondiente en la base de datos PDB.
     """
 
-    __tablename__ = "chains"
+    __tablename__ = "uniprot_chains"
     id = Column(Integer, primary_key=True)
     pdb_reference_id = Column(Integer, ForeignKey('pdb_references.id'))
     chain = Column(String)
+    sequence = Column(String)
     seq_start = Column(Integer)
     seq_end = Column(Integer)
-    pdb_reference = relationship("PDBReference", back_populates="chains")
+    pdb_reference = relationship("PDBReference", back_populates="uniprot_chains")
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, onupdate=func.now())
 
+    def insert_sequence(self, full_sequence):
+        """
+        Inserta la secuencia en la cadena basándose en seq_start y seq_end.
+
+        Args:
+            full_sequence (str): La secuencia completa de la proteína.
+        """
+        if self.seq_start is not None and self.seq_end is not None:
+            self.sequence = full_sequence[self.seq_start - 1:self.seq_end]
+        else:
+            self.sequence = None
+
+
+class PDBChain(Base):
+    __tablename__ = 'pdb_chains'
+
+    id = Column(Integer, primary_key=True)
+    chain = Column(String)
+    sequence = Column(String, nullable=False)
+    pdb_reference_id = Column(Integer, ForeignKey('pdb_references.id'))
+
+    pdb_reference = relationship("PDBReference", back_populates="pdb_chains")
 
 class GOTerm(Base):
     """

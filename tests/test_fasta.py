@@ -44,7 +44,7 @@ class TestFastaHandler(unittest.TestCase):
         mock_response.text = "fake-fasta-content"
         mock_get.return_value = mock_response
         with patch('builtins.open', unittest.mock.mock_open()) as mock_file:
-            self.downloader.download_fasta("PDBID")
+            self.downloader.download_and_store_fasta("PDBID")
             mock_file.assert_called_with("./tests/data/FASTA/PDBID.fasta", "w")
             mock_file().write.assert_called_with("fake-fasta-content")
 
@@ -53,7 +53,7 @@ class TestFastaHandler(unittest.TestCase):
     def test_download_fasta_http_error(self, mock_logging_error, mock_get):
         mock_get.side_effect = requests.exceptions.RequestException("HTTP error")
 
-        self.downloader.download_fasta("PDBID")
+        self.downloader.download_and_store_fasta("PDBID")
         mock_logging_error.assert_called_with("Error al descargar FASTA para PDBID: HTTP error")
 
     @patch('protein_data_handler.fasta.requests.get')
@@ -66,7 +66,7 @@ class TestFastaHandler(unittest.TestCase):
 
         with patch('builtins.open', unittest.mock.mock_open()) as mock_file:
             mock_file.side_effect = IOError("IO error")
-            self.downloader.download_fasta("PDBID")
+            self.downloader.download_and_store_fasta("PDBID")
             mock_logging_error.assert_called_with("Error al escribir el archivo para PDBID: IO error")
 
     @patch('protein_data_handler.fasta.FastaHandler.download_fasta')
@@ -77,7 +77,7 @@ class TestFastaHandler(unittest.TestCase):
 
     def test_download_fasta_invalid_pdb_id(self):
         with self.assertRaises(ValueError):
-            self.downloader.download_fasta(123)
+            self.downloader.download_and_store_fasta(123)
 
     @patch('os.path.exists')
     @patch('os.makedirs')
@@ -85,11 +85,11 @@ class TestFastaHandler(unittest.TestCase):
         mock_exists.return_value = None
         mock_makedirs.return_value = None
 
-        self.downloader.download_fasta("PDBID")
+        self.downloader.download_and_store_fasta("PDBID")
         mock_exists.return_value = True
         mock_makedirs.return_value = True
 
-        self.downloader.download_fasta("PDBID")
+        self.downloader.download_and_store_fasta("PDBID")
 
     @patch('os.path.isfile')
     @patch('builtins.open', new_callable=unittest.mock.mock_open, read_data="contenido_fasta")

@@ -21,15 +21,17 @@ def main():
     Session = sessionmaker(bind=engine)
     session = Session()
 
-    query = session.query(PDBReference).filter(PDBReference.resolution < config.get("resolution_threshold", 2.5)).all()
-    pdb_ids = [pdb_ref.pdb_id for pdb_ref in query]
-    # Inicializa FastaHandler
     fasta_downloader = FastaHandler(session, config['data_dir'], config['output_dir'])
 
-    # Descarga los archivos FASTA
-    fasta_downloader.download_fastas(pdb_ids[:-500], config['max_workers'])
+    query = session.query(PDBReference).filter(PDBReference.resolution < config.get("resolution_threshold", 2.5)).all()
+    pdb_ids = [pdb_ref.pdb_id for pdb_ref in query[:200]]
+    # Inicializa FastaHandler
 
-    fasta_downloader.merge_fastas(pdb_ids,config['merge_name'])
+
+    # Descarga los archivos FASTA
+    fasta_downloader.download_fastas(pdb_ids, config['max_workers'])
+
+    # fasta_downloader.merge_fastas(pdb_ids,config['merge_name'])
 
 
 if __name__ == "__main__":

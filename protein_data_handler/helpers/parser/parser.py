@@ -1,5 +1,7 @@
 import re
 
+from Bio import SeqIO
+
 
 def extract_float(s):
     """
@@ -92,3 +94,26 @@ def procesar_chain_string(chain):
         start, end = None, None
 
     return chain_name, start, end
+
+
+def extract_and_parse_fasta(file_path):
+    """
+    Extrae y analiza las secuencias de un archivo FASTA.
+
+    :param file_path: Ruta del archivo FASTA.
+    :return: Lista de tuplas con (pdb_id, chain, sequence).
+    """
+    sequences = []
+
+    with open(file_path, 'r') as fasta_file:
+        for record in SeqIO.parse(fasta_file, "fasta"):
+            header = record.description
+            # Extraer los campos del encabezado
+            parts = header.split('|')
+            pdb_id = parts[0].split('_')[0]
+            chain = parts[1].replace('Chains ', '').replace('Chain ', '')
+            sequence = str(record.seq)
+            # Agregar la tupla a la lista
+            sequences.append((pdb_id, chain, sequence))
+
+    return sequences
