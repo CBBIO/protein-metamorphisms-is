@@ -251,8 +251,6 @@ def almacenar_entrada(data, session):
                 chains = reference[4].split(',')
                 for chain_obj in chains:
                     chain_name, start, end = procesar_chain_string(chain_obj)
-                    if not chain_name:
-                        raise Exception(f"{chain_obj},hola")
                     pdb_id = (session.query(PDBReference)
                               .filter_by(pdb_id=reference[1]).first().id)
 

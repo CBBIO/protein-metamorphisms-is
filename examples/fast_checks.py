@@ -1,18 +1,35 @@
-from Bio import ExPASy, SwissProt
+from Bio.Seq import Seq
+from Bio.SeqRecord import SeqRecord
+from Bio import SeqIO, AlignIO
+from Bio.Align.Applications import MafftCommandline
+from io import StringIO
 
-handle = ExPASy.get_sprot_raw("A0A1S4F020")
-record = SwissProt.read(handle)
+def align_sequences_with_mafft(seq1, seq2):
+    # Crear registros de secuencia
+    record1 = SeqRecord(Seq(seq1), id="Seq1")
+    record2 = SeqRecord(Seq(seq2), id="Seq2")
 
-for cr in record.cross_references:
-    if cr[0]=="PDB":
-        print(cr)
+    # Guardar en un archivo FASTA
+    SeqIO.write([record1, record2], "temp_sequences.fasta", "fasta")
 
+    # Crear la línea de comando para MAFFT
+    mafft_cline = MafftCommandline(input="temp_sequences.fasta")
 
-a = "1/2/0/4/5/3/7/A/6/C/D/B/E/F/G/I/J/H/L/M/K/O/P/N/R/Q/T/S/V/U/X/W/Z/Y/b/a/d/c/f/e/h/g/j/i/l/k/n/m/p/o/r/q/t/s/v/u/x/w/z/y"
-a = set(a.split('/'))
+    # Ejecutar MAFFT y capturar la salida
+    stdout, stderr = mafft_cline()
 
-b = "0/1/2/3/4/5/6/7/A/B/C/D/E/F/G/H/I/J/K/L/M/N/O/P/Q/R/S/T/U/V"
-b = set(b.split('/'))
+    # Leer el alineamiento desde la salida estándar
+    align = AlignIO.read(StringIO(stdout), "fasta")
 
-print(a)
-print(b)
+    # Convertir las secuencias alineadas a strings
+    aligned_seq1 = str(align[0].seq)
+    aligned_seq2 = str(align[1].seq)
+
+    return aligned_seq1, aligned_seq2
+
+# Ejemplo de uso
+seq1 = "ATCGTAC"
+seq2 = "ATGAC"
+aligned_seq1, aligned_seq2 = align_sequences_with_mafft(seq1, seq2)
+print("Secuencia 1 Alineada:", aligned_seq1)
+print("Secuencia 2 Alineada:", aligned_seq2)

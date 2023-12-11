@@ -121,23 +121,14 @@ def extract_and_parse_fasta(file_path):
 
 
 def auth_chain_mapping(chain):
-    # Divide la cadena en elementos separados por '/'
     elementos = chain.split('/')
-    print(chain)
-    # Procesa cada elemento individualmente
     elementos_transformados = []
     for elemento in elementos:
-        # Busca el patrón 'X[authY]' y lo reemplaza por 'Y', si no lo encuentra, deja el elemento como está
         match = re.search(r'[A-Za-z]+\[auth([A-Za-z0-9]+)\]', elemento)
         if match:
             elementos_transformados.append(match.group(1))
         else:
             elementos_transformados.append(elemento)
 
-    # Une los elementos transformados con '/'
     resultado = '/'.join(elementos_transformados)
-    print(resultado)
     return resultado
-    # Prueba de la función
-
-

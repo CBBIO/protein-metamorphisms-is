@@ -6,3 +6,5 @@ exclude =
     settings.py
     poetryenv
    .env
+
+max-line-length = 120

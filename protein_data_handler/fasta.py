@@ -84,20 +84,22 @@ class FastaHandler:
         if not isinstance(pdb_id, str):
             raise ValueError("pdb_id debe ser una cadena de texto.")
 
-        url = f"https://www.rcsb.org/fasta/entry/{pdb_id}"
-        try:
-            response = requests.get(url)
-            response.raise_for_status()
+        file_path = os.path.join(self.data_dir, f"{pdb_id}.fasta")
 
-            file_path = os.path.join(self.data_dir, f"{pdb_id}.fasta")
-            with open(file_path, "w") as file:
-                file.write(response.text)
-            logging.info(f"FASTA descargado para {pdb_id} en {file_path}")
+        if not os.path.exists(file_path):
+            url = f"https://www.rcsb.org/fasta/entry/{pdb_id}"
+            try:
+                response = requests.get(url)
+                response.raise_for_status()
 
-        except RequestException as e:
-            logging.error(f"Error al descargar FASTA para {pdb_id}: {e}")
-        except IOError as e:
-            logging.error(f"Error al escribir el archivo para {pdb_id}: {e}")
+                with open(file_path, "w") as file:
+                    file.write(response.text)
+                logging.info(f"FASTA descargado para {pdb_id} en {file_path}")
+
+            except RequestException as e:
+                logging.error(f"Error al descargar FASTA para {pdb_id}: {e}")
+            except IOError as e:
+                logging.error(f"Error al escribir el archivo para {pdb_id}: {e}")
 
         chains = extract_and_parse_fasta(file_path)
         for chain in chains:
@@ -105,8 +107,8 @@ class FastaHandler:
 
             pdb_id = self.session.query(PDBReference).filter_by(pdb_id=pdb_id).first().id
             fasta_sequence = PDBChain(pdb_reference_id=pdb_id, chain=chain, sequence=sequence)
+
             self.session.add(fasta_sequence)
-            self.sessioon.commit()
 
     def merge_fastas(self, pdb_ids, merge_name):
         """

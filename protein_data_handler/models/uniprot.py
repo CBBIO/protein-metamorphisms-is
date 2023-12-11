@@ -118,6 +118,7 @@ class PDBReference(Base):
     resolution = Column(Float)  # Resolución de la estructura
     uniprot_chains = relationship("UniprotChain", back_populates="pdb_reference")
     pdb_chains = relationship("PDBChain", back_populates="pdb_reference")
+    uniprot_pdb_alignments = relationship("UniProtPDBAlignment", back_populates="pdb_reference")
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, onupdate=func.now())
 
@@ -188,6 +189,18 @@ class PDBChain(Base):
                               primary_key=True)  # Ahora parte de la clave primaria
 
     pdb_reference = relationship("PDBReference", back_populates="pdb_chains")
+
+
+class UniProtPDBAlignment(Base):
+    __tablename__ = 'pdb_uniprot_chain_alignment'
+
+    chain = Column(String, primary_key=True)  # Ahora parte de la clave primaria
+    pdb_reference_id = Column(Integer, ForeignKey('pdb_references.id'),
+                              primary_key=True)  # Ahora parte de la clave primaria
+    uniprot_sequence_aligned = Column(String)
+    pdb_sequence_aligned = Column(String)
+
+    pdb_reference = relationship("PDBReference", back_populates="uniprot_pdb_alignments")
 
 
 class GOTerm(Base):
