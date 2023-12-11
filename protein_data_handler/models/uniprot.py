@@ -156,9 +156,9 @@ class UniprotChain(Base):
     """
 
     __tablename__ = "uniprot_chains"
-    id = Column(Integer, primary_key=True)
-    pdb_reference_id = Column(Integer, ForeignKey('pdb_references.id'))
-    chain = Column(String)
+    pdb_reference_id = Column(Integer, ForeignKey('pdb_references.id'),
+                              primary_key=True)  # Ahora parte de la clave primaria
+    chain = Column(String, primary_key=True)  # Ahora parte de la clave primaria
     sequence = Column(String)
     seq_start = Column(Integer)
     seq_end = Column(Integer)
@@ -182,12 +182,13 @@ class UniprotChain(Base):
 class PDBChain(Base):
     __tablename__ = 'pdb_chains'
 
-    id = Column(Integer, primary_key=True)
-    chain = Column(String)
+    chain = Column(String, primary_key=True)  # Ahora parte de la clave primaria
     sequence = Column(String, nullable=False)
-    pdb_reference_id = Column(Integer, ForeignKey('pdb_references.id'))
+    pdb_reference_id = Column(Integer, ForeignKey('pdb_references.id'),
+                              primary_key=True)  # Ahora parte de la clave primaria
 
     pdb_reference = relationship("PDBReference", back_populates="pdb_chains")
+
 
 class GOTerm(Base):
     """

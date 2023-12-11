@@ -24,7 +24,7 @@ def main():
     fasta_downloader = FastaHandler(session, config['data_dir'], config['output_dir'])
 
     query = session.query(PDBReference).filter(PDBReference.resolution < config.get("resolution_threshold", 2.5)).all()
-    pdb_ids = [pdb_ref.pdb_id for pdb_ref in query[:200]]
+    pdb_ids = [pdb_ref.pdb_id for pdb_ref in query]
     # Inicializa FastaHandler
 
 

@@ -105,8 +105,8 @@ class FastaHandler:
 
             pdb_id = self.session.query(PDBReference).filter_by(pdb_id=pdb_id).first().id
             fasta_sequence = PDBChain(pdb_reference_id=pdb_id, chain=chain, sequence=sequence)
-
             self.session.add(fasta_sequence)
+            self.sessioon.commit()
 
     def merge_fastas(self, pdb_ids, merge_name):
         """
