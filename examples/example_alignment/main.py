@@ -19,7 +19,7 @@ if __name__ == "__main__":
     engine = create_engine(DATABASE_URI)
     Session = sessionmaker(bind=engine)
     session = Session()
-
+    Base.metadata.create_all(engine)
     mapping = UniProtPDBMapping(session)
     pares = mapping.realizar_consulta_cadenas_iguales()
     mapping.volcar_datos_alineamiento(pares)

@@ -1,6 +1,10 @@
 import unittest
-from protein_data_handler.helpers.parser.parser import extract_float, procesar_chain_string
 
+from Bio import SeqRecord, Seq
+
+from protein_data_handler.helpers.parser.parser import extract_float, procesar_chain_string, extract_and_parse_fasta, \
+    auth_chain_mapping
+from unittest.mock import patch, mock_open
 
 class TestExtractFloat(unittest.TestCase):
     def test_extract_float_with_valid_float(self):
@@ -41,6 +45,23 @@ class TestExtractFloat(unittest.TestCase):
         resultado = procesar_chain_string(" A = 100200 ")
         self.assertEqual(resultado, ("A", None, None))
 
+    @patch('protein_data_handler.helpers.parser.parser.open', new_callable=mock_open, read_data=">PDB1_A\nATCG")
+    @patch('protein_data_handler.helpers.parser.parser.SeqIO.parse')
+    def test_extract_and_parse_fasta(self, mock_seqio_parse, mock_file):
+        mock_seqio_parse.return_value = [SeqRecord.SeqRecord(Seq.Seq("ATCG"), id="PDB1_A|Chain A", description="PDB1_A|Chain A")]
 
+        file_path = 'fake_path.fasta'
+        sequences = extract_and_parse_fasta(file_path)
+
+        self.assertEqual(sequences, [("PDB1", "A", "A", "ATCG")])
+
+        mock_file.assert_called_with(file_path, 'r')
+        mock_seqio_parse.assert_called()
+
+    def test_auth_chain_mapping(self):
+        self.assertEqual(auth_chain_mapping("ChainA[authA]/ChainB[authB]"), "A/B")
+        self.assertEqual(auth_chain_mapping("ChainA/ChainB"), "ChainA/ChainB")
+        self.assertEqual(auth_chain_mapping("Chain[authA]"), "A")
+        self.assertEqual(auth_chain_mapping(""), "")
 if __name__ == '__main__':
     unittest.main()

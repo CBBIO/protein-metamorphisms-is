@@ -76,14 +76,14 @@ class UniProtPDBMapping:
         """
         logging.info(f"Procesando par: {par}")
         uniprot_seq, pdb_seq, chain, pdb_id = par[:4]
-        pdb_reference_id = self.session.query(PDBReference.id).filter_by(pdb_id=pdb_id).scalar()
-        uniprot_sequence_aligned, pdb_sequence_aligned = self.alinear_secuencias_mafft(uniprot_seq, pdb_seq)
-
+        pdb_reference_id = self.session.query(PDBReference.id).filter_by(pdb_id=pdb_id).one().id
+        uniprot_seq_aligned, pdb_seq_aligned, porcentaje_identidad = self.alinear_secuencias_mafft(uniprot_seq, pdb_seq)
         alignment = UniProtPDBAlignment(
             chain=chain,
             pdb_reference_id=pdb_reference_id,
-            uniprot_sequence_aligned=uniprot_sequence_aligned,
-            pdb_sequence_aligned=pdb_sequence_aligned
+            uniprot_sequence_aligned=uniprot_seq_aligned,
+            pdb_sequence_aligned=pdb_seq_aligned,
+            identity=porcentaje_identidad
         )
         self.session.add(alignment)
 
@@ -95,24 +95,35 @@ class UniProtPDBMapping:
         :param seq2: Segunda secuencia para alinear.
         :return: Tupla con las secuencias alineadas.
         """
-        logging.info(f"Iniciando alineación MAFFT para las secuencias: {seq1[:10]}..., {seq2[:10]}...")
-
+        # logging.info(f"Iniciando alineación MAFFT para las secuencias: {seq1[:10]}..., {seq2[:10]}...")
         # Crear un archivo temporal para las secuencias
         with tempfile.NamedTemporaryFile(mode='w+', suffix='.fasta', delete=False) as temp_file:
             record1 = SeqRecord(Seq(seq1), id="Seq1")
             record2 = SeqRecord(Seq(seq2), id="Seq2")
             SeqIO.write([record1, record2], temp_file, "fasta")
             temp_file_path = temp_file.name
-
         # Ejecutar MAFFT utilizando el archivo temporal
         mafft_cline = MafftCommandline(input=temp_file_path)
         stdout, stderr = mafft_cline()
 
         # Leer el resultado del alineamiento
         align = AlignIO.read(StringIO(stdout), "fasta")
+        porcentaje_identidad = self.calcular_porcentaje_identidad(align)
         logging.info("Alineación completada con éxito.")
 
         # Eliminar el archivo temporal
         os.remove(temp_file_path)
+        return str(align[0].seq), str(align[1].seq), porcentaje_identidad
 
-        return str(align[0].seq), str(align[1].seq)
+    def calcular_porcentaje_identidad(self, align):
+        """
+        Calcula el porcentaje de identidad entre dos secuencias alineadas.
+
+        :param align: Objeto de alineamiento con dos secuencias.
+        :return: Porcentaje de identidad.
+        """
+        seq1, seq2 = align[0].seq, align[1].seq
+        matches = sum(res1 == res2 for res1, res2 in zip(seq1, seq2))
+        total = len(seq1)  # Asumiendo que ambas secuencias tienen la misma longitud
+        porcentaje_identidad = (matches / total) * 100
+        return porcentaje_identidad

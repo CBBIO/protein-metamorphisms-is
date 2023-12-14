@@ -3,11 +3,12 @@ import requests
 from concurrent.futures import ThreadPoolExecutor
 import logging
 
-from Bio import SeqIO
 from requests.exceptions import RequestException
 
 from protein_data_handler.helpers.parser.parser import extract_and_parse_fasta
-from protein_data_handler.models.uniprot import PDBChain, Proteina, PDBReference
+from protein_data_handler.models.uniprot import PDBChain, PDBReference, Cluster
+
+from pycdhit import cd_hit, read_clstr
 
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
@@ -52,40 +53,47 @@ class FastaHandler:
         """
         Descarga archivos FASTA para un conjunto de IDs de PDB utilizando
             múltiples hilos.
-
-        :param pdb_ids: Lista de identificadores de PDB para los cuales
-            descargar los archivos FASTA.
-        :type pdb_ids: list[str]
-        :param max_workers: Número máximo de hilos para usar en la descarga.
-        :type max_workers: int
-        :raises ValueError: Si `pdb_ids` no es una lista de cadenas de texto.
         """
         logging.info(f"Descarga de {len(pdb_ids)} estructuras FASTA.")
-        if not isinstance(pdb_ids, list) or not all(isinstance(id, str)
-                                                    for id in pdb_ids):
+
+        if not isinstance(pdb_ids, list) or not all(isinstance(id, str) for id in pdb_ids):
             raise ValueError("pdb_ids debe ser una lista de cadenas de texto.")
 
+        to_download = []
+        already_downloaded = []
+
+        for pdb_id in pdb_ids:
+            file_path = os.path.join(self.data_dir, f"{pdb_id}.fasta")
+            if os.path.exists(file_path):
+                already_downloaded.append(pdb_id)
+            else:
+                to_download.append(pdb_id)
+
+        logging.info(
+            f"Ya en disco: {len(already_downloaded)} archivos. Necesitan descarga: {len(to_download)} archivos.")
+
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            executor.map(self.download_and_store_fasta, pdb_ids)
+            results = executor.map(self.download_and_store_fasta, pdb_ids)
+        for file_path, chains in results:
+            if file_path and chains:
+                for chain in chains:
+                    pdb_id, chain_number, chain_id, sequence = chain
+                    pdb_id = self.session.query(PDBReference).filter_by(pdb_id=pdb_id).first().id
+                    fasta_sequence = PDBChain(pdb_reference_id=pdb_id, chain_number=chain_number, chain=chain_id,
+                                              sequence=sequence)
+                    self.session.add(fasta_sequence)
 
         self.session.commit()
 
     def download_and_store_fasta(self, pdb_id):
         """
         Descarga un archivo FASTA individual de la base de datos de PDB.
-
-        :param pdb_id: Identificador de PDB para el cual descargar el archivo
-            FASTA.
-        :type pdb_id: str
-        :raises ValueError: Si `pdb_id` no es una cadena de texto.
-        :raises RequestException: Si ocurre un error en la solicitud HTTP.
-        :raises IOError: Si ocurre un error al escribir el archivo descargado.
+        Retorna el path del archivo y los datos extraídos si la descarga fue exitosa.
         """
         if not isinstance(pdb_id, str):
             raise ValueError("pdb_id debe ser una cadena de texto.")
 
         file_path = os.path.join(self.data_dir, f"{pdb_id}.fasta")
-
         if not os.path.exists(file_path):
             url = f"https://www.rcsb.org/fasta/entry/{pdb_id}"
             try:
@@ -98,17 +106,52 @@ class FastaHandler:
 
             except RequestException as e:
                 logging.error(f"Error al descargar FASTA para {pdb_id}: {e}")
+                return None, None
             except IOError as e:
                 logging.error(f"Error al escribir el archivo para {pdb_id}: {e}")
+                return None, None
 
         chains = extract_and_parse_fasta(file_path)
-        for chain in chains:
-            pdb_id, chain, sequence = chain
+        return file_path, chains
 
-            pdb_id = self.session.query(PDBReference).filter_by(pdb_id=pdb_id).first().id
-            fasta_sequence = PDBChain(pdb_reference_id=pdb_id, chain=chain, sequence=sequence)
+    def cluster_fastas(self, input_file, threshold=0.7):
+        """
+        Agrupa archivos FASTA utilizando cd-hit.
 
-            self.session.add(fasta_sequence)
+        :param input_file: Ruta al archivo FASTA de entrada.
+        :param output_prefix: Prefijo para los archivos de salida de cd-hit.
+        :param threshold: Umbral de similitud para cd-hit. Por defecto es 0.7.
+        """
+        cd_hit_input = os.path.join(self.output_dir, f"{input_file}.fasta")
+        cd_hit_output = os.path.join(self.output_dir, f"{input_file}")
+
+        # Ejecutar cd-hit
+        cd_hit(
+            i=cd_hit_input,
+            o=cd_hit_output,
+            c=0.7,
+            d=40,
+            sc=1,
+        )
+        # # Leer y procesar el archivo de clústeres
+        df_clstr = read_clstr(f"{cd_hit_output}.clstr")
+        for _, row in df_clstr.iterrows():
+            pdb_id = row["identifier"].split('_')[0]
+            chain_number = row["identifier"].split('_')[1].split('|')[0]
+            pdb_reference_id = self.session.query(PDBReference.id).filter_by(pdb_id=pdb_id).one().id
+            cluster = Cluster(
+                cluster_id=row['cluster'],
+                pdb_reference_id=pdb_reference_id,
+                chain_number=chain_number,
+                is_representative=row['is_representative'],
+                sequence_length=row['size'],
+                identity=row['identity']
+            )
+            self.session.add(cluster)
+        self.session.commit()
+        logging.info(f"Clustering completado. Archivo de salida: {cd_hit_output}")
+
+        return df_clstr
 
     def merge_fastas(self, pdb_ids, merge_name):
         """
@@ -120,15 +163,6 @@ class FastaHandler:
             combinar los archivos FASTA.
         :type pdb_ids: list[str]
         """
-        missing_files = []
-        for pdb_id in pdb_ids:
-            file_path = os.path.join(self.data_dir, f"{pdb_id}.fasta")
-            if not os.path.isfile(file_path):
-                missing_files.append(pdb_id)
-
-        if missing_files:
-            logging.info("Descargando archivos FASTA faltantes.")
-            self.download_fastas(missing_files)
 
         with (open(os.path.join(self.output_dir, f"{merge_name}.fasta"), 'w')
               as outfile):

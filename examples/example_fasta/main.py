@@ -19,18 +19,23 @@ def main():
 
     Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
-    session = Session()
 
-    fasta_downloader = FastaHandler(session, config['data_dir'], config['output_dir'])
+    # Se inicia una nueva sesión para la consulta
+    with Session() as session:
+        query = session.query(PDBReference).filter(
+            PDBReference.resolution < config.get("resolution_threshold", 2.5)).all()
+        pdb_ids = [pdb_ref.pdb_id for pdb_ref in query[:3000]]
 
-    query = session.query(PDBReference).filter(PDBReference.resolution < config.get("resolution_threshold", 2.5)).all()
-    pdb_ids = [pdb_ref.pdb_id for pdb_ref in query[:1000]]
-    # Inicializa FastaHandler
+    # Se inicia una nueva sesión para las operaciones de descarga y escritura
+    with Session() as session:
+        fasta_downloader = FastaHandler(session, config['data_dir'], config['output_dir'])
+        fasta_downloader.download_fastas(pdb_ids, config['max_workers'])
+        fasta_downloader.merge_fastas(pdb_ids, config['merge_name'])
+        fasta_downloader.cluster_fastas(config['merge_name'])
 
-    # Descarga los archivos FASTA
-    fasta_downloader.download_fastas(pdb_ids, config['max_workers'])
+        # Confirma las operaciones realizadas en esta sesión
+        session.commit()
 
-    # fasta_downloader.merge_fastas(pdb_ids,config['merge_name'])
 
 
 if __name__ == "__main__":

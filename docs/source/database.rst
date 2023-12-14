@@ -49,12 +49,38 @@ GOTerm
    :show-inheritance:
    :no-index:
 
-Chain
-^^^^^^
+UniprotChain
+^^^^^^^^^^^^
 
-.. autoclass:: protein_data_handler.models.uniprot.Chain
+.. autoclass:: protein_data_handler.models.uniprot.UniprotChain
    :members:
    :undoc-members:
    :show-inheritance:
    :no-index:
 
+Cluster
+^^^^^^^
+
+.. autoclass:: protein_data_handler.models.uniprot.Cluster
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :no-index:
+
+PDBChain
+^^^^^^^^
+
+.. autoclass:: protein_data_handler.models.uniprot.PDBChain
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :no-index:
+
+UniProtPDBAlignment
+^^^^^^^^^^^^^^^^^^^
+
+.. autoclass:: protein_data_handler.models.uniprot.UniProtPDBAlignment
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :no-index:

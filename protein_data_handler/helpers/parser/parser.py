@@ -111,11 +111,13 @@ def extract_and_parse_fasta(file_path):
             # Extraer los campos del encabezado
             parts = header.split('|')
             pdb_id = parts[0].split('_')[0]
+            chain_number = parts[0].split('_')[1]
+
             chain = parts[1].replace('Chains ', '').replace('Chain ', '').replace(',', '/').replace(' ', '')
             chain = auth_chain_mapping(chain)
             sequence = str(record.seq)
             # Agregar la tupla a la lista
-            sequences.append((pdb_id, chain, sequence))
+            sequences.append((pdb_id, chain_number, chain, sequence))
 
     return sequences
 
