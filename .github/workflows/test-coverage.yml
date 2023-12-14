@@ -20,7 +20,8 @@ jobs:
         with:
           poetry-version: ${{ matrix.poetry-version }}
       - name: install dependecies
-        run: | 
+        run: |
+              apt-get install mafft
               poetry install 
               pip3 install coverage
               pip3 install pytest
