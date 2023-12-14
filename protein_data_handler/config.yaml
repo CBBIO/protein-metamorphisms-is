@@ -9,5 +9,3 @@ max_workers: 15
 data_dir: /opt/shared/FASTA
 output_dir: /opt/shared/FASTA/output
 merge_name: merge_25
-
-

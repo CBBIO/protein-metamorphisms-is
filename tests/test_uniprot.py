@@ -2,7 +2,7 @@ from http.client import HTTPException
 
 from sqlalchemy.exc import NoResultFound
 
-from protein_data_handler.models.uniprot import Accession
+from protein_data_handler.models.uniprot import Accession, UniprotChain
 from protein_data_handler.uniprot import (
     descargar_registro,
     cargar_codigos_acceso,
@@ -204,7 +204,7 @@ class TestAlmacenarEntrada(unittest.TestCase):
         mock_session.rollback.assert_called_once()
 
     @patch("protein_data_handler.models.uniprot.PDBReference")
-    @patch("protein_data_handler.models.uniprot.Chain")
+    @patch("protein_data_handler.models.uniprot.UniprotChain")
     def test_procesamiento_cadenas_pdb(self, mock_chain_class, mock_pdb_reference_class):
         # Crear un mock para los datos de entrada y la sesión
         mock_data = MagicMock()
@@ -253,6 +253,35 @@ class TestAlmacenarEntrada(unittest.TestCase):
 
         # Verificar que se añadieron las cadenas a la sesión si no existían
         # self.assertEqual(mock_session.add.call_count, 2)
+
+    def test_insert_sequence_with_none_start_or_end(self):
+        # Crear una instancia de UniprotChain con seq_start o seq_end como None
+        chain = UniprotChain(seq_start=None, seq_end=10)
+        full_sequence = "ABCDEFGHIJK"
+
+        # Llamar a insert_sequence
+        chain.insert_sequence(full_sequence)
+
+        # Verificar que la secuencia de la cadena se establezca en None
+        self.assertIsNone(chain.sequence)
+
+        # Repetir para el caso donde seq_end es None
+        chain = UniprotChain(seq_start=1, seq_end=None)
+
+        # Llamar a insert_sequence
+        chain.insert_sequence(full_sequence)
+
+        # Verificar que la secuencia de la cadena se establezca en None
+        self.assertIsNone(chain.sequence)
+
+        # También puedes probar cuando ambos sean None
+        chain = UniprotChain(seq_start=None, seq_end=None)
+
+        # Llamar a insert_sequence
+        chain.insert_sequence(full_sequence)
+
+        # Verificar que la secuencia de la cadena se establezca en None
+        self.assertIsNone(chain.sequence)
 
 
 if __name__ == "__main__":

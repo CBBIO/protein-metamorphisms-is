@@ -6,9 +6,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [ "3.10"]
-        poetry-version: ["1.4.0"]
-        os: [ubuntu-22.04 ]
+        python-version: [ "3.10" ]
+        poetry-version: [ "1.4.0" ]
+        os: [ ubuntu-22.04 ]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
@@ -19,15 +19,17 @@ jobs:
         uses: abatilo/actions-poetry@v2
         with:
           poetry-version: ${{ matrix.poetry-version }}
+      - name: Install MAFFT
+        run: sudo apt-get install mafft
       - name: install dependecies
-        run: | 
-              poetry install 
-              pip3 install coverage
-              pip3 install pytest
+        run: |
+          poetry install 
+          pip3 install coverage
+          pip3 install pytest
 
       - name: test
         run: poetry run task coverage
-        
+
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v3
         with:

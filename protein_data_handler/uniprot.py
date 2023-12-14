@@ -16,7 +16,7 @@ from protein_data_handler.models.uniprot import (
     Accession,
     GOTerm,
     PDBReference,
-    Proteina, Chain
+    Proteina, UniprotChain
 )
 
 logger = logging.getLogger(__name__)
@@ -251,21 +251,21 @@ def almacenar_entrada(data, session):
                 chains = reference[4].split(',')
                 for chain_obj in chains:
                     chain_name, start, end = procesar_chain_string(chain_obj)
-
                     pdb_id = (session.query(PDBReference)
                               .filter_by(pdb_id=reference[1]).first().id)
 
                     chain = (
-                        session.query(Chain)
+                        session.query(UniprotChain)
                         .filter_by(pdb_reference_id=pdb_id, chain=chain_name)
                         .first()
                     )
                     if chain is None:
-                        chain = Chain(pdb_reference_id=pdb_id,
-                                      chain=chain_name,
-                                      seq_start=start,
-                                      seq_end=end)
-                        session.add(chain)
+                        chain = UniprotChain(pdb_reference_id=pdb_id,
+                                             chain=chain_name,
+                                             seq_start=start,
+                                             seq_end=end)
+                    chain.insert_sequence(proteina.sequence)
+                    session.add(chain)
             elif reference[0] == "GO":
                 go_term = (
                     session.query(GOTerm).filter_by(go_id=reference[1]).first()

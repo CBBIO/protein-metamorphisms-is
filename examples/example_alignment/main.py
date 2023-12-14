@@ -1,11 +1,11 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+
+from protein_data_handler.alignment import UniProtPDBMapping
 from protein_data_handler.helpers.config.yaml import read_yaml_config
-from protein_data_handler.models.uniprot import Base
-from protein_data_handler.uniprot import cargar_codigos_acceso, extraer_entradas
-import logging
-logging.basicConfig(level=logging.INFO,
-                    format='%(asctime)s - %(levelname)s - %(message)s')
+from protein_data_handler.helpers.database.database import create_session
+from protein_data_handler.fasta import FastaHandler  # Asegúrate de ajustar la ruta de importación
+from protein_data_handler.models.uniprot import Base, PDBReference
 
 
 if __name__ == "__main__":
@@ -17,11 +17,10 @@ if __name__ == "__main__":
          f"{config['DB_PORT']}/"
          f"{config['DB_NAME']}")
     engine = create_engine(DATABASE_URI)
-    Base.metadata.drop_all(engine)
-    Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
     session = Session()
+    Base.metadata.create_all(engine)
+    mapping = UniProtPDBMapping(session)
+    pares = mapping.realizar_consulta_cadenas_iguales()
+    mapping.volcar_datos_alineamiento(pares)
 
-    cargar_codigos_acceso(
-        criterio_busqueda=config['criterio_busqueda'], limite=config['limit'], session=session)
-    extraer_entradas(session=session)

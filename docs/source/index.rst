@@ -16,4 +16,5 @@ Contenidos
    database
    yaml
    parser
+   alignment
 
