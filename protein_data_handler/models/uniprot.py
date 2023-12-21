@@ -165,9 +165,9 @@ class UniprotChain(Base):
     """
 
     __tablename__ = "uniprot_chains"
-    pdb_reference_id = Column(Integer, ForeignKey('pdb_references.id'),
-                              primary_key=True)  # Ahora parte de la clave primaria
-    chain = Column(String, primary_key=True)  # Ahora parte de la clave primaria
+    id = Column(Integer, primary_key=True)
+    pdb_reference_id = Column(Integer, ForeignKey('pdb_references.id'))
+    chain = Column(String)
     sequence = Column(String)
     seq_start = Column(Integer)
     seq_end = Column(Integer)
@@ -215,10 +215,9 @@ class Cluster(Base):
     __tablename__ = 'clusters'
 
     id = Column(Integer, primary_key=True)
-    pdb_reference_id = Column(Integer, ForeignKey('pdb_references.id'))
-    chain_number = Column(Integer)
-    cluster_id = Column(String)
-    is_representative = Column(Boolean)  # 0: False, 1: True
+    pdb_chain_id = Column(Integer, ForeignKey('pdb_chains.id'))
+    cluster_id = Column(Integer)
+    is_representative = Column(Boolean)
     sequence_length = Column(Integer)
     identity = Column(Float)
 
@@ -248,12 +247,11 @@ class PDBChain(Base):
      instancia de `PDBChain` sea única y esté claramente vinculada a una estructura específica en PDB.
     """
     __tablename__ = 'pdb_chains'
-
-    chain = Column(String)  # Parte de la clave primaria
-    chain_number = Column(String, primary_key=True)
+    id = Column(Integer, primary_key=True)
+    chain = Column(String)  # Ahora parte de la clave primaria
+    chain_number = Column(String)  # Confirmado como parte de la clave primaria
     sequence = Column(String, nullable=False)
-    pdb_reference_id = Column(Integer, ForeignKey('pdb_references.id'),
-                              primary_key=True)  # Parte de la clave primaria
+    pdb_reference_id = Column(Integer, ForeignKey('pdb_references.id'))
 
     pdb_reference = relationship("PDBReference", back_populates="pdb_chains")
 
@@ -287,14 +285,23 @@ class UniProtPDBAlignment(Base):
           rastreo y análisis de alineaciones entre bases de datos.
     """
     __tablename__ = 'pdb_uniprot_chain_alignment'
-
-    chain = Column(String, primary_key=True)  # Ahora parte de la clave primaria
-    pdb_reference_id = Column(Integer, ForeignKey('pdb_references.id'),
-                              primary_key=True)  # Ahora parte de la clave primaria
+    id = Column(Integer, primary_key=True)
+    chain = Column(String)  # Ahora parte de la clave primaria
+    pdb_reference_id = Column(Integer, ForeignKey('pdb_references.id'))  # Ahora parte de la clave primaria
     uniprot_sequence_aligned = Column(String)
     pdb_sequence_aligned = Column(String)
     identity = Column(Float)
     pdb_reference = relationship("PDBReference", back_populates="uniprot_pdb_alignments")
+
+
+class CEAlignClusters(Base):
+    __tablename__ = 'ce_align_clusters'
+    id = Column(Integer, primary_key=True)
+    pdb_chain_representative_id = Column(Integer, ForeignKey('pdb_chains.id'))
+    pdb_chain_id = Column(Integer, ForeignKey('pdb_chains.id'))
+
+    cluster_id = Column(Integer)
+    rmsd = Column(Float)
 
 
 class GOTerm(Base):

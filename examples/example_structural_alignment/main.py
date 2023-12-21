@@ -1,12 +1,9 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from protein_data_handler.alignment import UniProtPDBMapping
 from protein_data_handler.helpers.config.yaml import read_yaml_config
-from protein_data_handler.helpers.database.database import create_session
-from protein_data_handler.fasta import FastaHandler  # Asegúrate de ajustar la ruta de importación
-from protein_data_handler.models.uniprot import Base, PDBReference
-
+from protein_data_handler.models.uniprot import Base
+from protein_data_handler.structural_alignment import CEAlignHandler
 
 if __name__ == "__main__":
     config = read_yaml_config("./config.yaml")
@@ -19,8 +16,7 @@ if __name__ == "__main__":
     engine = create_engine(DATABASE_URI)
     Session = sessionmaker(bind=engine)
     session = Session()
-
-    mapping = UniProtPDBMapping(session)
-    pares = mapping.realizar_consulta_cadenas_iguales()
-    mapping.volcar_datos_alineamiento(pares)
-
+    Base.metadata.create_all(engine)
+    ce_align = CEAlignHandler(session)
+    ce_align.get_targets()
+    ce_align.all_to_all_align(identity_threshold=config['identity_threshold'])
