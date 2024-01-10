@@ -16,7 +16,7 @@ from protein_data_handler.models.uniprot import (
     Accession,
     GOTerm,
     PDBReference,
-    Proteina, UniprotChain
+    Proteina, UniprotChains
 )
 
 logger = logging.getLogger(__name__)
@@ -59,7 +59,7 @@ def cargar_codigos_acceso(criterio_busqueda, limite, session):
         accessions_encontradas = []
         accessions_nuevas = []
 
-        for accession_code in accessions:
+        for accession_code in accessions[:500]:
             try:
                 accession = (session.query(Accession)
                              .filter_by(accession_code=accession_code)
@@ -255,15 +255,15 @@ def almacenar_entrada(data, session):
                               .filter_by(pdb_id=reference[1]).first().id)
 
                     chain = (
-                        session.query(UniprotChain)
+                        session.query(UniprotChains)
                         .filter_by(pdb_reference_id=pdb_id, chain=chain_name)
                         .first()
                     )
                     if chain is None:
-                        chain = UniprotChain(pdb_reference_id=pdb_id,
-                                             chain=chain_name,
-                                             seq_start=start,
-                                             seq_end=end)
+                        chain = UniprotChains(pdb_reference_id=pdb_id,
+                                              chain=chain_name,
+                                              seq_start=start,
+                                              seq_end=end)
                     chain.insert_sequence(proteina.sequence)
                     session.add(chain)
             elif reference[0] == "GO":

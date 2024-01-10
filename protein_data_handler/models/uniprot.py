@@ -124,14 +124,14 @@ class PDBReference(Base):
     # Método utilizado para la determinación de la estructura
     method = Column(String)
     resolution = Column(Float)  # Resolución de la estructura
-    uniprot_chains = relationship("UniprotChain", back_populates="pdb_reference")
-    pdb_chains = relationship("PDBChain", back_populates="pdb_reference")
+    uniprot_chains = relationship("UniprotChains", back_populates="pdb_reference")
+    pdb_chains = relationship("PDBChains", back_populates="pdb_reference")
     uniprot_pdb_alignments = relationship("UniProtPDBAlignment", back_populates="pdb_reference")
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, onupdate=func.now())
 
 
-class UniprotChain(Base):
+class UniprotChains(Base):
     """
     Representa una cadena individual dentro de una estructura de proteína
     en la base de datos PDB.
@@ -222,7 +222,7 @@ class Cluster(Base):
     identity = Column(Float)
 
 
-class PDBChain(Base):
+class PDBChains(Base):
     """
     Representa una cadena individual dentro de una estructura de proteína en la base de datos de estructuras de
      proteínas (PDB).
@@ -231,7 +231,7 @@ class PDBChain(Base):
      registra en PDB. Esta clase es crucial para el manejo detallado de estructuras de proteínas a nivel de cadena.
 
     Attributes:
-        chain (String): Identificador de la cadena dentro de la estructura de proteína en PDB. Este campo es parte de la
+        chains (String): Identificador de la cadena dentro de la estructura de proteína en PDB. Este campo es parte de la
          clave primaria compuesta.
         chain_number (String): Número o identificador adicional asociado a la cadena, formando parte de la clave
          primaria compuesta.
@@ -248,12 +248,26 @@ class PDBChain(Base):
     """
     __tablename__ = 'pdb_chains'
     id = Column(Integer, primary_key=True)
-    chain = Column(String)  # Ahora parte de la clave primaria
+    chains = Column(String)  # Ahora parte de la clave primaria
     chain_number = Column(String)  # Confirmado como parte de la clave primaria
     sequence = Column(String, nullable=False)
     pdb_reference_id = Column(Integer, ForeignKey('pdb_references.id'))
 
     pdb_reference = relationship("PDBReference", back_populates="pdb_chains")
+    pdb_chain = relationship("PDBChain", back_populates="pdb_chains")
+
+
+
+class PDBChain(Base):
+    __tablename__ = 'pdb_chain'
+    id = Column(Integer, primary_key=True)
+    chain = Column(String)  # Ahora parte de la clave primaria
+    # Foreign key to PDBChains
+    pdb_chains_id = Column(Integer, ForeignKey('pdb_chains.id'))
+
+    # Many-to-one relationship
+    pdb_chains = relationship("PDBChains", back_populates="pdb_chain")
+
 
 
 class UniProtPDBAlignment(Base):
