@@ -2,7 +2,7 @@ from http.client import HTTPException
 
 from sqlalchemy.exc import NoResultFound
 
-from protein_data_handler.models.uniprot import Accession, UniprotChain
+from protein_data_handler.models.uniprot import Accession, UniprotChains
 from protein_data_handler.uniprot import (
     descargar_registro,
     cargar_codigos_acceso,
@@ -256,7 +256,7 @@ class TestAlmacenarEntrada(unittest.TestCase):
 
     def test_insert_sequence_with_none_start_or_end(self):
         # Crear una instancia de UniprotChain con seq_start o seq_end como None
-        chain = UniprotChain(seq_start=None, seq_end=10)
+        chain = UniprotChains(seq_start=None, seq_end=10)
         full_sequence = "ABCDEFGHIJK"
 
         # Llamar a insert_sequence
@@ -266,7 +266,7 @@ class TestAlmacenarEntrada(unittest.TestCase):
         self.assertIsNone(chain.sequence)
 
         # Repetir para el caso donde seq_end es None
-        chain = UniprotChain(seq_start=1, seq_end=None)
+        chain = UniprotChains(seq_start=1, seq_end=None)
 
         # Llamar a insert_sequence
         chain.insert_sequence(full_sequence)
@@ -275,7 +275,7 @@ class TestAlmacenarEntrada(unittest.TestCase):
         self.assertIsNone(chain.sequence)
 
         # También puedes probar cuando ambos sean None
-        chain = UniprotChain(seq_start=None, seq_end=None)
+        chain = UniprotChains(seq_start=None, seq_end=None)
 
         # Llamar a insert_sequence
         chain.insert_sequence(full_sequence)
