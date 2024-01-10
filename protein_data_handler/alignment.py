@@ -8,7 +8,7 @@ from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from sqlalchemy import func
 
-from protein_data_handler.models.uniprot import PDBChain, UniprotChain, PDBReference, UniProtPDBAlignment
+from protein_data_handler.models.uniprot import PDBChains, UniprotChains, PDBReference, UniProtPDBAlignment
 
 import logging
 
@@ -34,20 +34,20 @@ class UniProtPDBMapping:
         logging.info("Realizando consulta para encontrar cadenas iguales en UniProt y PDB.")
         try:
             result = self.session.query(
-                UniprotChain.sequence.label('uniprot_sequence'),
-                PDBChain.sequence.label('pdb_sequence'),
-                UniprotChain.chain.label('uniprot_chain'),
+                UniprotChains.sequence.label('uniprot_sequence'),
+                PDBChains.sequence.label('pdb_sequence'),
+                UniprotChains.chain.label('uniprot_chain'),
                 PDBReference.pdb_id,
-                PDBChain.chain.label('pdb_chain'),
-                func.length(PDBChain.sequence).label('length_pdb_sequence'),
-                func.length(UniprotChain.sequence).label('length_uniprot_sequence'),
+                PDBChains.chains.label('pdb_chain'),
+                func.length(PDBChains.sequence).label('length_pdb_sequence'),
+                func.length(UniprotChains.sequence).label('length_uniprot_sequence'),
                 PDBReference.id.label('pdb_reference_id')
             ).join(
-                PDBReference, PDBChain.pdb_reference_id == PDBReference.id
+                PDBReference, PDBChains.pdb_reference_id == PDBReference.id
             ).join(
-                UniprotChain, PDBReference.id == UniprotChain.pdb_reference_id
+                UniprotChains, PDBReference.id == UniprotChains.pdb_reference_id
             ).filter(
-                PDBChain.chain == UniprotChain.chain
+                PDBChains.chains == UniprotChains.chain
             ).all()
             logging.info(f"Consulta completada con éxito. Número de registros encontrados: {len(result)}")
             return result

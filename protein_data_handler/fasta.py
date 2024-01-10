@@ -6,7 +6,7 @@ import logging
 from requests.exceptions import RequestException
 
 from protein_data_handler.helpers.parser.parser import extract_and_parse_fasta
-from protein_data_handler.models.uniprot import PDBChain, PDBReference, Cluster
+from protein_data_handler.models.uniprot import PDBChains, PDBReference, Cluster
 
 from pycdhit import cd_hit, read_clstr
 
@@ -78,10 +78,20 @@ class FastaHandler:
             if file_path and chains:
                 for chain in chains:
                     pdb_id, chain_number, chain_id, sequence = chain
-                    pdb_id = self.session.query(PDBReference).filter_by(pdb_id=pdb_id).first().id
-                    fasta_sequence = PDBChain(pdb_reference_id=pdb_id, chain_number=chain_number, chain=chain_id,
+                    pdb_reference_id = self.session.query(PDBReference).filter_by(pdb_id=pdb_id).first().id
+
+                    # Verificar si la cadena ya existe en la base de datos
+                    existing_chain = self.session.query(PDBChains).filter_by(
+                        pdb_reference_id=pdb_reference_id,
+                        chain_number=chain_number,
+                        chains=chain_id
+                    ).first()
+
+                    if not existing_chain:
+                        pdb_chain = PDBChains(pdb_reference_id=pdb_reference_id, chain_number=chain_number,
+                                              chains=chain_id,
                                               sequence=sequence)
-                    self.session.add(fasta_sequence)
+                        self.session.add(pdb_chain)
 
         self.session.commit()
 
@@ -138,11 +148,12 @@ class FastaHandler:
         for _, row in df_clstr.iterrows():
             pdb_id = row["identifier"].split('_')[0]
             chain_number = row["identifier"].split('_')[1].split('|')[0]
-            pdb_reference_id = self.session.query(PDBReference.id).filter_by(pdb_id=pdb_id).one().id
+            pdb_reference_id = self.session.query(PDBReference).filter_by(pdb_id=pdb_id).one().id
+            chain_id = self.session.query(PDBChains).filter_by(pdb_reference_id=pdb_reference_id,
+                                                               chain_number=chain_number).one().id
             cluster = Cluster(
                 cluster_id=row['cluster'],
-                pdb_reference_id=pdb_reference_id,
-                chain_number=chain_number,
+                pdb_chain_id=chain_id,
                 is_representative=row['is_representative'],
                 sequence_length=row['size'],
                 identity=row['identity']
@@ -150,6 +161,7 @@ class FastaHandler:
             self.session.add(cluster)
         self.session.commit()
         logging.info(f"Clustering completado. Archivo de salida: {cd_hit_output}")
+
 
         return df_clstr
 
