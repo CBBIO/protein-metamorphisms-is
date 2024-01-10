@@ -11,8 +11,7 @@ from Bio.PDB.PDBExceptions import PDBConstructionWarning
 # Suppress specific PDBConstructionWarning
 warnings.filterwarnings("ignore", category=PDBConstructionWarning)
 
-
-from protein_data_handler.models.uniprot import PDBReference, PDBChain, Cluster
+from protein_data_handler.models.uniprot import PDBReference, PDBChains, Cluster
 
 
 class CEAlignHandler:
@@ -37,7 +36,7 @@ class CEAlignHandler:
         aligner = CEAligner()
 
         for target in self.targets:
-            representative_chain = self.session.query(PDBChain).filter_by(id=target.pdb_chain_id).one()
+            representative_chain = self.session.query(PDBChains).filter_by(id=target.pdb_chain_id).one()
             representative_pdb = self.session.query(PDBReference).filter_by(
                 id=representative_chain.pdb_reference_id).one()
 
@@ -52,7 +51,7 @@ class CEAlignHandler:
             aligner.set_reference(structure1)
 
             for cluster in clusters_non_representative:
-                chain = self.session.query(PDBChain).filter_by(id=cluster.pdb_chain_id).one()
+                chain = self.session.query(PDBChains).filter_by(id=cluster.pdb_chain_id).one()
                 pdb = self.session.query(PDBReference).filter_by(id=chain.pdb_reference_id).one()
 
                 # Descargar y parsear la estructura no representativa
@@ -60,15 +59,15 @@ class CEAlignHandler:
                 structure2 = parser.get_structure("non_rep_structure", non_rep_file_path)
 
                 for chain_x in structure2.get_chains():
-                    print('num atoms',len(list(chain_x.get_atoms())))
+                    print('num atoms', len(list(chain_x.get_atoms())))
 
                 print('-----')
-                print(representative_chain.chain, representative_pdb.pdb_id)
-                print(chain.chain, pdb.pdb_id)
+                print(representative_chain.chains, representative_pdb.pdb_id)
+                print(chain.chains, pdb.pdb_id)
 
                 # Realizar el alineamiento CE
                 # Aquí puedes ajustar los parámetros según tus necesidades
-                print(len(chain.sequence),len(representative_chain.sequence))
+                print(len(chain.sequence), len(representative_chain.sequence))
 
                 print('aligning')
                 aligner.align(structure2)

@@ -24,7 +24,7 @@ def main():
     with Session() as session:
         query = session.query(PDBReference).filter(
             PDBReference.resolution < config.get("resolution_threshold", 2.5)).all()
-        pdb_ids = [pdb_ref.pdb_id for pdb_ref in query[:3000]]
+        pdb_ids = [pdb_ref.pdb_id for pdb_ref in query]
 
     # Se inicia una nueva sesión para las operaciones de descarga y escritura
     with Session() as session:
