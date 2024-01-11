@@ -2,11 +2,10 @@ import os
 from concurrent.futures import ProcessPoolExecutor
 from functools import partial
 
-from Bio.PDB import PDBList, PDBParser, MMCIFParser, MMCIFIO, CEAligner
+from Bio.PDB import PDBList, MMCIFParser, MMCIFIO, CEAligner
 from Bio.PDB.Structure import Structure
-from sqlalchemy.orm import joinedload
 
-from protein_data_handler.models.uniprot import PDBChains, PDBChain, PDBReference
+from protein_data_handler.sql.model import PDBChains, PDBChain, PDBReference
 
 
 class ChainExtractor:

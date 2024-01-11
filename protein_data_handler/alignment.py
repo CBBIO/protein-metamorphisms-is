@@ -8,7 +8,7 @@ from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from sqlalchemy import func
 
-from protein_data_handler.models.uniprot import PDBChains, UniprotChains, PDBReference, UniProtPDBAlignment
+from protein_data_handler.sql.model import PDBChains, UniprotChains, PDBReference, UniProtPDBAlignment
 
 import logging
 

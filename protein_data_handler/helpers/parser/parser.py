@@ -64,7 +64,7 @@ def safe_convert_to_int(value):
         return None
 
 
-def procesar_chain_string(chain):
+def process_chain_string(chain):
     """
     Procesa una cadena que representa un objeto de cadena y su rango.
 

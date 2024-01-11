@@ -2,7 +2,7 @@ from http.client import HTTPException
 
 from sqlalchemy.exc import NoResultFound
 
-from protein_data_handler.models.uniprot import Accession, UniprotChains
+from protein_data_handler.sql.model import Accession, UniprotChains
 from protein_data_handler.uniprot import (
     descargar_registro,
     cargar_codigos_acceso,

@@ -2,7 +2,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from protein_data_handler.helpers.config.yaml import read_yaml_config
-from protein_data_handler.models.uniprot import Base
+from protein_data_handler.sql.model import Base
 from protein_data_handler.structural_alignment import CEAlignHandler
 
 if __name__ == "__main__":

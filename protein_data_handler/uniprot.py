@@ -12,7 +12,7 @@ from sqlalchemy.exc import NoResultFound
 from protein_data_handler.helpers.parser.parser import (extract_float,
                                                         procesar_chain_string)
 
-from protein_data_handler.models.uniprot import (
+from protein_data_handler.sql.model import (
     Accession,
     GOTerm,
     PDBReference,
@@ -287,3 +287,4 @@ def almacenar_entrada(data, session):
         session.rollback()
     finally:
         session.close()
+

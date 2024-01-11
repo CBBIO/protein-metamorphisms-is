@@ -3,7 +3,7 @@ from unittest.mock import patch, MagicMock
 from Bio.SeqRecord import SeqRecord
 from Bio.Seq import Seq
 from protein_data_handler.alignment import UniProtPDBMapping
-from protein_data_handler.models.uniprot import PDBReference
+from protein_data_handler.sql.model import PDBReference
 
 class TestUniProtPDBMapping(unittest.TestCase):
 

@@ -1,17 +1,15 @@
 import os
 
 from Bio.PDB import PDBList, PDBParser, CEAligner
-import warnings
 
 # Suppress specific PDBConstructionWarning
 import warnings
-from Bio import PDB
 from Bio.PDB.PDBExceptions import PDBConstructionWarning
 
 # Suppress specific PDBConstructionWarning
 warnings.filterwarnings("ignore", category=PDBConstructionWarning)
 
-from protein_data_handler.models.uniprot import PDBReference, PDBChains, Cluster
+from protein_data_handler.sql.model import PDBReference, PDBChains, Cluster
 
 
 class CEAlignHandler:

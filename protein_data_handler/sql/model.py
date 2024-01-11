@@ -5,48 +5,45 @@ from sqlalchemy.orm import relationship, declarative_base
 Base = declarative_base()
 
 
-class Proteina(Base):
+class Protein(Base):
     """
-    Representa una proteína con sus propiedades y relaciones en una base de datos.
+    Represents a protein with its properties and relationships in a database.
 
     Attributes:
-        entry_name (str): Nombre único de entrada para la proteína, utilizado como clave primaria.
-        data_class (str): Clasificación de los datos de la proteína.
-        molecule_type (str): Tipo de molécula de la proteína.
-        sequence_length (int): Longitud de la secuencia de aminoácidos de la proteína.
-        accessions (relationship): Relación con la clase 'Accession', representando los códigos de acceso asociados a la
-         proteína.
-        created_date (Date): Fecha en la que se creó el registro de la proteína.
-        sequence_update_date (Date): Fecha de la última actualización de la secuencia de la proteína.
-        annotation_update_date (Date): Fecha de la última actualización de la anotación de la proteína.
-        description (str): Descripción general de la proteína.
-        gene_name (str): Nombre del gen asociado a esta proteína.
-        organism (str): Organismo al que pertenece la proteína.
-        organelle (str): Orgánulo específico donde se encuentra la proteína, si aplica.
-        organism_classification (str): Clasificación taxonómica del organismo.
-        taxonomy_id (str): Identificador de taxonomía para el organismo.
-        host_organism (str): Organismo huésped de la proteína, si aplica.
-        host_taxonomy_id (str): Identificador de taxonomía para el organismo huésped.
-        comments (str): Comentarios adicionales sobre la proteína.
-        pdb_references (relationship): Relación con la clase 'PDBReference', que contiene referencias a la base de
-         datos de estructuras de proteínas.
-        go_terms (relationship): Relación con la clase 'GOTerm', representando términos de Gene Ontology asociados a la
-         proteína.
-        keywords (str): Palabras clave relacionadas con la proteína.
-        protein_existence (int): Indicador numérico de la existencia de la proteína.
-        seqinfo (str): Información adicional sobre la secuencia de la proteína.
-        disappeared (Boolean): Indica si la proteína ya no está presente o relevante.
-        created_at (DateTime): Fecha y hora en la que se creó el registro.
-        updated_at (DateTime): Fecha y hora de la última actualización del registro.
+        entry_name (str): Unique entry name for the protein, used as the primary key.
+        data_class (str): Classification of the protein's data.
+        molecule_type (str): Type of protein molecule.
+        sequence_length (int): Length of the protein's amino acid sequence.
+        accessions (relationship): Relationship with the 'Accession' class, representing the access codes associated with the protein.
+        created_date (Date): Date the protein record was created.
+        sequence_update_date (Date): Date of the last update of the protein's sequence.
+        annotation_update_date (Date): Date of the last update of the protein's annotation.
+        description (str): General description of the protein.
+        gene_name (str): Name of the gene associated with this protein.
+        organism (str): Organism to which the protein belongs.
+        organelle (str): Specific organelle where the protein is located, if applicable.
+        organism_classification (str): Taxonomic classification of the organism.
+        taxonomy_id (str): Taxonomy identifier for the organism.
+        host_organism (str): Host organism of the protein, if applicable.
+        host_taxonomy_id (str): Taxonomy identifier for the host organism.
+        comments (str): Additional comments about the protein.
+        pdb_references (relationship): Relationship with the 'PDBReference' class, containing references to the protein structure database.
+        go_terms (relationship): Relationship with the 'GOTerm' class, representing Gene Ontology terms associated with the protein.
+        keywords (str): Keywords related to the protein.
+        protein_existence (int): Numeric indicator of the protein's existence.
+        seqinfo (str): Additional information about the protein's sequence.
+        disappeared (Boolean): Indicates whether the protein is no longer present or relevant.
+        created_at (DateTime): Date and time the record was created.
+        updated_at (DateTime): Date and time of the last update of the record.
     """
-    __tablename__ = "proteinas"
+    __tablename__ = "proteins"
     entry_name = Column(String, primary_key=True, unique=True, nullable=False)
     data_class = Column(String)
     molecule_type = Column(String)
     sequence = Column(String)
     sequence_length = Column(Integer)
     accessions = relationship(
-        "Accession", back_populates="proteina"
+        "Accession", back_populates="protein"
     )
     created_date = Column(Date)
     sequence_update_date = Column(Date)
@@ -61,10 +58,10 @@ class Proteina(Base):
     host_taxonomy_id = Column(String)
     comments = Column(String)
 
-    pdb_references = relationship("PDBReference", back_populates="proteina")
-    go_terms = relationship("GOTerm", back_populates="proteina")
+    pdb_references = relationship("PDBReference", back_populates="protein")
+    go_terms = relationship("GOTerm", back_populates="protein")
 
-    keywords = Column(String)  # Similar a comments
+    keywords = Column(String)
     protein_existence = Column(Integer)
     seqinfo = Column(String)
     disappeared = Column(Boolean)
@@ -74,61 +71,64 @@ class Proteina(Base):
 
 class Accession(Base):
     """
-    Representa un código de acceso único para una proteína en una base de datos.
+    Represents a unique access code for a protein in a database.
 
     Attributes:
-        id (int): Identificador único para el acceso.
-        accession_code (str): Código de acceso único para la proteína.
-        proteina_entry_name (str): Nombre de entrada de la proteína asociada.
-        proteina (relationship): Relación con la clase 'Proteina'.
-        disappeared (Boolean): Indica si el código de acceso ya no está en uso.
-        created_at (DateTime): Fecha y hora de creación del registro.
-        updated_at (DateTime): Fecha y hora de la última actualización del registro.
+        id (int): Unique identifier for the access.
+        accession_code (str): Unique access code for the protein.
+        protein_entry_name (str): Entry name of the associated protein.
+        protein (relationship): Relationship with the 'Protein' class.
+        disappeared (Boolean): Indicates whether the access code is no longer in use.
+        created_at (DateTime): Date and time the record was created.
+        updated_at (DateTime): Date and time of the last update of the record.
     """
     __tablename__ = "accessions"
     id = Column(Integer, primary_key=True)
     accession_code = Column(String, unique=True, nullable=False)
-    proteina_entry_name = Column(String, ForeignKey("proteinas.entry_name"))
-    proteina = relationship("Proteina", back_populates="accessions")
+    protein_entry_name = Column(String, ForeignKey("proteins.entry_name"))
+    protein = relationship("Protein", back_populates="accessions")
     disappeared = Column(Boolean)
+    primary = Column(Boolean)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, onupdate=func.now())
 
 
+
 class PDBReference(Base):
     """
-    Representa una referencia a la base de datos de estructuras de proteínas (PDB).
+    Represents a reference to the Protein Data Bank (PDB) database.
 
     Attributes:
-        id (int): Identificador único para la referencia PDB.
-        pdb_id (str): Identificador único en la base de datos PDB.
-        proteina_entry_name (str): Nombre de entrada de la proteína asociada.
-        proteina (relationship): Relación con la clase 'Proteina'.
-        method (str): Método utilizado para la determinación de la estructura de la proteína.
-        resolution (Float): Resolución de la estructura de la proteína en la base de datos PDB.
-        uniprot_chains (relationship): Relación con la clase 'UniprotChain', representando las cadenas de Uniprot en la
-         estructura de la proteína.
-        pdb_chains (relationship): Relación con la clase 'PDBChain', representando las cadenas de la estructura en la
-         base de datos PDB.
-        uniprot_pdb_alignments (relationship): Relación con la clase 'UniProtPDBAlignment', representando alineaciones
-         entre secuencias de Uniprot y PDB.
-        created_at (DateTime): Fecha y hora de creación del registro.
-        updated_at (DateTime): Fecha y hora de la última actualización del registro.
+        id (int): Unique identifier for the PDB reference.
+        pdb_id (str): Unique identifier in the PDB database.
+        protein_entry_name (str): Entry name of the associated protein.
+        protein (relationship): Relationship with the 'Protein' class.
+        method (str): Method used for determining the protein structure.
+        resolution (Float): Resolution of the protein structure in the PDB database.
+        uniprot_chains (relationship): Relationship with the 'UniprotChains' class, representing Uniprot chains in the
+         protein structure.
+        pdb_chains (relationship): Relationship with the 'PDBChains' class, representing the structure chains in the
+         PDB database.
+        uniprot_pdb_alignments (relationship): Relationship with the 'UniProtPDBAlignment' class, representing alignments
+         between Uniprot and PDB sequences.
+        created_at (DateTime): Date and time the record was created.
+        updated_at (DateTime): Date and time of the last update of the record.
     """
     __tablename__ = "pdb_references"
     id = Column(Integer, primary_key=True)
     pdb_id = Column(String, nullable=False)
-    proteina_entry_name = Column(String, ForeignKey("proteinas.entry_name"))
-    proteina = relationship("Proteina", back_populates="pdb_references")
+    protein_entry_name = Column(String, ForeignKey("proteins.entry_name"))
+    protein = relationship("Protein", back_populates="pdb_references")
 
-    # Método utilizado para la determinación de la estructura
+    # Method used for the determination of the structure
     method = Column(String)
-    resolution = Column(Float)  # Resolución de la estructura
+    resolution = Column(Float)  # Resolution of the structure
     uniprot_chains = relationship("UniprotChains", back_populates="pdb_reference")
     pdb_chains = relationship("PDBChains", back_populates="pdb_reference")
     uniprot_pdb_alignments = relationship("UniProtPDBAlignment", back_populates="pdb_reference")
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, onupdate=func.now())
+
 
 
 class UniprotChains(Base):
@@ -320,23 +320,23 @@ class CEAlignClusters(Base):
 
 class GOTerm(Base):
     """
-        Representa un término del Gene Ontology asociado a una proteína.
+    Represents a Gene Ontology term associated with a protein.
 
-        Attributes:
-            id (int): Identificador único para el término GO.
-            go_id (str): Identificador único en Gene Ontology.
-            proteina_entry_name (str): Nombre de entrada de la
-            proteína asociada.
-            proteina (relationship): Relación con la entidad 'Proteina'.
-            category (str): Categoría del término GO.
-            description (str): Descripción del término GO.
-        """
+    Attributes:
+        id (int): Unique identifier for the GO term.
+        go_id (str): Unique identifier in Gene Ontology.
+        protein_entry_name (str): Entry name of the associated protein.
+        protein (relationship): Relationship with the 'Protein' entity.
+        category (str): Category of the GO term.
+        description (str): Description of the GO term.
+    """
     __tablename__ = "go_terms"
     id = Column(Integer, primary_key=True)
     go_id = Column(String, nullable=False)
-    proteina_entry_name = Column(String, ForeignKey("proteinas.entry_name"))
-    proteina = relationship("Proteina", back_populates="go_terms")
+    protein_entry_name = Column(String, ForeignKey("proteins.entry_name"))
+    protein = relationship("Protein", back_populates="go_terms")
     category = Column(String)
     description = Column(String)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, onupdate=func.now())
+

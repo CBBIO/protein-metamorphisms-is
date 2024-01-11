@@ -6,7 +6,7 @@ import logging
 from requests.exceptions import RequestException
 
 from protein_data_handler.helpers.parser.parser import extract_and_parse_fasta
-from protein_data_handler.models.uniprot import PDBChains, PDBReference, Cluster
+from protein_data_handler.sql.model import PDBChains, PDBReference, Cluster
 
 from pycdhit import cd_hit, read_clstr
 
