@@ -1,10 +1,10 @@
 from asyncio import as_completed
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from http.client import HTTPException
 
 import requests
 from Bio import ExPASy, SwissProt
-from sqlalchemy import func
+from sqlalchemy import func, exists
 from sqlalchemy.exc import NoResultFound
 from urllib.parse import quote
 
@@ -78,31 +78,29 @@ class UniProtExtractor(BioinfoExtractorBase):
             new_accessions = []
 
             for accession_code in accessions:
-                try:
-                    accession = (self.session.query(Accession)
-                                 .filter_by(accession_code=accession_code)
-                                 .one())
+                exists_query = exists().where(Accession.accession_code == accession_code)
+                accession_exists = self.session.query(exists_query).scalar()
 
+                if accession_exists:
+                    # Actualizar el registro existente
+                    self.session.query(Accession) \
+                        .filter_by(accession_code=accession_code) \
+                        .update({"updated_at": func.now(), "disappeared": False})
                     found_accessions.append(accession_code)
-                    accession.updated_at = func.now()
-                    accession.disappeared = False
+                else:
+                    # Crear un nuevo registro
+                    new_accession = Accession(accession_code=accession_code, primary=True)
+                    self.session.add(new_accession)
+                    new_accessions.append(new_accession)
 
-                except NoResultFound:
-                    accession = Accession(accession_code=accession_code)
-                    self.session.add(accession)
-                    new_accessions.append(accession)
-
-            not_found_query = (
+            # Actualizar los códigos de acceso que no se encontraron en la búsqueda actual
+            not_found_accessions = (
                 self.session.query(Accession)
                 .filter(~Accession.accession_code.in_(accessions))
-                .filter(not Accession.disappeared)
+                .filter(~Accession.disappeared)
+                .update({Accession.disappeared: True}, synchronize_session=False)
             )
-
-            not_found_accessions = not_found_query.all()
-            self.logger.info(f"Accessions not found: {len(not_found_accessions)}")
-
-            not_found_query.update({Accession.disappeared: True},
-                                   synchronize_session=False)
+            self.logger.info(f"Accessions not found: {not_found_accessions}")
 
             self.session.commit()
 
@@ -188,14 +186,14 @@ class UniProtExtractor(BioinfoExtractorBase):
         :raises Exception: For errors in database operations.
         """
         try:
-            protein = (
-                self.session.query(Protein)
-                .filter_by(entry_name=data.entry_name)
-                .first()
-            )
+            exists_query = exists().where(Protein.entry_name == data.entry_name)
+            protein_exists = self.session.query(exists_query).scalar()
 
-            if not protein:
+            if protein_exists:
+                protein = self.session.query(Protein).filter_by(entry_name=data.entry_name).first()
+            else:
                 protein = Protein(entry_name=data.entry_name)
+                self.session.add(protein)
 
             protein.data_class = data.data_class
             protein.molecule_type = data.molecule_type
@@ -222,25 +220,18 @@ class UniProtExtractor(BioinfoExtractorBase):
             self.session.add(protein)
 
             for accession_code in data.accessions:
-                accession = (
-                    self.session.query(Accession)
-                    .filter_by(accession_code=accession_code)
-                    .first()
-                )
-                if accession is None:
-                    accession = Accession(accession_code=accession_code)
-                accession.protein_entry_name = protein.entry_name
-                self.session.add(accession)
+                exists_query = exists().where(Accession.accession_code == accession_code)
+                accession_exists = self.session.query(exists_query).scalar()
+
+                if not accession_exists:
+                    new_accession = Accession(accession_code=accession_code, primary=False)
+                    new_accession.protein_entry_name = protein.entry_name
+                    self.session.add(new_accession)
 
             for reference in data.cross_references:
                 if reference[0] == "PDB":
-                    pdb_ref = (
-                        self.session.query(PDBReference)
-                        .filter_by(pdb_id=reference[1])
-                        .first()
-                    )
-
-                    if pdb_ref is None:
+                    pdb_ref_exists = self.session.query(exists().where(PDBReference.pdb_id == reference[1])).scalar()
+                    if not pdb_ref_exists:
                         pdb_ref = PDBReference(
                             pdb_id=reference[1],
                             method=reference[2],
@@ -267,10 +258,8 @@ class UniProtExtractor(BioinfoExtractorBase):
                         chain.insert_sequence(protein.sequence)
                         self.session.add(chain)
                 elif reference[0] == "GO":
-                    go_term = (
-                        self.session.query(GOTerm).filter_by(go_id=reference[1]).first()
-                    )
-                    if go_term is None:
+                    go_term_exists = self.session.query(exists().where(GOTerm.go_id == reference[1])).scalar()
+                    if not go_term_exists:
                         go_term = GOTerm(
                             go_id=reference[1],
                             category=reference[2].split(":")[0],
@@ -288,7 +277,4 @@ class UniProtExtractor(BioinfoExtractorBase):
             self.session.close()
 
 
-if __name__ == "__main__":
-    conf = read_yaml_config("./config.yaml")
-    extractor = UniProtExtractor(conf)
-    extractor.start()
+

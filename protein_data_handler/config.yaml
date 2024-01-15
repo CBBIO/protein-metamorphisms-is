@@ -1,5 +1,5 @@
 #System
-max_workers: 15
+max_workers: 8
 
 # DB CONFIGURATION
 DB_USERNAME: usuario
@@ -12,7 +12,20 @@ DB_NAME: BioData
 search_criteria: '(structure_3d:true) AND (reviewed:true)'
 limit: 100
 
+# PDB Extraction
 resolution_threshold: 2.5
+server: "https://files.wwpdb.org/"
+pdb_path: "/home/bioxaxi/data/pdb"
+pdb_chains_path: "/home/bioxaxi/data/chains"
+file_format: "mmCif"
+
+
+# Sequence Clustering
+fasta_path: "/home/bioxaxi/data/complete.fasta"
+cdhit_out_path: "/home/bioxaxi/data/out"
+
+
+
 data_dir: /opt/shared/FASTA
 output_dir: /opt/shared/FASTA/output
 merge_name: merge_25

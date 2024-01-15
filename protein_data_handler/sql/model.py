@@ -248,8 +248,7 @@ class PDBChains(Base):
     """
     __tablename__ = 'pdb_chains'
     id = Column(Integer, primary_key=True)
-    chains = Column(String)  # Ahora parte de la clave primaria
-    chain_number = Column(String)  # Confirmado como parte de la clave primaria
+    chains = Column(String)
     sequence = Column(String, nullable=False)
     pdb_reference_id = Column(Integer, ForeignKey('pdb_references.id'))
 
@@ -308,14 +307,11 @@ class UniProtPDBAlignment(Base):
     pdb_reference = relationship("PDBReference", back_populates="uniprot_pdb_alignments")
 
 
-class CEAlignClusters(Base):
-    __tablename__ = 'ce_align_clusters'
+class CEAlignResults(Base):
+    __tablename__ = 'ce_align_results'
     id = Column(Integer, primary_key=True)
-    pdb_chain_representative_id = Column(Integer, ForeignKey('pdb_chains.id'))
-    pdb_chain_id = Column(Integer, ForeignKey('pdb_chains.id'))
-
-    cluster_id = Column(Integer)
-    rmsd = Column(Float)
+    cluster_entry_id = Column(Integer, ForeignKey('clusters.id'))
+    rms = Column(Float)
 
 
 class GOTerm(Base):
