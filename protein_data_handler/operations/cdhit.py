@@ -85,13 +85,20 @@ class CDHit(BioinfoOperatorBase):
         """
         fasta_file_path = self.conf.get('fasta_path', './complete.fasta')
         cdhit_out_path = self.conf.get('cdhit_out_path', './out.clstr')
+
+        sequence_identity_threshold = self.conf.get('sequence_identity_threshold')
+        memory_usage = self.conf.get('memory_usage')
+        num_threads = self.conf.get('max_workers')
+
         self.logger.info(f"Running CD-HIT on {fasta_file_path}")
         cd_hit(
             i=fasta_file_path,
             o=cdhit_out_path,
-            c=0.7,
+            c=sequence_identity_threshold,
             d=0,
             sc=1,
+            M=memory_usage,
+            T=num_threads
         )
 
         self.logger.info(f"Reading CD-HIT output from {cdhit_out_path}.clstr")
@@ -108,5 +115,3 @@ class CDHit(BioinfoOperatorBase):
             self.session.add(cluster)
         self.session.commit()
         self.logger.info("CD-HIT clustering data stored in the database")
-
-

@@ -10,23 +10,55 @@ from protein_data_handler.sql.model import PDBReference, PDBChains
 
 
 class ChainSelect(Select):
+    """
+    A specialized selector for extracting specific chains from a PDB structure.
+    This class is used in conjunction with Bio.PDB's PDBIO to selectively write
+    specific chains of a PDB structure to a file.
+    """
+
     def __init__(self, chain_id):
+        """
+        Initializes the ChainSelect with the specified chain ID
+
+        Args:
+            chain_id (str): The ID of the chain to be selected for output.
+        """
         self.chain_id = chain_id
 
     def accept_chain(self, chain):
+        """
+        Determines if a chain should be accepted (written to file).
+
+        Args:
+            chain (Chain): A chain object from a PDB structure.
+
+        Returns:
+            bool: True if the chain's ID matches the desired chain_id, False otherwise.
+        """
         return chain.get_id() == self.chain_id
 
     def accept_model(self, model):
-        # Aceptar solo el modelo con el ID especificado
+        """
+        Accepts all models. In PDB files, models represent different conformations
+        of the structure, commonly used in NMR structures
+
+        Args:
+            model (Model): A model object from a PDB structure
+
+        Returns:
+            bool: Always True, as all models are accepted.
+        """
         return True
 
 
 class PDBExtractor(BioinfoExtractorBase):
     """
-    A class for extracting data from UniProt.
+    A class for extracting and processing PDB (Protein Data Bank) structures.
 
-    This class extends BioinfoExtractorBase and provides specific implementations
-    for extracting and processing data from UniProt.
+    This class extends BioinfoExtractorBase, providing specific implementations
+    for downloading, parsing, and processing structural data from the PDB,
+    a global repository of information about the 3D structures of large biological
+    molecules, including proteins and nucleic acids.
 
     Args:
         conf (dict): Configuration dictionary containing necessary parameters.
@@ -34,7 +66,7 @@ class PDBExtractor(BioinfoExtractorBase):
 
     def __init__(self, conf):
         """
-        Initialize the UniProtExtractor class.
+        Initialize the PDBExtractor class.
 
         Sets up the configuration and logger. Initializes the database session if required.
         """
@@ -42,7 +74,10 @@ class PDBExtractor(BioinfoExtractorBase):
 
     def start(self):
         """
-        Comienza el proceso de extracción de datos del PDB.
+        Begins the process of extracting data from the PDB.
+
+        This method initiates the download and processing of PDB structures based on
+        predefined criteria (like resolution threshold) from the configuration.
         """
         try:
             self.logger.info("Iniciando la extracción de datos del PDB")
@@ -57,16 +92,29 @@ class PDBExtractor(BioinfoExtractorBase):
 
     def load_pdb_ids(self):
         """
-        Load PDB IDs from the database that meet the resolution threshold.
+        Load PDB IDs from the database that meet the specified resolution threshold.
+
+        This method queries the database for PDB entries with resolution values
+        below a certain threshold, indicating higher quality structures.
+
+        Returns:
+            list: A list of PDBReference objects meeting the resolution criteria.
         """
         resolution_threshold = self.conf.get("resolution_threshold")  # Corregido aquí
         pdb_references = self.session.query(PDBReference).filter(
-            PDBReference.resolution <= resolution_threshold).all()
+            PDBReference.resolution <= resolution_threshold,
+            PDBReference.method == "NMR").all()
         return pdb_references
 
     def download_and_process_pdb_structure(self, pdb_reference):
         """
-        Descarga y procesa una estructura PDB dada su ID utilizando Biopython.
+        Downloads and processes a given PDB structure using the Biopython library.
+
+        This method handles the retrieval of PDB files from the PDB repository and
+        processes them to extract relevant data, such as chain information and sequences.
+
+        Args:
+            pdb_reference (PDBReference): A PDBReference object containing PDB ID and other metadata.
         """
 
         local_session = sessionmaker(bind=self.engine)()
@@ -84,7 +132,19 @@ class PDBExtractor(BioinfoExtractorBase):
         except Exception as e:
             self.logger.error(f"Error al descargar y procesar PDB {pdb_id}: {e}")
 
-    def populate_pdb_chains(self, pdb_file_path, pdb_reference_id,local_session):
+    def populate_pdb_chains(self, pdb_file_path, pdb_reference_id, local_session):
+        """
+        Processes a PDB file to extract chain information and populates the database.
+
+        This method parses the PDB file, extracts chain details and sequences, and
+        saves them to the database. It also handles the creation of individual PDB
+        files for each chain.
+
+        Args:
+            pdb_file_path (str): The file path to the PDB file.
+            pdb_reference_id (int): The database ID for the PDB reference.
+            local_session (Session): A SQLAlchemy session for database operations.
+        """
         parser = MMCIFParser()
         structure = parser.get_structure(pdb_reference_id, pdb_file_path)
         pdb_reference_id_result = local_session.query(PDBReference.id).filter(
@@ -114,7 +174,13 @@ class PDBExtractor(BioinfoExtractorBase):
 
     def download_pdb_structures(self, pdb_references):
         """
-        Descarga y procesa estructuras PDB en paralelo dados sus IDs.
+        Downloads and processes PDB structures in parallel given their IDs.
+
+        This method uses concurrent processing to handle multiple PDB structure
+        downloads and processing simultaneously, enhancing efficiency.
+
+        Args:
+            pdb_references (list): A list of PDBReference objects to be processed.
         """
         max_workers = self.conf.get("max_workers", 5)
         with ThreadPoolExecutor(max_workers=max_workers) as executor:

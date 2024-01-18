@@ -1,5 +1,5 @@
 #System
-max_workers: 8
+max_workers: 6
 
 # DB CONFIGURATION
 DB_USERNAME: usuario
@@ -15,15 +15,16 @@ limit: 100
 # PDB Extraction
 resolution_threshold: 2.5
 server: "https://files.wwpdb.org/"
-pdb_path: "/home/bioxaxi/data/pdb"
-pdb_chains_path: "/home/bioxaxi/data/chains"
+pdb_path: "/home/frapercan/data/pdb"
+pdb_chains_path: "/home/frapercan/data/chains"
 file_format: "mmCif"
 
 
 # Sequence Clustering
 fasta_path: "/home/bioxaxi/data/complete.fasta"
 cdhit_out_path: "/home/bioxaxi/data/out"
-
+sequence_identity_threshold: 0.95
+memory_usage: 25000
 
 
 data_dir: /opt/shared/FASTA

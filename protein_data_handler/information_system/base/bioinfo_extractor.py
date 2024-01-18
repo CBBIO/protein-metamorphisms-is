@@ -53,6 +53,7 @@ class BioinfoExtractorBase(ABC):
              f"{self.conf['DB_NAME']}")
         engine = create_engine(DATABASE_URI)
         self.engine = engine
+        # Base.metadata.drop_all(engine)
         Base.metadata.create_all(engine)
         Session = sessionmaker(bind=engine)
 

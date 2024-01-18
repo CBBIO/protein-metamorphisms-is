@@ -5,10 +5,8 @@ from http.client import HTTPException
 import requests
 from Bio import ExPASy, SwissProt
 from sqlalchemy import func, exists
-from sqlalchemy.exc import NoResultFound
 from urllib.parse import quote
 
-from protein_data_handler.helpers.config.yaml import read_yaml_config
 from protein_data_handler.helpers.parser.parser import extract_float, process_chain_string
 from protein_data_handler.information_system.base.bioinfo_extractor import BioinfoExtractorBase
 
@@ -17,13 +15,11 @@ from protein_data_handler.sql.model import Accession, Protein, PDBReference, Uni
 
 class UniProtExtractor(BioinfoExtractorBase):
     """
-    A class for extracting data from UniProt.
+    A class for extracting and processing data from UniProt, a comprehensive resource for protein sequence and annotation data.
+    UniProt provides a rich collection of protein sequence and functional information, which includes protein names,
+    descriptions, taxonomic data, and sequence annotations.
 
-    This class extends BioinfoExtractorBase and provides specific implementations
-    for extracting and processing data from UniProt.
-
-    Args:
-        conf (dict): Configuration dictionary containing necessary parameters.
+    This class extends BioinfoExtractorBase and provides specific implementations for extracting and processing data from UniProt.
     """
 
     def __init__(self, conf):
@@ -31,6 +27,7 @@ class UniProtExtractor(BioinfoExtractorBase):
         Initialize the UniProtExtractor class.
 
         Sets up the configuration and logger. Initializes the database session if required.
+        Configurations can include database connection details, logging settings, and specific parameters related to UniProt data extraction.
         """
         super().__init__(conf, session_required=True)
 
@@ -38,17 +35,15 @@ class UniProtExtractor(BioinfoExtractorBase):
         """
         Start the data extraction process for UniProt.
 
-        Overrides the abstract method in BioinfoExtractorBase and
-        implements the specific logic for extracting data from UniProt.
+        Initiates the process of fetching protein data from UniProt based on predefined search criteria and limits.
+        Implements logic for handling the extraction and processing of data in a structured and efficient manner.
         """
         try:
             self.logger.info("Starting UniProt data extraction")
-            # Define your search criteria and limit
             search_criteria = self.conf.get("search_criteria")
             limit = self.conf.get("limit")
-            # Load access codes and extract entries
             self.load_access_codes(search_criteria, limit)
-            self.extract_entries(self.conf['max_workers'])
+            self.extract_entries()
 
         except Exception as e:
             self.logger.error(f"Error during extraction process: {e}")
@@ -56,6 +51,9 @@ class UniProtExtractor(BioinfoExtractorBase):
     def load_access_codes(self, search_criteria, limit):
         """
         Load access codes from UniProt based on the given search criteria and limit.
+
+        Fetches accession codes from UniProt using RESTful API calls. Accession codes are unique identifiers for protein records in UniProt.
+        The function uses these codes to selectively download detailed protein information in later stages.
 
         Args:
             search_criteria (str): The search criteria for querying UniProt.
@@ -111,18 +109,15 @@ class UniProtExtractor(BioinfoExtractorBase):
             self.session.rollback()
             self.logger.error(f"Error: {e}")
 
-    def extract_entries(self, max_workers=10):
+    def extract_entries(self):
         """
         Download and process UniProt entries concurrently using multi-threading.
 
-        Retrieves access codes from the database and downloads detailed information
-        from UniProt concurrently. Uses `ThreadPoolExecutor` to handle multiple simultaneous downloads.
+        Uses ThreadPoolExecutor for concurrent downloads, which significantly speeds up the data extraction process,
+        especially beneficial when dealing with large datasets.
 
-        :param session: SQLAlchemy session for the database.
-        :type session: sqlalchemy.orm.session.Session
-        :param max_workers: Maximum number of threads for downloads.
-        :type max_workers: int, optional
-        :raises Exception: For failures in download or processing operations.
+        Args:
+            max_workers (int): Maximum number of threads for concurrent downloads.
         """
 
         self.logger.info("Starting the download of UniProt entries.")
@@ -130,6 +125,7 @@ class UniProtExtractor(BioinfoExtractorBase):
         accessions = self.session.query(Accession).all()
         self.logger.info(f"Total proteins to download: {len(accessions)}")
 
+        max_workers = self.conf.get("max_workers")
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             future_to_uniprot_id = {
                 executor.submit(
@@ -150,15 +146,13 @@ class UniProtExtractor(BioinfoExtractorBase):
 
     def download_record(self, accession_code):
         """
-        Download information about a protein from ExPASy/SwissProt.
+        Download detailed protein information from UniProt using ExPASy and SwissProt.
 
-        :param accession_code: Access code for the download.
-        :type accession_code: str
+        ExPASy is a Bioinformatics Resource Portal which provides access to scientific databases and software tools,
+        while SwissProt is a manually annotated and reviewed protein sequence database part of UniProt.
 
-        :raises Exception: If there are errors in the download or processing.
-
-        :return: The protein record or None in case of error.
-        :rtype: SwissProt.Record or None
+        Args:
+            accession_code (str): The accession code of the protein record to download.
         """
 
         try:
@@ -172,18 +166,13 @@ class UniProtExtractor(BioinfoExtractorBase):
 
     def store_entry(self, data):
         """
-        Stores UniProt data in the database.
+        Stores the downloaded UniProt data in the database.
 
-        Takes a UniProt record and stores it in the database.
-        Updates existing entries with the same name or creates a new one
-        if it does not exist. Also manages cross-references for each
-        UniProt entry.
+        Processes and stores detailed protein information including annotations, cross-references, and sequence data.
+        The function is designed to handle both new entries and updates to existing records, ensuring data consistency.
 
-        :param data: Data of the UniProt entry.
-        :type data: SwissProt.Record
-        :param session: SQLAlchemy session for database operations.
-        :type session: sqlalchemy.orm.session.Session
-        :raises Exception: For errors in database operations.
+        Args:
+            data (SwissProt.Record): The UniProt data record to store.
         """
         try:
             exists_query = exists().where(Protein.entry_name == data.entry_name)
@@ -275,6 +264,3 @@ class UniProtExtractor(BioinfoExtractorBase):
             self.session.rollback()
         finally:
             self.session.close()
-
-
-
