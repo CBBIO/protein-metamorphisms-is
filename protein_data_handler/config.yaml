@@ -21,8 +21,8 @@ file_format: "mmCif"
 
 
 # Sequence Clustering
-fasta_path: "/home/bioxaxi/data/complete.fasta"
-cdhit_out_path: "/home/bioxaxi/data/out"
+fasta_path: "/home/frapercan/data/complete.fasta"
+cdhit_out_path: "/home/frapercan/data/out"
 sequence_identity_threshold: 0.95
 memory_usage: 25000
 

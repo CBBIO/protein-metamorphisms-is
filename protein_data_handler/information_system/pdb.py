@@ -1,8 +1,12 @@
+import traceback
 from concurrent.futures import ThreadPoolExecutor
 
 from Bio import PDB
+from Bio.Data.PDBData import protein_letters_3to1
 from Bio.PDB import Select, PDBIO, MMCIFParser
+from Bio.PDB.Polypeptide import three_to_one
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.sql.operators import or_
 
 from protein_data_handler.helpers.config.yaml import read_yaml_config
 from protein_data_handler.information_system.base.bioinfo_extractor import BioinfoExtractorBase
@@ -102,8 +106,11 @@ class PDBExtractor(BioinfoExtractorBase):
         """
         resolution_threshold = self.conf.get("resolution_threshold")  # Corregido aquí
         pdb_references = self.session.query(PDBReference).filter(
-            PDBReference.resolution <= resolution_threshold,
-            PDBReference.method == "NMR").all()
+            or_(
+                PDBReference.resolution <= resolution_threshold,
+                PDBReference.method == "NMR"
+            )
+        ).all()
         return pdb_references
 
     def download_and_process_pdb_structure(self, pdb_reference):
@@ -130,7 +137,8 @@ class PDBExtractor(BioinfoExtractorBase):
             self.populate_pdb_chains(file_path, pdb_reference.pdb_id, local_session)
 
         except Exception as e:
-            self.logger.error(f"Error al descargar y procesar PDB {pdb_id}: {e}")
+            self.logger.error(f"Error al descargar y procesar PDB {pdb_id}: {e}\n{traceback.format_exc()}")
+
 
     def populate_pdb_chains(self, pdb_file_path, pdb_reference_id, local_session):
         """
@@ -158,7 +166,10 @@ class PDBExtractor(BioinfoExtractorBase):
         for model in structure:
             for chain in model:
                 chain_id = chain.get_id()
-                sequence = "".join([residue.get_resname() for residue in chain if residue.id[0] == ' '])
+                sequence = ""
+                for residue in chain:
+                    if residue.id[0] == ' ' and residue.resname in protein_letters_3to1:  # Solo residuos estándar
+                        sequence += protein_letters_3to1[residue.resname]
                 pdb_chain = PDBChains(chains=chain_id, sequence=sequence, pdb_reference_id=pdb_reference_id_value)
                 local_session.add(pdb_chain)
 

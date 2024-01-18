@@ -14,6 +14,7 @@ class Protein(Base):
         data_class (str): Classification of the protein's data.
         molecule_type (str): Type of protein molecule.
         sequence_length (int): Length of the protein's amino acid sequence.
+        sequence (str): Amino acid sequence of the protein.
         accessions (relationship): Relationship with the 'Accession' class, representing the access codes associated with the protein.
         created_date (Date): Date the protein record was created.
         sequence_update_date (Date): Date of the last update of the protein's sequence.
@@ -76,6 +77,7 @@ class Accession(Base):
     Attributes:
         id (int): Unique identifier for the access.
         accession_code (str): Unique access code for the protein.
+        primary (Boolean): Indicates if the accession code is the primary identifier for the protein.
         protein_entry_name (str): Entry name of the associated protein.
         protein (relationship): Relationship with the 'Protein' class.
         disappeared (Boolean): Indicates whether the access code is no longer in use.
@@ -93,26 +95,24 @@ class Accession(Base):
     updated_at = Column(DateTime, onupdate=func.now())
 
 
-
 class PDBReference(Base):
     """
-    Represents a reference to the Protein Data Bank (PDB) database.
+    Represents a reference to a structure in the Protein Data Bank (PDB).
+
+    This class is used to store and manage information about protein structures as recorded in the PDB,
+    including their relationship to UniProt entries and specific chain details.
 
     Attributes:
-        id (int): Unique identifier for the PDB reference.
-        pdb_id (str): Unique identifier in the PDB database.
-        protein_entry_name (str): Entry name of the associated protein.
-        protein (relationship): Relationship with the 'Protein' class.
-        method (str): Method used for determining the protein structure.
-        resolution (Float): Resolution of the protein structure in the PDB database.
-        uniprot_chains (relationship): Relationship with the 'UniprotChains' class, representing Uniprot chains in the
-         protein structure.
-        pdb_chains (relationship): Relationship with the 'PDBChains' class, representing the structure chains in the
-         PDB database.
-        uniprot_pdb_alignments (relationship): Relationship with the 'UniProtPDBAlignment' class, representing alignments
-         between Uniprot and PDB sequences.
-        created_at (DateTime): Date and time the record was created.
-        updated_at (DateTime): Date and time of the last update of the record.
+        id (int): Unique identifier for the PDB reference within the database.
+        pdb_id (str): Unique identifier of the protein structure in the PDB.
+        protein_entry_name (str): Entry name of the associated protein in UniProt.
+        protein (relationship): Relationship to the 'Protein' class, linking to the corresponding UniProt entry.
+        method (str): Method used to determine the protein structure (e.g., X-ray crystallography, NMR).
+        resolution (Float): Resolution of the protein structure, typically in Ångströms (Å).
+        uniprot_chains (relationship): Relationship to the 'UniprotChains' class, representing the individual chains in the protein structure as per UniProt.
+        pdb_chains (relationship): Relationship to the 'PDBChains' class, detailing the chains in the protein structure as recorded in PDB.
+        created_at (DateTime): Timestamp of when the PDB reference record was created in the database.
+        updated_at (DateTime): Timestamp of the last update to the PDB reference record.
     """
     __tablename__ = "pdb_references"
     id = Column(Integer, primary_key=True)
@@ -125,43 +125,33 @@ class PDBReference(Base):
     resolution = Column(Float)  # Resolution of the structure
     uniprot_chains = relationship("UniprotChains", back_populates="pdb_reference")
     pdb_chains = relationship("PDBChains", back_populates="pdb_reference")
-    uniprot_pdb_alignments = relationship("UniProtPDBAlignment", back_populates="pdb_reference")
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, onupdate=func.now())
 
 
-
 class UniprotChains(Base):
     """
-    Representa una cadena individual dentro de una estructura de proteína
-    en la base de datos PDB.
+    Represents an individual chain within a protein structure in the Protein Data Bank (PDB) database.
 
-    Esta clase se utiliza para almacenar información sobre cadenas
-    específicas que forman parte de una estructura de proteína, como
-    se registra en la base de datos de estructuras de proteínas (PDB).
+    This class is used to store and manage information about specific chains that are part of a protein structure as
+    recorded in the PDB. It includes details about the chain's sequence and its position within the overall protein
+    structure.
 
     Attributes:
-        id (int): Identificador único para cada cadena en la base de datos.
-        pdb_reference_id (int): Clave foránea que referencia al
-            identificador único de la estructura de proteína en la base de
-            datos PDB a la que pertenece esta cadena.
-        chain (str): Identificador de la cadena dentro de la estructura
-            de proteína.
-            Por ejemplo, 'A', 'B', etc.
-        seq_start (int): Posición inicial de la secuencia de la cadena en la
-            estructura de proteína.
-        seq_end (int): Posición final de la secuencia de la cadena en
-            la estructura de proteína.
-        pdb_reference (relationship): Relación con la entidad 'PDBReference'
-            que representa la estructura completa de la proteína a la que
-            pertenece esta cadena.
-        created_at (DateTime): Fecha y hora de creación del registro de
-            la cadena.
-        updated_at (DateTime): Fecha y hora de la última actualización del
-            registro de la cadena.
+        id (int): Unique identifier for each chain in the database.
+        pdb_reference_id (int): Foreign key referencing the unique identifier of the protein structure in the PDB
+            database to which this chain belongs.
+        chain (str): Identifier of the chain within the protein structure, such as 'A', 'B', etc.
+        sequence (str): Amino acid sequence of the chain.
+        seq_start (int): Starting position of the chain's sequence in the protein structure.
+        seq_end (int): Ending position of the chain's sequence in the protein structure.
+        pdb_reference (relationship): Relationship with the 'PDBReference' entity, representing the complete protein
+            structure to which this chain belongs.
+        created_at (DateTime): Date and time when the chain record was created.
+        updated_at (DateTime): Date and time of the last update to the chain record.
 
-    La relación con 'PDBReference' permite asociar cada cadena con su
-    estructura de proteína correspondiente en la base de datos PDB.
+    The relationship with 'PDBReference' allows each chain to be associated with its corresponding protein structure in
+        the PDB database.
     """
 
     __tablename__ = "uniprot_chains"
@@ -190,28 +180,27 @@ class UniprotChains(Base):
 
 class Cluster(Base):
     """
-        Representa un cluster de cadenas de proteínas, donde cada cluster está formado por cadenas con similitud
-         significativa, determinado mediante el uso de la herramienta cd-hit.
+    Represents a cluster of protein chains, where each cluster is formed by chains with significant similarity,
+    determined using the cd-hit tool.
 
-        Esta clase es útil para agrupar cadenas de proteínas que son muy similares entre sí, lo que ayuda en la
-         identificación de estructuras y funciones comunes.
+    This class is instrumental in grouping protein chains that are highly similar to each other, aiding in the
+    identification of common structures and functions.
 
-        Attributes:
-            id (int): Identificador único para cada cluster.
-            pdb_reference_id (int): Clave foránea que referencia a la entidad 'PDBReference'. Se utiliza para
-             identificar la estructura de proteína en la base de datos PDB a la que está asociado este cluster.
-            chain_number (int): Número de cadenas de proteínas presentes en el cluster.
-            cluster_id (String): Identificador del cluster, generalmente una cadena única que representa este grupo
-             específico de cadenas de proteínas.
-            is_representative (Boolean): Indica si el cluster es representativo de un conjunto más grande de cadenas
-             similares. 'True' para sí, 'False' para no.
-            sequence_length (int): Longitud promedio de las secuencias de las cadenas en el cluster.
-            identity (Float): Valor que representa la identidad promedio de secuencia dentro del cluster,
-             generalmente un porcentaje que indica cuán similares son las cadenas dentro del grupo.
+    Attributes:
+        id (int): Unique identifier for each cluster.
+        pdb_chain_id (int): Foreign key referencing the 'PDBChains' entity. It is used to identify the specific protein
+        chain in the PDB database associated with this cluster.
+        cluster_id (int): Identifier of the cluster, typically a unique string representing this specific group of
+            protein chains.
+        is_representative (Boolean): Indicates whether the cluster is representative of a larger set of similar chains.
+            'True' for yes, 'False' for no.
+        sequence_length (int): Average length of the sequences of the chains in the cluster.
+        identity (Float): Value representing the average sequence identity within the cluster, usually a percentage
+            indicating how similar the chains are within the group.
 
-        La relación con 'PDBReference' permite conectar cada cluster con su estructura correspondiente en la base de
-         datos PDB, proporcionando un enlace directo a la información estructural detallada.
-        """
+    The relationship with 'PDBChains' allows each cluster to be connected to its specific chain in the PDB database,
+    providing a direct link to detailed structural information.
+    """
     __tablename__ = 'clusters'
 
     id = Column(Integer, primary_key=True)
@@ -224,27 +213,25 @@ class Cluster(Base):
 
 class PDBChains(Base):
     """
-    Representa una cadena individual dentro de una estructura de proteína en la base de datos de estructuras de
-     proteínas (PDB).
+    Represents an individual chain within a protein structure in the Protein Data Bank (PDB) database.
 
-    Cada objeto `PDBChain` corresponde a una cadena polipeptídica específica en una estructura de proteína tal como se
-     registra en PDB. Esta clase es crucial para el manejo detallado de estructuras de proteínas a nivel de cadena.
+    Each `PDBChains` object corresponds to a specific polypeptide chain in a protein structure as recorded in the PDB.
+    This class is crucial for detailed management of protein structures at the chain level.
 
     Attributes:
-        chains (String): Identificador de la cadena dentro de la estructura de proteína en PDB. Este campo es parte de la
-         clave primaria compuesta.
-        chain_number (String): Número o identificador adicional asociado a la cadena, formando parte de la clave
-         primaria compuesta.
-        sequence (String): Secuencia de aminoácidos de la cadena de proteína. Este campo es obligatorio y representa la
-         secuencia lineal de aminoácidos de la cadena.
-        pdb_reference_id (Integer): Clave foránea que referencia al identificador único de la estructura de proteína en
-         la base de datos PDB. Este campo es parte de la clave primaria compuesta y establece una relación directa con
-          la entidad `PDBReference`.
-        pdb_reference (relationship): Relación con la entidad `PDBReference`, proporcionando un acceso directo a la
-         información detallada de la estructura de proteína completa a la que pertenece esta cadena.
+        id (int): Unique identifier for each chain within the database.
+        chains (String): Identifier of the chain within the protein structure in PDB. This field is part of the
+            composite primary key.
+        sequence (String): Amino acid sequence of the protein chain. This field is mandatory and represents the linear
+            sequence of amino acids in the chain.
+        pdb_reference_id (Integer): Foreign key referencing the unique identifier of the protein structure in the PDB
+            database. This field is part of the composite primary key and establishes a direct relationship with the
+            `PDBReference` entity.
+        pdb_reference (relationship): Relationship with the `PDBReference` entity, providing direct access to detailed
+            information about the complete protein structure to which this chain belongs.
 
-    La estructura de clave primaria compuesta de `chain`, `chain_number`, y `pdb_reference_id` asegura que cada
-     instancia de `PDBChain` sea única y esté claramente vinculada a una estructura específica en PDB.
+    The composite primary key structure of `chains` and `pdb_reference_id` ensures that each instance of `PDBChains` is
+    unique and clearly linked to a specific structure in the PDB.
     """
     __tablename__ = 'pdb_chains'
     id = Column(Integer, primary_key=True)
@@ -253,61 +240,21 @@ class PDBChains(Base):
     pdb_reference_id = Column(Integer, ForeignKey('pdb_references.id'))
 
     pdb_reference = relationship("PDBReference", back_populates="pdb_chains")
-    pdb_chain = relationship("PDBChain", back_populates="pdb_chains")
-
-
-
-class PDBChain(Base):
-    __tablename__ = 'pdb_chain'
-    id = Column(Integer, primary_key=True)
-    chain = Column(String)  # Ahora parte de la clave primaria
-    # Foreign key to PDBChains
-    pdb_chains_id = Column(Integer, ForeignKey('pdb_chains.id'))
-
-    # Many-to-one relationship
-    pdb_chains = relationship("PDBChains", back_populates="pdb_chain")
-
-
-
-class UniProtPDBAlignment(Base):
-    """
-        Representa el alineamiento entre secuencias de proteínas de UniProt y la base de datos de estructuras de
-         proteínas (PDB).
-
-        Esta clase es crucial para correlacionar y comparar secuencias de proteínas entre las dos bases de datos más
-         prominentes en bioinformática, UniProt y PDB. Permite a los investigadores y desarrolladores entender las
-          similitudes y diferencias en la representación de secuencias de proteínas en diferentes bases de datos.
-
-        Attributes:
-            chain (String): Identificador de la cadena en el alineamiento. Este campo es parte de la clave primaria
-             compuesta y puede referirse a una cadena específica en UniProt o PDB.
-            pdb_reference_id (Integer): Clave foránea que referencia al identificador único de la estructura de proteína
-             en PDB. Este campo es parte de la clave primaria compuesta y vincula el alineamiento a una estructura
-              específica en PDB.
-            uniprot_sequence_aligned (String): Secuencia de aminoácidos de UniProt que ha sido alineada con la secuencia
-             de PDB.
-            pdb_sequence_aligned (String): Secuencia de aminoácidos de PDB que ha sido alineada con la secuencia de
-             UniProt.
-            identity (Float): Valor numérico que representa el porcentaje de identidad entre las secuencias alineadas de
-             UniProt y PDB.
-            pdb_reference (relationship): Relación con la entidad `PDBReference`, proporcionando un enlace directo a la
-             información estructural detallada de la proteína en PDB.
-
-        La estructura de clave primaria compuesta de `chain` y `pdb_reference_id` asegura que cada instancia de
-         `UniProtPDBAlignment` sea única y esté claramente vinculada a una estructura específica en PDB, facilitando el
-          rastreo y análisis de alineaciones entre bases de datos.
-    """
-    __tablename__ = 'pdb_uniprot_chain_alignment'
-    id = Column(Integer, primary_key=True)
-    chain = Column(String)  # Ahora parte de la clave primaria
-    pdb_reference_id = Column(Integer, ForeignKey('pdb_references.id'))  # Ahora parte de la clave primaria
-    uniprot_sequence_aligned = Column(String)
-    pdb_sequence_aligned = Column(String)
-    identity = Column(Float)
-    pdb_reference = relationship("PDBReference", back_populates="uniprot_pdb_alignments")
 
 
 class CEAlignResults(Base):
+    """
+    Represents the results of a CE (Combinatorial Extension) alignment process for protein structures.
+
+    This class stores the results of structural alignment computations, typically involving methods like CEAlign. It is useful for analyzing and comparing the structural alignment of protein clusters.
+
+    Attributes:
+        id (int): Unique identifier for each CEAlign result entry in the database.
+        cluster_entry_id (int): Foreign key referencing the 'Cluster' entity. It is used to identify the specific protein cluster associated with this alignment result.
+        rms (Float): Root Mean Square Deviation (RMSD) value resulting from the CE alignment. RMSD is a measure of the average distance between the atoms (usually the backbone atoms) of superimposed proteins.
+
+    The relationship with 'Cluster' allows each CEAlign result to be directly associated with a specific protein cluster, providing insights into the structural similarity within the cluster.
+    """
     __tablename__ = 'ce_align_results'
     id = Column(Integer, primary_key=True)
     cluster_entry_id = Column(Integer, ForeignKey('clusters.id'))
@@ -316,15 +263,19 @@ class CEAlignResults(Base):
 
 class GOTerm(Base):
     """
-    Represents a Gene Ontology term associated with a protein.
+    Represents a Gene Ontology (GO) term associated with a protein.
+
+    This class is used to store and manage information about the functional annotation of proteins as defined by the Gene Ontology Consortium. Each GO term provides a standardized description of a protein's molecular function, biological process, or cellular component.
 
     Attributes:
-        id (int): Unique identifier for the GO term.
-        go_id (str): Unique identifier in Gene Ontology.
-        protein_entry_name (str): Entry name of the associated protein.
-        protein (relationship): Relationship with the 'Protein' entity.
-        category (str): Category of the GO term.
-        description (str): Description of the GO term.
+        id (int): Unique identifier for the GO term within the database.
+        go_id (str): Unique identifier of the GO term in the Gene Ontology system.
+        protein_entry_name (str): Entry name of the associated protein in UniProt.
+        protein (relationship): Relationship with the 'Protein' class, linking the GO term to its corresponding protein.
+        category (str): Category of the GO term, indicating whether it describes a molecular function, biological process, or cellular component.
+        description (str): Detailed description of the GO term, explaining the function, process, or component it represents.
+
+    The relationship with the 'Protein' class allows for the association of functional, process, or component annotations with specific proteins.
     """
     __tablename__ = "go_terms"
     id = Column(Integer, primary_key=True)
@@ -335,4 +286,3 @@ class GOTerm(Base):
     description = Column(String)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, onupdate=func.now())
-
