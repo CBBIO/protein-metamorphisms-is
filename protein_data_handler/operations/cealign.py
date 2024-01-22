@@ -24,6 +24,7 @@ class CEAlign(BioinfoOperatorBase):
             conf (dict): Configuration parameters, including database connections and operational settings.
         """
         super().__init__(conf, session_required=True)
+        self.logger.info("CEAlign instance created with configuration.")
 
     def start(self):
         """
@@ -32,8 +33,14 @@ class CEAlign(BioinfoOperatorBase):
         that occur during the process.
         """
         try:
-            cluster_representatives = self.load_clusters()
-            self.ce_align(cluster_representatives)
+            self.logger.info("Starting structural alignment process.")
+            cluster_entries = self.load_clusters()
+
+            alignment_map = map_representatives_to_targets(cluster_entries)
+
+            self.logger.info(f"{len(alignment_map)} clusters avaliable")
+
+            self.ce_align(alignment_map)
 
         except Exception as e:
             self.logger.error(f"Error during structural alignment process: {e}")
@@ -47,28 +54,47 @@ class CEAlign(BioinfoOperatorBase):
         Returns:
             list: A list of cluster representative objects.
         """
-        cluster_representatives = self.session.query(Cluster).filter_by(is_representative=True).all()
-        return cluster_representatives
+        self.logger.info("Loading cluster entries from database.")
+        clusters = self.session.query(
+            Cluster.id,
+            Cluster.cluster_id,
+            Cluster.is_representative,
+            PDBChains.chains,
+            PDBReference.pdb_id
+        ).join(
+            PDBChains, Cluster.pdb_chain_id == PDBChains.id
+        ).join(
+            PDBReference, PDBChains.pdb_reference_id == PDBReference.id
+        ).all()
+        self.logger.info(f"Loaded {len(clusters)} cluster entries.")
 
-    def ce_align(self, cluster_representatives):
-        """
-        Performs the CE alignment on the cluster representatives. This method utilizes concurrent processing
-        to align multiple protein structures in parallel, significantly speeding up the computation time.
+        results = []
+        for row in clusters:
+            row_dict = {
+                "id": row[0],
+                "cluster_id": row[1],
+                "is_representative": row[2],
+                "chains": row[3],
+                "pdb_id": row[4]
+            }
+            results.append(row_dict)
+        return results
 
-        Args:
-            cluster_representatives (list): List of cluster representative objects to align.
-        """
-        num_workers = self.conf.get('num_workers', 4)
+    def ce_align(self, alignment_map):
+
+        num_workers = self.conf.get('max_workers', 4)
+        self.logger.info(f"Performing CE alignment with {num_workers} workers.")
         with ThreadPoolExecutor(max_workers=num_workers) as executor:
-            futures = [executor.submit(self.align_task, rep) for rep in cluster_representatives]
+            futures = [executor.submit(self.align_task, alignment_entry) for alignment_entry in alignment_map]
 
-            for future in as_completed(futures):
-                try:
-                    alignment_results = future.result()
-                except Exception as e:
-                    self.logger.error(f"Error in alignment task: {e}")
+            # for future in as_completed(futures):
+            #     try:
+            #         alignment_results = future.result()
+            #         self.logger.info("Alignment task completed successfully.")
+            #     except Exception as e:
+            #         self.logger.error(f"Error in alignment task: {e}", exc_info=True)
 
-    def align_task(self, representative):
+    def align_task(self, alignment_entry):
         """
         Task to align a single representative against all targets in its cluster. This function is where
         the actual structural alignment takes place using the CE algorithm. It includes loading the protein
@@ -76,63 +102,94 @@ class CEAlign(BioinfoOperatorBase):
         which quantifies the similarity between the structures.
 
         Args:
-            representative (object): The representative object to be aligned.
+            alignment_entry (tuple): Tuple containing the cluster_id and a dictionary with representative and targets.
         """
+        representative = alignment_entry['representative']
+        target = alignment_entry['target']
+        cluster_id = representative['cluster_id']
 
         pdb_chains_path = self.conf.get('pdb_chains_path', './chains')
         parser = PDBParser()
 
-        representative_details = self.get_cluster_pdb_chain_details(representative.id)
-        representative_name = f"{representative_details[2]}_{representative_details[1]}"
+        representative_name = f"{representative['pdb_id']}_{representative['chains']}"
         representative_structure_path = os.path.join(pdb_chains_path, f"{representative_name}.pdb")
 
-        representative_structure = parser.get_structure(representative_name, representative_structure_path)
+        self.logger.info(f"Aligning representative structure: {representative_name} with cluster id {cluster_id}")
 
-        targets = self.session.query(Cluster).filter_by(cluster_id=representative.cluster_id,
-                                                        is_representative=False).all()
+        try:
+            representative_structure = parser.get_structure(representative_name, representative_structure_path)
+            aligner = CEAligner()
+            aligner.set_reference(representative_structure)
 
-        aligner = CEAligner()
-        aligner.set_reference(representative_structure)
 
-        local_session = sessionmaker(bind=self.engine)()
-
-        for target in targets:
-            target_details = self.get_cluster_pdb_chain_details(target.id)
-            target_name = f"{target_details[2]}_{target_details[1]}"
+            target_name = f"{target['pdb_id']}_{target['chains']}"
             target_structure_path = os.path.join(pdb_chains_path, f"{target_name}.pdb")
             target_structure = parser.get_structure(target_name, target_structure_path)
 
             aligner.align(target_structure)
-
+            self.logger.info(f'{cluster_id}')
             rms = aligner.rms
 
-            result = CEAlignResults(cluster_entry_id=target.id, rms=rms)
-            local_session.add(result)
-        local_session.commit()
-        local_session.close()
+            result = CEAlignResults(cluster_entry_id=target['id'],
+                                            rms=rms)  # Assuming 'id' is a field in target
+            self.session.add(result)
+            self.session.commit()
+        except Exception as e:
+            self.logger.error(
+                f"Error in processing target {target['id']}: {e}")  # Assuming 'id' is a field in target
 
-    def get_cluster_pdb_chain_details(self, cluster_entry_id):
-        """
-        Retrieves PDB chain details for a given cluster entry. This method queries the database to fetch
-        information about the protein structure, such as its PDB ID and chain identifier. This information
-        is crucial for locating the correct PDB file and understanding the context of the alignment.
 
-        Args:
-            cluster_entry_id (int): ID of the cluster entry.
+        except Exception as e:
+            self.logger.error(
+                f"Error in align_task for representative {representative['id']}: {e}")  # Assuming 'id' is a field in representative
+            self.session.rollback()
+        finally:
+            self.session.close()
 
-        Returns:
-            tuple: Details of the PDB chain associated with the cluster entry.
-        """
-        result = self.session.query(
-            Cluster.id.label("cluster_id"),
-            PDBChains.chains.label("chain"),
-            PDBReference.pdb_id.label("pdb_id")
-        ).join(
-            PDBChains, Cluster.pdb_chain_id == PDBChains.id
-        ).join(
-            PDBReference, PDBChains.pdb_reference_id == PDBReference.id
-        ).filter(
-            Cluster.id == cluster_entry_id
-        ).first()
+        self.logger.info(f"Alignment task for representative {representative_name} completed.")
 
-        return result
+
+def get_cluster_pdb_chain_details(self, cluster_entry_id):
+    """
+    Retrieves PDB chain details for a given cluster entry. This method queries the database to fetch
+    information about the protein structure, such as its PDB ID and chain identifier. This information
+    is crucial for locating the correct PDB file and understanding the context of the alignment.
+
+    Args:
+        cluster_entry_id (int): ID of the cluster entry.
+
+    Returns:
+        tuple: Details of the PDB chain associated with the cluster entry.
+    """
+    result = self.session.query(
+        Cluster.id.label("cluster_id"),
+        PDBChains.chains.label("chain"),
+        PDBReference.pdb_id.label("pdb_id")
+    ).join(
+        PDBChains, Cluster.pdb_chain_id == PDBChains.id
+    ).join(
+        PDBReference, PDBChains.pdb_reference_id == PDBReference.id
+    ).filter(
+        Cluster.id == cluster_entry_id
+    ).first()
+
+    if result is None:
+        self.logger.warning(f"No PDB chain details found for cluster entry {cluster_entry_id}.")
+    else:
+        self.logger.info(f"PDB chain details retrieved for cluster entry {cluster_entry_id}.")
+    return result
+
+
+def map_representatives_to_targets(cluster_entries):
+    representative_map = {entry['cluster_id']: entry for entry in cluster_entries if entry['is_representative']}
+    pairs_list = []
+
+    for entry in cluster_entries:
+        if not entry['is_representative']:
+            rep = representative_map[entry['cluster_id']]
+            pair_dict = {'representative': rep, 'target': entry}
+            pairs_list.append(pair_dict)
+
+    return pairs_list
+
+
