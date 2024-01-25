@@ -7,10 +7,10 @@ from protein_data_handler.operations.cealign import CEAlign
 if __name__ == "__main__":
     conf = read_yaml_config("./config.yaml")
 
-    UniProtExtractor(conf).start()
+    # UniProtExtractor(conf).start()
 
-    PDBExtractor(conf).start()
+    # PDBExtractor(conf).start()
 
-    CDHit(conf).start()
-    #
+    # CDHit(conf).start()
+
     CEAlign(conf).start()

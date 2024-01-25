@@ -3,6 +3,15 @@ ORM Model
 
 This section provides detailed documentation of the Object-Relational Mapping (ORM) models used in the Protein Data Handler. Each model represents a table in the database and is crucial for managing and storing protein data efficiently.
 
+
+ER Diagram
+==========
+.. image:: ../images/model.png
+   :alt: Model Diagram
+   :align: center
+
+
+
 Protein
 -------
 

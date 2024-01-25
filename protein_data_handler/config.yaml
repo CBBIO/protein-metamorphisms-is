@@ -1,5 +1,5 @@
 #System
-max_workers: 6
+max_workers: 32
 
 # DB CONFIGURATION
 DB_USERNAME: usuario
@@ -7,6 +7,8 @@ DB_PASSWORD: clave
 DB_HOST: localhost
 DB_PORT: 5432
 DB_NAME: BioData
+
+
 
 # Uniprot Extraction
 search_criteria: '(structure_3d:true) AND (reviewed:true)'
@@ -20,13 +22,21 @@ pdb_chains_path: "/home/frapercan/data/chains"
 file_format: "mmCif"
 
 
+# Operations
+allow_multiple_chain_models: False
 # Sequence Clustering
 fasta_path: "/home/frapercan/data/complete.fasta"
 cdhit_out_path: "/home/frapercan/data/out"
 sequence_identity_threshold: 0.95
+alignment_coverage: 0.95
 memory_usage: 25000
+most_representative_search: 1
 
 
-data_dir: /opt/shared/FASTA
-output_dir: /opt/shared/FASTA/output
-merge_name: merge_25
+
+#CE-Align
+retry_timeout: 1
+retry_count: 25
+batch_size: 1000
+task_timeout: 1
+

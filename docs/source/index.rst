@@ -28,5 +28,12 @@ Dive into the world of protein data handling by exploring the sections below:
    pdb
    model
 
+.. toctree::
+   :maxdepth: 2
+   :caption: Operations
+
+   cdhit
+   cealign
+
 
 We hope this documentation serves as a valuable resource in your journey with Protein Data Handler. Happy data handling!

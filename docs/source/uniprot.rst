@@ -62,7 +62,7 @@ The `UniProtExtractor` class requires specific configuration settings for optima
     DB_NAME: [Database name]
 
     # UniProt Extraction Settings
-    search_criteria: [UniProt search criteria]
+    search_criteria: [UniProt search criteria] e.g.:'(structure_3d:true) AND (reviewed:true)'
     limit: [Maximum number of records to fetch per page (does not affect)]
 
 Adjust these settings based on your project requirements and available resources.

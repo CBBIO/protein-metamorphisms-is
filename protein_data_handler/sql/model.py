@@ -238,8 +238,22 @@ class PDBChains(Base):
     chains = Column(String)
     sequence = Column(String, nullable=False)
     pdb_reference_id = Column(Integer, ForeignKey('pdb_references.id'))
+    model = Column(Integer)
 
     pdb_reference = relationship("PDBReference", back_populates="pdb_chains")
+
+
+class CEAlignQueue(Base):
+    """
+    """
+    __tablename__ = 'ce_align_queue'
+    id = Column(Integer, primary_key=True)
+    cluster_entry_id = Column(Integer, ForeignKey('clusters.id'), nullable=False)
+    state = Column(Integer, default=0, nullable=False)
+    retry_count = Column(Integer, default=0, nullable=False)
+    error_message = Column(String, nullable=True)
+    created_at = Column(DateTime, default=func.now(), nullable=False)
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 
 
 class CEAlignResults(Base):

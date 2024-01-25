@@ -3,7 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from Bio import PDB
 from Bio.Data.PDBData import protein_letters_3to1
-from Bio.PDB import Select, PDBIO, MMCIFParser
+from Bio.PDB import Select, PDBIO, MMCIFParser, MMCIFIO
 from Bio.PDB.Polypeptide import three_to_one
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql.operators import or_
@@ -20,7 +20,7 @@ class ChainSelect(Select):
     specific chains of a PDB structure to a file.
     """
 
-    def __init__(self, chain_id):
+    def __init__(self, chain_id, model_id):
         """
         Initializes the ChainSelect with the specified chain ID
 
@@ -28,6 +28,7 @@ class ChainSelect(Select):
             chain_id (str): The ID of the chain to be selected for output.
         """
         self.chain_id = chain_id
+        self.model_id = model_id
 
     def accept_chain(self, chain):
         """
@@ -52,7 +53,7 @@ class ChainSelect(Select):
         Returns:
             bool: Always True, as all models are accepted.
         """
-        return True
+        return model.get_id() == self.model_id
 
 
 class PDBExtractor(BioinfoExtractorBase):
@@ -139,7 +140,6 @@ class PDBExtractor(BioinfoExtractorBase):
         except Exception as e:
             self.logger.error(f"Error al descargar y procesar PDB {pdb_id}: {e}\n{traceback.format_exc()}")
 
-
     def populate_pdb_chains(self, pdb_file_path, pdb_reference_id, local_session):
         """
         Processes a PDB file to extract chain information and populates the database.
@@ -166,19 +166,21 @@ class PDBExtractor(BioinfoExtractorBase):
         for model in structure:
             for chain in model:
                 chain_id = chain.get_id()
+                model_id = model.get_id()
                 sequence = ""
                 for residue in chain:
                     if residue.id[0] == ' ' and residue.resname in protein_letters_3to1:  # Solo residuos estándar
                         sequence += protein_letters_3to1[residue.resname]
-                pdb_chain = PDBChains(chains=chain_id, sequence=sequence, pdb_reference_id=pdb_reference_id_value)
+                pdb_chain = PDBChains(chains=chain_id, sequence=sequence, pdb_reference_id=pdb_reference_id_value,
+                                      model=model_id)
                 local_session.add(pdb_chain)
 
                 # New code to write individual chain files
                 chain_path = self.conf.get("pdb_chains_path", "pdb_chain_files")
-                chain_file_path = f"{chain_path}/{pdb_reference_id}_{chain_id}.pdb"
-                io = PDBIO()
+                chain_file_path = f"{chain_path}/{pdb_reference_id}_{chain_id}_{model.get_id()}.cif"
+                io = MMCIFIO()
                 io.set_structure(structure)
-                io.save(chain_file_path, select=ChainSelect(chain_id))
+                io.save(chain_file_path, select=ChainSelect(chain_id, model_id))
 
         local_session.commit()
         local_session.close()
@@ -194,5 +196,6 @@ class PDBExtractor(BioinfoExtractorBase):
             pdb_references (list): A list of PDBReference objects to be processed.
         """
         max_workers = self.conf.get("max_workers", 5)
+        self.logger.info("Downloading PDB structures with {} workers".format(max_workers))
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             executor.map(self.download_and_process_pdb_structure, pdb_references)

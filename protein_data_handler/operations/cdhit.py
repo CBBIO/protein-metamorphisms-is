@@ -57,7 +57,10 @@ class CDHit(BioinfoOperatorBase):
         :rtype: list
         """
         self.logger.info("Loading protein chains from the database")
-        chains = self.session.query(PDBChains).all()
+        if not self.conf.get("allow_multiple_chain_models"):
+            chains = self.session.query(PDBChains).filter(PDBChains.model == 0).all()
+        else:
+            chains = self.session.query(PDBChains).all()
         return chains
 
     def create_fasta(self, chains):
@@ -87,8 +90,10 @@ class CDHit(BioinfoOperatorBase):
         cdhit_out_path = self.conf.get('cdhit_out_path', './out.clstr')
 
         sequence_identity_threshold = self.conf.get('sequence_identity_threshold')
+        alignment_coverage = self.conf.get('alignment_coverage')
         memory_usage = self.conf.get('memory_usage')
         num_threads = self.conf.get('max_workers')
+        most_representative_search = self.conf.get('most_representative_search')
 
         self.logger.info(f"Running CD-HIT on {fasta_file_path}")
         cd_hit(
@@ -97,8 +102,10 @@ class CDHit(BioinfoOperatorBase):
             c=sequence_identity_threshold,
             d=0,
             sc=1,
+            aL=alignment_coverage,
             M=memory_usage,
-            T=num_threads
+            T=num_threads,
+            g=most_representative_search
         )
 
         self.logger.info(f"Reading CD-HIT output from {cdhit_out_path}.clstr")
