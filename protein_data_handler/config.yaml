@@ -10,8 +10,10 @@ DB_NAME: BioData
 
 
 
+
+
 # Uniprot Extraction
-search_criteria: '(structure_3d:true) AND (reviewed:true)'
+search_criteria: '(structure_3d:true)'
 limit: 100
 
 # PDB Extraction
@@ -21,9 +23,9 @@ pdb_path: "/home/frapercan/data/pdb"
 pdb_chains_path: "/home/frapercan/data/chains"
 file_format: "mmCif"
 
-
-# Operations
+# NMR
 allow_multiple_chain_models: False
+
 # Sequence Clustering
 fasta_path: "/home/frapercan/data/complete.fasta"
 cdhit_out_path: "/home/frapercan/data/out"
@@ -32,11 +34,13 @@ alignment_coverage: 0.95
 memory_usage: 25000
 most_representative_search: 1
 
+force_representatives: "/home/frapercan/data/input_data/metamorphic_pairs.csv"
+
 
 
 #CE-Align
 retry_timeout: 1
 retry_count: 25
-batch_size: 1000
-task_timeout: 1
+batch_size: 10000
+task_timeout: 0.5
 

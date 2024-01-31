@@ -51,7 +51,7 @@ class BioinfoOperatorBase(ABC):
              f"@{self.conf['DB_HOST']}:"
              f"{self.conf['DB_PORT']}/"
              f"{self.conf['DB_NAME']}")
-        engine = create_engine(DATABASE_URI)
+        engine = create_engine(DATABASE_URI, pool_size=0, max_overflow=0)
         self.engine = engine
         Base.metadata.create_all(engine)
         Session = sessionmaker(bind=engine)

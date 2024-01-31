@@ -1,7 +1,7 @@
 PDB Module
 ==========
 
-The PDB module in the Protein Data Handler project is tailored for interactions with the Protein Data Bank (PDB). It specializes in downloading, processing, and managing 3D structural data of proteins, utilizing Biopython for handling PDB files.
+The PDB module in the Protein Data Handler project is intricately designed for detailed interactions with the Protein Data Bank (PDB). It excels in downloading, processing, and managing complex 3D structural data of proteins, especially adept at handling PDB files containing multiple chains and models, using Biopython for efficient data manipulation.
 
 Class Overview
 --------------
@@ -52,7 +52,8 @@ The `PDBExtractor` class requires specific configuration settings:
     server: [PDB file server URL]
     pdb_path: [Local path to store PDB files]
     pdb_chains_path: [Local path to store PDB chains]
-    file_format: [Format of the PDB files (e.g., "mmCif")]
+    file_format: "mmCif"  # The format of the PDB files. Currently, only the "mmCif" format is supported.
+
 
 Adjust these settings based on your project requirements and available resources.
 

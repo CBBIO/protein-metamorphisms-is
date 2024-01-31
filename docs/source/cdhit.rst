@@ -60,11 +60,13 @@ Configuration
 .. code-block:: yaml
 
     # CDHit Configuration
+    max_workers: [Number of threads for CD-HIT]
     fasta_path: [Path for FASTA file]
     cdhit_out_path: [Path for CD-HIT output file]
     sequence_identity_threshold: [Identity threshold for clustering]
     memory_usage: [Maximum memory usage for CD-HIT]
-    max_workers: [Number of threads for CD-HIT]
+    alignment_coverage: [Minimum alignment coverage for clustering]
+    most_representative_search: [Boolean value to enable/disable most representative search]
 
 Adjust these settings based on the specific requirements of your clustering tasks.
 

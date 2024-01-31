@@ -1,19 +1,29 @@
-from protein_data_handler.helpers.config.yaml import read_yaml_config
 from protein_data_handler.operations.base.bioinfo_operator import BioinfoOperatorBase
-from protein_data_handler.sql.model import PDBChains, Cluster
+from protein_data_handler.sql.model import PDBChains, Cluster, PDBReference
 from pycdhit import cd_hit, read_clstr
-import logging
-
+import pandas as pd
 
 class CDHit(BioinfoOperatorBase):
     """
-    Class for processing protein data using the CD-HIT algorithm.
+    Class for processing protein data using the CD-HIT algorithm, an efficient algorithm for clustering
+    and comparing protein or nucleotide sequences.
 
-    Extends BioinfoOperatorBase to utilize its database and configuration handling capabilities.
-    This class is specifically tailored for clustering protein sequences using the CD-HIT algorithm.
+    Extends the BioinfoOperatorBase to leverage its database and configuration handling capabilities,
+    this class specifically focuses on clustering protein sequences. It facilitates the grouping of
+    similar sequences, thereby reducing redundancy and improving the efficiency of subsequent analyses.
 
-    :param conf: Configuration dictionary containing necessary parameters.
-    :type conf: dict
+    Attributes:
+        conf (dict): Configuration dictionary containing necessary parameters for CD-HIT and other operations.
+
+    Methods:
+        start: Initiates the process of sequence clustering using CD-HIT.
+        load_chains: Loads protein chain data from the database for clustering.
+        create_fasta: Creates a FASTA file from the protein chain data.
+        cluster: Executes the CD-HIT algorithm and processes the output.
+
+    Usage:
+        The CDHit class can be utilized in bioinformatics pipelines for sequence analysis, especially where
+        sequence redundancy reduction or efficient sequence comparison is required.
     """
 
     def __init__(self, conf):
@@ -30,14 +40,15 @@ class CDHit(BioinfoOperatorBase):
 
     def start(self):
         """
-        Start the sequence clustering process.
+        Start the protein sequence clustering process using CD-HIT.
 
-        Orchestrates the process of loading protein chains, creating a FASTA file, and clustering sequences.
-        Handles exceptions and logs key events.
+        Coordinates the steps for loading protein chains, creating a FASTA file, executing CD-HIT for clustering, and
+        handling exceptions and key events. Logs the progress and any errors encountered during the process.
         """
         try:
             self.logger.info("Starting CD-HIT clustering process")
             chains = self.load_chains()
+            # self.explore_representatives()
 
             self.create_fasta(chains)
             self.cluster()
@@ -49,12 +60,13 @@ class CDHit(BioinfoOperatorBase):
 
     def load_chains(self):
         """
-        Load protein chains from the database.
+        Retrieve protein chain data from the database.
 
-        Retrieves all PDBChains records from the database.
+        Fetches all PDBChains records from the database. The method can be configured to include or exclude multiple chain
+        models based on the 'allow_multiple_chain_models' (NMR samples) configuration.
 
-        :return: List of PDBChains objects.
-        :rtype: list
+        Returns:
+            list: A list of PDBChains objects representing protein chains.
         """
         self.logger.info("Loading protein chains from the database")
         if not self.conf.get("allow_multiple_chain_models"):
@@ -65,12 +77,13 @@ class CDHit(BioinfoOperatorBase):
 
     def create_fasta(self, chains):
         """
-        Create a FASTA file from protein chains.
+        Generate a FASTA file from a list of protein chains.
 
-        Writes the protein chains to a FASTA formatted file specified in the configuration.
+        Writes the provided protein chains to a FASTA formatted file. The path for the FASTA file is specified in the
+        configuration.
 
-        :param chains: List of PDBChains objects to write to the FASTA file.
-        :type chains: list
+        Args:
+            chains (list): A list of PDBChains objects to be written to the FASTA file.
         """
         fasta_path = self.conf.get('fasta_path', './complete.fasta')
         self.logger.info(f"Writing protein chains to FASTA file at {fasta_path}")
@@ -82,9 +95,11 @@ class CDHit(BioinfoOperatorBase):
 
     def cluster(self):
         """
-        Perform sequence clustering using CD-HIT.
+        Execute the CD-HIT algorithm for sequence clustering.
 
-        Runs the CD-HIT algorithm on the prepared FASTA file, reads the output cluster file, and stores the results.
+        Runs the CD-HIT algorithm on the prepared FASTA file, then reads the output cluster file to store the clustering
+        results in the database. Configuration parameters such as sequence identity threshold, alignment coverage, accurate mode and
+        memory usage are used to control the CD-HIT execution.
         """
         fasta_file_path = self.conf.get('fasta_path', './complete.fasta')
         cdhit_out_path = self.conf.get('cdhit_out_path', './out.clstr')
@@ -122,3 +137,49 @@ class CDHit(BioinfoOperatorBase):
             self.session.add(cluster)
         self.session.commit()
         self.logger.info("CD-HIT clustering data stored in the database")
+
+    # def explore_representatives(self):
+    #     csv = pd.read_csv(self.conf["force_representatives"])
+    #     print(csv.columns)
+    #     for _, row in csv.iterrows():
+    #         pdb_id_x = row['PDB_x']
+    #         chain_x = row['Chain_x']
+    #         pdb_id_y = row['PDB_y']
+    #         chain_y = row['Chain_y']
+    #
+    #         # Buscar la primera cadena en PDBChains
+    #         pdb_chain_x = self._find_pdb_chain(pdb_id_x, chain_x)
+    #         pdb_chain_y = self._find_pdb_chain(pdb_id_y, chain_y)
+    #
+    #         if pdb_chain_x and pdb_chain_y:
+    #             # Buscar los clusters asociados a cada cadena
+    #             cluster_x = self._find_cluster(pdb_chain_x.id)
+    #             cluster_y = self._find_cluster(pdb_chain_y.id)
+    #
+    #             if cluster_x:
+    #                 print(f"Cadena {pdb_id_x}{chain_x} encontrada en el cluster ID: {cluster_x.id}")
+    #             else:
+    #                 print(f"Cadena {pdb_id_x}{chain_x} no encontrada en ningún cluster.")
+    #
+    #             if cluster_y:
+    #                 print(f"Cadena {pdb_id_y}{chain_y} encontrada en el cluster ID: {cluster_y.id}")
+    #             else:
+    #                 print(f"Cadena {pdb_id_y}{chain_y} no encontrada en ningún cluster.")
+    #
+    #             if cluster_x and cluster_y and cluster_x.id == cluster_y.id:
+    #                 print(f"Ambas cadenas están en el mismo cluster: {cluster_x.id}")
+    #             elif cluster_x and cluster_y:
+    #                 print(
+    #                     f"Cadenas están en clusters diferentes: {pdb_id_x}{chain_x} en {cluster_x.id}, {pdb_id_y}{chain_y} en {cluster_y.id}")
+    #
+    # def _find_pdb_chain(self, pdb_id, chain):
+    #     pdb_reference = self.session.query(PDBReference).filter(PDBReference.pdb_id == pdb_id).first()
+    #     if pdb_reference:
+    #         return self.session.query(PDBChains).filter(
+    #             PDBChains.pdb_reference_id == pdb_reference.id,
+    #             PDBChains.chains == chain
+    #         ).first()
+    #     return None
+    #
+    # def _find_cluster(self, pdb_chain_id):
+    #     return self.session.query(Cluster).filter(Cluster.pdb_chain_id == pdb_chain_id).first()

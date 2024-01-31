@@ -1,14 +1,13 @@
+import os
 import traceback
 from concurrent.futures import ThreadPoolExecutor
 
 from Bio import PDB
 from Bio.Data.PDBData import protein_letters_3to1
-from Bio.PDB import Select, PDBIO, MMCIFParser, MMCIFIO
-from Bio.PDB.Polypeptide import three_to_one
+from Bio.PDB import Select, MMCIFParser, MMCIFIO
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql.operators import or_
 
-from protein_data_handler.helpers.config.yaml import read_yaml_config
 from protein_data_handler.information_system.base.bioinfo_extractor import BioinfoExtractorBase
 from protein_data_handler.sql.model import PDBReference, PDBChains
 
@@ -19,7 +18,6 @@ class ChainSelect(Select):
     This class is used in conjunction with Bio.PDB's PDBIO to selectively write
     specific chains of a PDB structure to a file.
     """
-
     def __init__(self, chain_id, model_id):
         """
         Initializes the ChainSelect with the specified chain ID
@@ -91,7 +89,6 @@ class PDBExtractor(BioinfoExtractorBase):
 
             self.download_pdb_structures(pdb_references)
 
-
         except Exception as e:
             self.logger.error(f"Error durante el proceso de extracción: {e}")
 
@@ -116,25 +113,34 @@ class PDBExtractor(BioinfoExtractorBase):
 
     def download_and_process_pdb_structure(self, pdb_reference):
         """
-        Downloads and processes a given PDB structure using the Biopython library.
+        Downloads and processes a PDB structure using the Biopython library.
 
-        This method handles the retrieval of PDB files from the PDB repository and
-        processes them to extract relevant data, such as chain information and sequences.
+        This method is responsible for downloading PDB files from the specified PDB repository,
+        then processing these files to extract relevant data. It primarily focuses on retrieving
+        chain information and sequences from the PDB structure. The process involves two main steps:
+        downloading the PDB file and then populating the database with chain details extracted from
+        the file.
 
         Args:
-            pdb_reference (PDBReference): A PDBReference object containing PDB ID and other metadata.
-        """
+            pdb_reference (PDBReference): A PDBReference object that contains the PDB ID and other
+                                          related metadata necessary for downloading and processing the file.
 
+        Steps:
+            1. Initiates a database session.
+            2. Retrieves the PDB file based on the PDB ID from the PDBReference object.
+            3. Downloads the file to a specified directory in the desired format.
+            4. Calls 'populate_pdb_chains' to process the downloaded file and store chain information
+               in the database.
+        """
         local_session = sessionmaker(bind=self.engine)()
 
         pdb_id = pdb_reference.pdb_id
         pdbl = PDB.PDBList(server=self.conf.get("server", "ftp.wwpdb.org"), pdb=self.conf.get("pdb_path", "pdb_files"))
         try:
-            file_path = pdbl.retrieve_pdb_file(pdb_id, file_format=self.conf.get("file_format", "pdb"),
+            file_path = pdbl.retrieve_pdb_file(pdb_id, file_format=self.conf.get("file_format", "mmCif"),
                                                pdir=self.conf.get("pdb_path", "pdb_files"))
             self.logger.info(f"Descargado PDB {pdb_id}")
 
-            # Procesar el archivo PDB descargado y poblar la base de datos
             self.populate_pdb_chains(file_path, pdb_reference.pdb_id, local_session)
 
         except Exception as e:
@@ -142,16 +148,31 @@ class PDBExtractor(BioinfoExtractorBase):
 
     def populate_pdb_chains(self, pdb_file_path, pdb_reference_id, local_session):
         """
-        Processes a PDB file to extract chain information and populates the database.
+        Processes a PDB file, extracting and storing chain information in the database.
 
-        This method parses the PDB file, extracts chain details and sequences, and
-        saves them to the database. It also handles the creation of individual PDB
-        files for each chain.
+        This method uses the MMCIFParser to parse the PDB file specified by 'pdb_file_path'.
+        It then extracts details such as chain identifiers, models, and sequences from the file.
+        Each chain's information, along with its associated sequence and reference to the PDB file,
+        is stored in the database. Additionally, this method generates individual CIF files for
+        each chain in the structure, which are saved to a specified directory.
 
         Args:
-            pdb_file_path (str): The file path to the PDB file.
-            pdb_reference_id (int): The database ID for the PDB reference.
-            local_session (Session): A SQLAlchemy session for database operations.
+            pdb_file_path (str): Path to the PDB file to be processed.
+            pdb_reference_id (int): The unique database identifier for the PDB reference.
+            local_session (Session): An active SQLAlchemy session for executing database operations.
+
+        The method proceeds as follows:
+        - It queries the database to check if the provided 'pdb_reference_id' exists.
+        - For each chain in the PDB file:
+            - Extracts the chain ID, model ID, and the amino acid sequence.
+            - Creates a new PDBChains object with the extracted data and adds it to the session.
+            - Generates a CIF file for the chain, storing it in a specified directory if it doesn't already exist.
+
+        Note:
+        - The method assumes 'protein_letters_3to1' is a dictionary mapping three-letter amino acid
+          codes to their single-letter counterparts.
+        - 'ChainSelect' is a custom selector used by MMCIFIO for saving individual chains.
+        - The directory for saving individual chain CIF files is configurable and defaults to 'pdb_chain_files'.
         """
         parser = MMCIFParser()
         structure = parser.get_structure(pdb_reference_id, pdb_file_path)
@@ -169,18 +190,19 @@ class PDBExtractor(BioinfoExtractorBase):
                 model_id = model.get_id()
                 sequence = ""
                 for residue in chain:
-                    if residue.id[0] == ' ' and residue.resname in protein_letters_3to1:  # Solo residuos estándar
+                    if residue.id[0] == ' ' and residue.resname in protein_letters_3to1:
                         sequence += protein_letters_3to1[residue.resname]
                 pdb_chain = PDBChains(chains=chain_id, sequence=sequence, pdb_reference_id=pdb_reference_id_value,
                                       model=model_id)
                 local_session.add(pdb_chain)
 
-                # New code to write individual chain files
                 chain_path = self.conf.get("pdb_chains_path", "pdb_chain_files")
                 chain_file_path = f"{chain_path}/{pdb_reference_id}_{chain_id}_{model.get_id()}.cif"
-                io = MMCIFIO()
-                io.set_structure(structure)
-                io.save(chain_file_path, select=ChainSelect(chain_id, model_id))
+
+                if not os.path.isfile(chain_file_path):
+                    io = MMCIFIO()
+                    io.set_structure(structure)
+                    io.save(chain_file_path, select=ChainSelect(chain_id, model_id))
 
         local_session.commit()
         local_session.close()

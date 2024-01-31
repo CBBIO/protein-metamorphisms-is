@@ -7,35 +7,42 @@ Base = declarative_base()
 
 class Protein(Base):
     """
-    Represents a protein with its properties and relationships in a database.
+    Represents a protein, encapsulating its properties and relationships within a database.
+
+    This class models a protein entity, encompassing various attributes that describe its
+    characteristics and relationships to other entities. It serves as a comprehensive record
+    for proteins, covering aspects from basic sequence data to more complex annotations and references.
 
     Attributes:
-        entry_name (str): Unique entry name for the protein, used as the primary key.
-        data_class (str): Classification of the protein's data.
-        molecule_type (str): Type of protein molecule.
-        sequence_length (int): Length of the protein's amino acid sequence.
-        sequence (str): Amino acid sequence of the protein.
-        accessions (relationship): Relationship with the 'Accession' class, representing the access codes associated with the protein.
-        created_date (Date): Date the protein record was created.
-        sequence_update_date (Date): Date of the last update of the protein's sequence.
-        annotation_update_date (Date): Date of the last update of the protein's annotation.
-        description (str): General description of the protein.
-        gene_name (str): Name of the gene associated with this protein.
-        organism (str): Organism to which the protein belongs.
-        organelle (str): Specific organelle where the protein is located, if applicable.
-        organism_classification (str): Taxonomic classification of the organism.
-        taxonomy_id (str): Taxonomy identifier for the organism.
-        host_organism (str): Host organism of the protein, if applicable.
-        host_taxonomy_id (str): Taxonomy identifier for the host organism.
-        comments (str): Additional comments about the protein.
-        pdb_references (relationship): Relationship with the 'PDBReference' class, containing references to the protein structure database.
-        go_terms (relationship): Relationship with the 'GOTerm' class, representing Gene Ontology terms associated with the protein.
-        keywords (str): Keywords related to the protein.
-        protein_existence (int): Numeric indicator of the protein's existence.
-        seqinfo (str): Additional information about the protein's sequence.
-        disappeared (Boolean): Indicates whether the protein is no longer present or relevant.
-        created_at (DateTime): Date and time the record was created.
-        updated_at (DateTime): Date and time of the last update of the record.
+        entry_name (str): Unique entry name for the protein, serving as the primary key.
+        data_class (str): Categorization of the protein's data (e.g., experimental, predicted).
+        molecule_type (str): Type of the protein molecule (e.g., enzyme, antibody).
+        sequence_length (int): The length of the amino acid sequence of the protein.
+        sequence (str): Full amino acid sequence of the protein.
+        accessions (relationship): A link to the 'Accession' class, detailing access codes associated with this protein.
+        created_date (Date): The date when the protein record was first created.
+        sequence_update_date (Date): The date when the protein's sequence was last updated.
+        annotation_update_date (Date): The date when the protein's annotation was last updated.
+        description (str): A general description or overview of the protein.
+        gene_name (str): The name of the gene that encodes this protein.
+        organism (str): The organism from which the protein is derived.
+        organelle (str): The specific organelle where the protein is localized, if applicable.
+        organism_classification (str): Taxonomic classification of the organism (e.g., species, genus).
+        taxonomy_id (str): A unique identifier for the organism in taxonomic databases.
+        host_organism (str): The host organism for the protein, relevant in cases of viral or symbiotic proteins.
+        host_taxonomy_id (str): Taxonomy identifier for the host organism, if applicable.
+        comments (str): Additional remarks or notes about the protein.
+        pdb_references (relationship): A link to the 'PDBReference' class, providing references to structural data in the PDB.
+        go_terms (relationship): A connection to the 'GOTerm' class, indicating Gene Ontology terms associated with the protein.
+        keywords (str): Descriptive keywords related to the protein, aiding in categorization and search.
+        protein_existence (int): A numerical code indicating the evidence level for the protein's existence.
+        seqinfo (str): Supplementary information about the protein's sequence.
+        disappeared (Boolean): Flag indicating whether the protein is obsolete or no longer relevant.
+        created_at (DateTime): Timestamp of when the record was initially created.
+        updated_at (DateTime): Timestamp of the most recent update to the record.
+
+    This class is integral to managing and querying detailed protein data, supporting a wide range of bioinformatics
+    and data analysis tasks.
     """
     __tablename__ = "proteins"
     entry_name = Column(String, primary_key=True, unique=True, nullable=False)
@@ -72,17 +79,30 @@ class Protein(Base):
 
 class Accession(Base):
     """
-    Represents a unique access code for a protein in a database.
+    Represents a unique access code for a protein in a database, often used in bioinformatics repositories.
+
+    This class models an accession record, which is essential for tracking and referencing protein data. Each accession
+    record provides a unique identifier for a protein and is linked to detailed protein information.
+
+    The `Accession` class plays a crucial role in the organization and retrieval of protein data, acting as a key
+    reference point for protein identification and database querying.
 
     Attributes:
-        id (int): Unique identifier for the access.
-        accession_code (str): Unique access code for the protein.
-        primary (Boolean): Indicates if the accession code is the primary identifier for the protein.
-        protein_entry_name (str): Entry name of the associated protein.
-        protein (relationship): Relationship with the 'Protein' class.
-        disappeared (Boolean): Indicates whether the access code is no longer in use.
-        created_at (DateTime): Date and time the record was created.
-        updated_at (DateTime): Date and time of the last update of the record.
+        id (int): A unique identifier for the accession record within the database.
+        accession_code (str): The unique access code associated with a specific protein. This code is typically used as
+                              a reference in various bioinformatics databases and literature.
+        primary (Boolean): A flag indicating whether this accession code is the primary identifier for the associated protein.
+                           Primary accession codes are generally the most stable and widely used references.
+        protein_entry_name (str): The entry name of the protein associated with this accession code. This serves as a link
+                                  to the protein's detailed record.
+        protein (relationship): A SQLAlchemy relationship with the 'Protein' class. This relationship provides a direct
+                                connection to the protein entity that this accession code represents, allowing for the retrieval
+                                of comprehensive protein information.
+        disappeared (Boolean): A flag indicating whether the accession code is obsolete or no longer in use. This is important
+                               for maintaining the integrity and relevance of the database.
+        created_at (DateTime): The date and time when this accession record was first created in the database.
+        updated_at (DateTime): The date and time when this accession record was last updated, reflecting any changes or
+                               updates to the accession information.
     """
     __tablename__ = "accessions"
     id = Column(Integer, primary_key=True)
@@ -99,20 +119,28 @@ class PDBReference(Base):
     """
     Represents a reference to a structure in the Protein Data Bank (PDB).
 
-    This class is used to store and manage information about protein structures as recorded in the PDB,
-    including their relationship to UniProt entries and specific chain details.
+    This class is pivotal for storing and managing details about protein structures as cataloged in the PDB. It forms a bridge
+    between PDB structures and UniProt entries, enabling comprehensive tracking and analysis of protein structures and their
+    corresponding sequences.
+
+    The `PDBReference` class serves as a critical component for integrating structural data with protein sequence and functional information,
+    thereby enriching the understanding of protein structures.
 
     Attributes:
-        id (int): Unique identifier for the PDB reference within the database.
-        pdb_id (str): Unique identifier of the protein structure in the PDB.
-        protein_entry_name (str): Entry name of the associated protein in UniProt.
-        protein (relationship): Relationship to the 'Protein' class, linking to the corresponding UniProt entry.
-        method (str): Method used to determine the protein structure (e.g., X-ray crystallography, NMR).
-        resolution (Float): Resolution of the protein structure, typically in Ångströms (Å).
-        uniprot_chains (relationship): Relationship to the 'UniprotChains' class, representing the individual chains in the protein structure as per UniProt.
-        pdb_chains (relationship): Relationship to the 'PDBChains' class, detailing the chains in the protein structure as recorded in PDB.
-        created_at (DateTime): Timestamp of when the PDB reference record was created in the database.
-        updated_at (DateTime): Timestamp of the last update to the PDB reference record.
+        id (int): A unique identifier for the PDB reference within the database. This serves as the primary key.
+        pdb_id (str): The unique identifier of the protein structure in PDB, typically a 4-character alphanumeric code.
+        protein_entry_name (str): The entry name of the associated protein in UniProt. This helps link the structure to its
+                                  corresponding protein sequence and other relevant data in UniProt.
+        protein (relationship): A SQLAlchemy relationship to the 'Protein' class, establishing a connection to the UniProt entry
+                                corresponding to this PDB structure.
+        method (str): The method used for determining the protein structure, such as X-ray crystallography or NMR spectroscopy.
+        resolution (Float): The resolution of the protein structure, measured in Ångströms (Å). A lower number indicates higher resolution.
+        uniprot_chains (relationship): A relationship to the 'UniprotChains' class, detailing the individual protein chains in the structure
+                                       as defined in UniProt.
+        pdb_chains (relationship): A relationship to the 'PDBChains' class, describing the chains in the protein structure as recorded in PDB.
+        created_at (DateTime): The timestamp indicating when the PDB reference record was initially created in the database.
+        updated_at (DateTime): The timestamp of the most recent update to the PDB reference record. This field is automatically updated
+                               on each record modification.
     """
     __tablename__ = "pdb_references"
     id = Column(Integer, primary_key=True)
@@ -178,6 +206,44 @@ class UniprotChains(Base):
             self.sequence = None
 
 
+class PDBChains(Base):
+    """
+    Represents an individual polypeptide chain within a protein structure as cataloged in the Protein Data Bank (PDB).
+
+    The `PDBChains` class is instrumental in representing each distinct polypeptide chain encountered in protein structures
+    from the PDB. This class enables detailed tracking and management of these chains, facilitating analyses and queries at
+    the chain level. By associating each chain with its parent protein structure, the class enhances the database's ability
+    to model complex protein structures.
+
+    Attributes:
+        id (int): A unique identifier for each polypeptide chain within the database, serving as the primary key.
+        chains (String): The specific identifier of the chain as referenced in the protein structure within PDB. This attribute,
+                         combined with 'pdb_reference_id', constitutes part of the composite primary key.
+        sequence (String): The complete amino acid sequence of the chain. Storing this mandatory attribute allows for in-depth
+                           analyses of the chain's molecular structure.
+        pdb_reference_id (Integer): A foreign key linking to the unique identifier of the parent protein structure in the PDB.
+                                    This attribute forms the other part of the composite primary key and establishes a direct
+                                    relationship with the `PDBReference` entity.
+        model (Integer): An identifier for the model of the chain, particularly important for structures like NMR that may
+                         encompass multiple models.
+        pdb_reference (relationship): A SQLAlchemy relationship that connects to the `PDBReference` entity. This relationship
+                                      provides access to comprehensive details about the entire protein structure to which this
+                                      chain is a part.
+
+    The composite primary key, comprising `chains` and `pdb_reference_id`, ensures that each instance of `PDBChains` is uniquely
+    tied to a specific structure in the PDB. This key structure is critical for precise data retrieval and efficient management
+    of the database's structural data.
+    """
+    __tablename__ = 'pdb_chains'
+    id = Column(Integer, primary_key=True)
+    chains = Column(String)
+    sequence = Column(String, nullable=False)
+    pdb_reference_id = Column(Integer, ForeignKey('pdb_references.id'))
+    model = Column(Integer)
+
+    pdb_reference = relationship("PDBReference", back_populates="pdb_chains")
+
+
 class Cluster(Base):
     """
     Represents a cluster of protein chains, where each cluster is formed by chains with significant similarity,
@@ -211,40 +277,31 @@ class Cluster(Base):
     identity = Column(Float)
 
 
-class PDBChains(Base):
-    """
-    Represents an individual chain within a protein structure in the Protein Data Bank (PDB) database.
-
-    Each `PDBChains` object corresponds to a specific polypeptide chain in a protein structure as recorded in the PDB.
-    This class is crucial for detailed management of protein structures at the chain level.
-
-    Attributes:
-        id (int): Unique identifier for each chain within the database.
-        chains (String): Identifier of the chain within the protein structure in PDB. This field is part of the
-            composite primary key.
-        sequence (String): Amino acid sequence of the protein chain. This field is mandatory and represents the linear
-            sequence of amino acids in the chain.
-        pdb_reference_id (Integer): Foreign key referencing the unique identifier of the protein structure in the PDB
-            database. This field is part of the composite primary key and establishes a direct relationship with the
-            `PDBReference` entity.
-        pdb_reference (relationship): Relationship with the `PDBReference` entity, providing direct access to detailed
-            information about the complete protein structure to which this chain belongs.
-
-    The composite primary key structure of `chains` and `pdb_reference_id` ensures that each instance of `PDBChains` is
-    unique and clearly linked to a specific structure in the PDB.
-    """
-    __tablename__ = 'pdb_chains'
-    id = Column(Integer, primary_key=True)
-    chains = Column(String)
-    sequence = Column(String, nullable=False)
-    pdb_reference_id = Column(Integer, ForeignKey('pdb_references.id'))
-    model = Column(Integer)
-
-    pdb_reference = relationship("PDBReference", back_populates="pdb_chains")
-
-
 class CEAlignQueue(Base):
     """
+    Represents a queue entry for managing and tracking the status of Combinatorial Extension (CE) alignment tasks.
+
+    This class serves as an essential component in the CEAlign module, allowing for systematic management of alignment
+    tasks. Each entry in the queue corresponds to a protein cluster that requires structural alignment. The queue
+    facilitates monitoring and controlling the flow of tasks, including retries in case of failures and error tracking.
+
+    Attributes:
+        id (Integer): A unique identifier for each entry in the alignment queue.
+        cluster_entry_id (Integer): A foreign key reference to the 'Cluster' table, identifying the specific cluster
+                                    being processed.
+        state (Integer): Represents the current state of the alignment task. The state values are typically defined as
+                         0 for 'pending', 1 for 'in process', 2 for 'completed', and 3 for 'error'.
+        retry_count (Integer): Counts the number of times an alignment task has been retried. Useful for implementing
+                               retry limits.
+        error_message (String): Stores the error message in case of a failure in the alignment process, facilitating
+                                error analysis and debugging.
+        created_at (DateTime): The timestamp indicating when the queue entry was created. Automatically set at entry
+                               creation.
+        updated_at (DateTime): The timestamp of the last update to the entry. Automatically updated on each modification
+                               of the entry.
+
+    The `CEAlignQueue` class is instrumental in automating and streamlining the structural alignment process, ensuring
+    efficient and error-resilient execution of alignment tasks.
     """
     __tablename__ = 'ce_align_queue'
     id = Column(Integer, primary_key=True)
@@ -260,14 +317,18 @@ class CEAlignResults(Base):
     """
     Represents the results of a CE (Combinatorial Extension) alignment process for protein structures.
 
-    This class stores the results of structural alignment computations, typically involving methods like CEAlign. It is useful for analyzing and comparing the structural alignment of protein clusters.
+    This class stores the results of structural alignment computations, typically involving methods like CEAlign.
+    It is useful for analyzing and comparing the structural alignment of protein clusters.
 
     Attributes:
         id (int): Unique identifier for each CEAlign result entry in the database.
-        cluster_entry_id (int): Foreign key referencing the 'Cluster' entity. It is used to identify the specific protein cluster associated with this alignment result.
-        rms (Float): Root Mean Square Deviation (RMSD) value resulting from the CE alignment. RMSD is a measure of the average distance between the atoms (usually the backbone atoms) of superimposed proteins.
+        cluster_entry_id (int): Foreign key referencing the 'Cluster' entity. It is used to identify the specific protein
+            cluster associated with this alignment result.
+        rms (Float): Root Mean Square Deviation (RMSD) value resulting from the CE alignment. RMSD is a measure of the
+            distance between the atoms (usually the backbone atoms) of superimposed proteins.
 
-    The relationship with 'Cluster' allows each CEAlign result to be directly associated with a specific protein cluster, providing insights into the structural similarity within the cluster.
+    The relationship with 'Cluster' allows each CEAlign result to be directly associated with a specific protein cluster, providing insights into
+    the structural similarity within the cluster.
     """
     __tablename__ = 'ce_align_results'
     id = Column(Integer, primary_key=True)
@@ -279,7 +340,8 @@ class GOTerm(Base):
     """
     Represents a Gene Ontology (GO) term associated with a protein.
 
-    This class is used to store and manage information about the functional annotation of proteins as defined by the Gene Ontology Consortium. Each GO term provides a standardized description of a protein's molecular function, biological process, or cellular component.
+    This class is used to store and manage information about the functional annotation of proteins as defined by the Gene Ontology Consortium.
+    Each GO term provides a standardized description of a protein's molecular function, biological process, or cellular component.
 
     Attributes:
         id (int): Unique identifier for the GO term within the database.

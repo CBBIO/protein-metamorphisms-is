@@ -1,4 +1,3 @@
-from asyncio import as_completed
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from http.client import HTTPException
 
@@ -27,7 +26,8 @@ class UniProtExtractor(BioinfoExtractorBase):
         Initialize the UniProtExtractor class.
 
         Sets up the configuration and logger. Initializes the database session if required.
-        Configurations can include database connection details, logging settings, and specific parameters related to UniProt data extraction.
+        Configurations can include number of threads, database connection details, logging settings, and specific
+        parameters related to UniProt data extraction.
         """
         super().__init__(conf, session_required=True)
 
@@ -57,7 +57,8 @@ class UniProtExtractor(BioinfoExtractorBase):
 
         Args:
             search_criteria (str): The search criteria for querying UniProt.
-            limit (int): The maximum number of results to fetch from UniProt.
+            limit (int): The maximum number of results to fetch from UniProt. (A parameter requested by Uniprot with no
+            significant impact.)
         """
         encoded_search_criteria = quote(search_criteria)
         url = (
@@ -80,18 +81,15 @@ class UniProtExtractor(BioinfoExtractorBase):
                 accession_exists = self.session.query(exists_query).scalar()
 
                 if accession_exists:
-                    # Actualizar el registro existente
                     self.session.query(Accession) \
                         .filter_by(accession_code=accession_code) \
                         .update({"updated_at": func.now(), "disappeared": False})
                     found_accessions.append(accession_code)
                 else:
-                    # Crear un nuevo registro
                     new_accession = Accession(accession_code=accession_code, primary=True)
                     self.session.add(new_accession)
                     new_accessions.append(new_accession)
 
-            # Actualizar los códigos de acceso que no se encontraron en la búsqueda actual
             not_found_accessions = (
                 self.session.query(Accession)
                 .filter(~Accession.accession_code.in_(accessions))
@@ -115,9 +113,6 @@ class UniProtExtractor(BioinfoExtractorBase):
 
         Uses ThreadPoolExecutor for concurrent downloads, which significantly speeds up the data extraction process,
         especially beneficial when dealing with large datasets.
-
-        Args:
-            max_workers (int): Maximum number of threads for concurrent downloads.
         """
 
         self.logger.info("Starting the download of UniProt entries.")
@@ -141,7 +136,6 @@ class UniProtExtractor(BioinfoExtractorBase):
                     if data:
                         self.store_entry(data)
                 except Exception as e:
-                    # Get the exception traceback information
                     self.logger.error(f"Error processing the entry {uniprot_id}: {e}")
 
     def download_record(self, accession_code):

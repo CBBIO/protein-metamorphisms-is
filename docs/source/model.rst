@@ -5,7 +5,7 @@ This section provides detailed documentation of the Object-Relational Mapping (O
 
 
 ER Diagram
-==========
+----------
 .. image:: ../images/model.png
    :alt: Model Diagram
    :align: center
@@ -40,6 +40,14 @@ UniprotChains
    :members:
    :show-inheritance:
 
+PDBChains
+---------
+
+.. autoclass:: protein_data_handler.sql.model.PDBChains
+   :members:
+   :show-inheritance:
+
+
 Cluster
 -------
 
@@ -47,12 +55,7 @@ Cluster
    :members:
    :show-inheritance:
 
-PDBChains
----------
 
-.. autoclass:: protein_data_handler.sql.model.PDBChains
-   :members:
-   :show-inheritance:
 
 CEAlignResults
 --------------
