@@ -313,6 +313,19 @@ class CEAlignQueue(Base):
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 
 
+class TMAlignQueue(Base):
+    """
+    """
+    __tablename__ = 'tm_align_queue'
+    id = Column(Integer, primary_key=True)
+    cluster_entry_id = Column(Integer, ForeignKey('clusters.id'), nullable=False)
+    state = Column(Integer, default=0, nullable=False)
+    retry_count = Column(Integer, default=0, nullable=False)
+    error_message = Column(String, nullable=True)
+    created_at = Column(DateTime, default=func.now(), nullable=False)
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
+
 class CEAlignResults(Base):
     """
     Represents the results of a CE (Combinatorial Extension) alignment process for protein structures.
@@ -335,6 +348,34 @@ class CEAlignResults(Base):
     cluster_entry_id = Column(Integer, ForeignKey('clusters.id'))
     rms = Column(Float)
 
+
+class TMAlignResults(Base):
+    """
+    Represents the results of a TM-align alignment process for protein structures.
+
+    This class stores the results of structural alignment computations, typically involving methods like TM-align.
+    It is useful for analyzing and comparing the structural alignment of protein clusters.
+
+    Attributes:
+        id (int): Unique identifier for each TM-align result entry in the database.
+        cluster_entry_id (int): Foreign key referencing the 'Cluster' entity. It is used to identify the specific protein
+            cluster associated with this alignment result.
+        rmsd (Float): Root Mean Square Deviation (RMSD) value resulting from the TM-align. RMSD is a measure of the
+            distance between the atoms (usually the backbone atoms) of superimposed proteins.
+        seq_id (Float): Sequence identity in the alignment.
+        tm_score_chain_1 (Float): TM-score with respect to the first chain, providing a measure of structural similarity.
+        tm_score_chain_2 (Float): TM-score with respect to the second chain.
+
+    The relationship with 'Cluster' allows each TM-align result to be directly associated with a specific protein cluster, providing insights into
+    the structural similarity within the cluster.
+    """
+    __tablename__ = 'tm_align_results'
+    id = Column(Integer, primary_key=True)
+    cluster_entry_id = Column(Integer, ForeignKey('clusters.id'))
+    rmsd = Column(Float)
+    seq_id = Column(Float)
+    tm_score_chain_1 = Column(Float)
+    tm_score_chain_2 = Column(Float)
 
 class GOTerm(Base):
     """

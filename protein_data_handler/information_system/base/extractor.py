@@ -7,9 +7,9 @@ from protein_data_handler.helpers.logger.logger import setup_logger
 from protein_data_handler.sql.model import Base
 
 
-class BioinfoOperatorBase(ABC):
+class ExtractorBase(ABC):
     """
-    An abstract base class for extracting bioinformatics data.
+    An abstract base class for operating bioinformatics data.
 
     This class provides a framework for connecting to and interacting with various
     bioinformatics data sources. It is designed to be subclassed with specific
@@ -51,10 +51,11 @@ class BioinfoOperatorBase(ABC):
              f"@{self.conf['DB_HOST']}:"
              f"{self.conf['DB_PORT']}/"
              f"{self.conf['DB_NAME']}")
-        engine = create_engine(DATABASE_URI, pool_size=0, max_overflow=0)
+        engine = create_engine(DATABASE_URI)
         self.engine = engine
         Base.metadata.create_all(engine)
         Session = sessionmaker(bind=engine)
+
         self.session = Session()
 
     @abstractmethod

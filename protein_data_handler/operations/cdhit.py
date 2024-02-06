@@ -1,9 +1,9 @@
-from protein_data_handler.operations.base.bioinfo_operator import BioinfoOperatorBase
+from protein_data_handler.operations.base.operator import OperatorBase
 from protein_data_handler.sql.model import PDBChains, Cluster, PDBReference
 from pycdhit import cd_hit, read_clstr
 import pandas as pd
 
-class CDHit(BioinfoOperatorBase):
+class CDHit(OperatorBase):
     """
     Class for processing protein data using the CD-HIT algorithm, an efficient algorithm for clustering
     and comparing protein or nucleotide sequences.

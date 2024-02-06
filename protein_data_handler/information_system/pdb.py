@@ -8,7 +8,7 @@ from Bio.PDB import Select, MMCIFParser, MMCIFIO
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql.operators import or_
 
-from protein_data_handler.information_system.base.bioinfo_extractor import BioinfoExtractorBase
+from protein_data_handler.information_system.base.extractor import ExtractorBase
 from protein_data_handler.sql.model import PDBReference, PDBChains
 
 
@@ -54,7 +54,7 @@ class ChainSelect(Select):
         return model.get_id() == self.model_id
 
 
-class PDBExtractor(BioinfoExtractorBase):
+class PDBExtractor(ExtractorBase):
     """
     A class for extracting and processing PDB (Protein Data Bank) structures.
 

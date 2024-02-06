@@ -1,5 +1,5 @@
 #System
-max_workers: 32
+max_workers: 18
 
 # DB CONFIGURATION
 DB_USERNAME: usuario
@@ -41,6 +41,6 @@ force_representatives: "/home/frapercan/data/input_data/metamorphic_pairs.csv"
 #CE-Align
 retry_timeout: 1
 retry_count: 25
-batch_size: 10000
-task_timeout: 0.5
+batch_size: 1000
+task_timeout: 3
 

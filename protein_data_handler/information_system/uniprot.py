@@ -7,12 +7,12 @@ from sqlalchemy import func, exists
 from urllib.parse import quote
 
 from protein_data_handler.helpers.parser.parser import extract_float, process_chain_string
-from protein_data_handler.information_system.base.bioinfo_extractor import BioinfoExtractorBase
+from protein_data_handler.information_system.base.extractor import ExtractorBase
 
 from protein_data_handler.sql.model import Accession, Protein, PDBReference, UniprotChains, GOTerm
 
 
-class UniProtExtractor(BioinfoExtractorBase):
+class UniProtExtractor(ExtractorBase):
     """
     A class for extracting and processing data from UniProt, a comprehensive resource for protein sequence and annotation data.
     UniProt provides a rich collection of protein sequence and functional information, which includes protein names,
