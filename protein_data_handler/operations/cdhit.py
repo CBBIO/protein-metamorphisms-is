@@ -35,7 +35,7 @@ class CDHit(OperatorBase):
         :param conf: Configuration dictionary passed to the constructor.
         :type conf: dict
         """
-        super().__init__(conf, session_required=True)
+        super().__init__(conf)
         self.logger.info("CDHit instance created")
 
     def start(self):

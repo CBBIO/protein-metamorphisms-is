@@ -1,61 +1,27 @@
 from abc import abstractmethod, ABC
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+import yaml
 
 from protein_data_handler.helpers.logger.logger import setup_logger
-from protein_data_handler.sql.model import Base
+from protein_data_handler.sql.base.database_manager import DatabaseManager
+from protein_data_handler.sql.constants import handle_structural_complexity_levels, handle_structural_alignment_types
 
 
 class OperatorBase(ABC):
-    """
-    An abstract base class for extracting bioinformatics data.
-
-    This class provides a framework for connecting to and interacting with various
-    bioinformatics data sources. It is designed to be subclassed with specific
-    implementations for different data sources.
-
-    Attributes:
-        conf (dict): Configuration parameters for the extractor.
-        logger (Logger): Logger object for logging information.
-        session (Session, optional): A SQLAlchemy session for database interactions.
-
-    Args:
-        conf (dict): Configuration dictionary containing necessary parameters.
-        session_required (bool): Flag to indicate if a database session is required.
-    """
-
-    def __init__(self, conf, session_required):
-        """
-        Initialize the BioinfoExtractorBase class.
-
-        Sets up the configuration and logger. Initializes the database session if required.
-        """
+    def __init__(self, conf):
         self.conf = conf
         self.logger = setup_logger(self.__class__.__name__)
         self.logger.info(f"Initializing {self.__class__.__name__}")
 
-        if session_required:
-            self.session_init()
+        db_manager = DatabaseManager(conf)
+        self.session = db_manager.get_session()
+        open(conf['constants'])
+        constants = yaml.safe_load(open(conf['constants']))
+        handle_structural_complexity_levels(self.session, constants)
+        handle_structural_alignment_types(self.session, constants)
 
-    def session_init(self):
-        """
-        Initialize the database session.
 
-        Sets up the database connection using SQLAlchemy and creates the database schema.
-        """
-        self.logger.info("Initializing database session")
-        DATABASE_URI = \
-            (f"postgresql+psycopg2://{self.conf['DB_USERNAME']}:"
-             f"{self.conf['DB_PASSWORD']}"
-             f"@{self.conf['DB_HOST']}:"
-             f"{self.conf['DB_PORT']}/"
-             f"{self.conf['DB_NAME']}")
-        engine = create_engine(DATABASE_URI, pool_size=0, max_overflow=0)
-        self.engine = engine
-        Base.metadata.create_all(engine)
-        Session = sessionmaker(bind=engine)
-        self.session = Session()
+
 
     @abstractmethod
     def start(self):

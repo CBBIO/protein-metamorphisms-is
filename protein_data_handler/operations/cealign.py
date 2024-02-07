@@ -35,7 +35,7 @@ class CEAlign(OperatorBase):
         Args:
             conf (dict): Configuration parameters, including database connections and operational settings.
         """
-        super().__init__(conf, session_required=True)
+        super().__init__(conf)
         self.logger.info("CEAlign instance created with configuration.")
 
     def start(self):
@@ -358,7 +358,6 @@ def align_task(alignment_entry):
         target_structure_path = os.path.join(pdb_chains_path, f"{target_name}.cif")
         target_structure = parser.get_structure(target_name, target_structure_path)
 
-        print(target_name, representative_name)
         aligner.align(target_structure)
         rms = aligner.rms
 

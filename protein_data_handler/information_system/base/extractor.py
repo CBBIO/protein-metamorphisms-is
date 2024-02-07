@@ -38,6 +38,8 @@ class ExtractorBase(ABC):
         if session_required:
             self.session_init()
 
+
+
     def session_init(self):
         """
         Initialize the database session.

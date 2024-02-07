@@ -275,107 +275,53 @@ class Cluster(Base):
     is_representative = Column(Boolean)
     sequence_length = Column(Integer)
     identity = Column(Float)
+    complexity_level_id = Column(Integer, ForeignKey('structural_complexity_levels.id'))
+
+    complexity_level = relationship("StructuralComplexityLevel", backref="clusters")
 
 
-class CEAlignQueue(Base):
-    """
-    Represents a queue entry for managing and tracking the status of Combinatorial Extension (CE) alignment tasks.
+class StructuralComplexityLevel(Base):
+    __tablename__ = 'structural_complexity_levels'
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False)
+    description = Column(String, nullable=True)
 
-    This class serves as an essential component in the CEAlign module, allowing for systematic management of alignment
-    tasks. Each entry in the queue corresponds to a protein cluster that requires structural alignment. The queue
-    facilitates monitoring and controlling the flow of tasks, including retries in case of failures and error tracking.
 
-    Attributes:
-        id (Integer): A unique identifier for each entry in the alignment queue.
-        cluster_entry_id (Integer): A foreign key reference to the 'Cluster' table, identifying the specific cluster
-                                    being processed.
-        state (Integer): Represents the current state of the alignment task. The state values are typically defined as
-                         0 for 'pending', 1 for 'in process', 2 for 'completed', and 3 for 'error'.
-        retry_count (Integer): Counts the number of times an alignment task has been retried. Useful for implementing
-                               retry limits.
-        error_message (String): Stores the error message in case of a failure in the alignment process, facilitating
-                                error analysis and debugging.
-        created_at (DateTime): The timestamp indicating when the queue entry was created. Automatically set at entry
-                               creation.
-        updated_at (DateTime): The timestamp of the last update to the entry. Automatically updated on each modification
-                               of the entry.
+class StructuralAlignmentType(Base):
+    __tablename__ = 'structural_alignment_types'
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False)
+    description = Column(String)
+    task_name = Column(String)
 
-    The `CEAlignQueue` class is instrumental in automating and streamlining the structural alignment process, ensuring
-    efficient and error-resilient execution of alignment tasks.
-    """
-    __tablename__ = 'ce_align_queue'
+
+class StructuralAlignmentQueue(Base):
+    __tablename__ = 'structural_alignment_queue'
     id = Column(Integer, primary_key=True)
     cluster_entry_id = Column(Integer, ForeignKey('clusters.id'), nullable=False)
+    alignment_type_id = Column(Integer, ForeignKey('structural_alignment_types.id'), nullable=False)
     state = Column(Integer, default=0, nullable=False)
     retry_count = Column(Integer, default=0, nullable=False)
     error_message = Column(String, nullable=True)
     created_at = Column(DateTime, default=func.now(), nullable=False)
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 
-
-class TMAlignQueue(Base):
-    """
-    """
-    __tablename__ = 'tm_align_queue'
-    id = Column(Integer, primary_key=True)
-    cluster_entry_id = Column(Integer, ForeignKey('clusters.id'), nullable=False)
-    state = Column(Integer, default=0, nullable=False)
-    retry_count = Column(Integer, default=0, nullable=False)
-    error_message = Column(String, nullable=True)
-    created_at = Column(DateTime, default=func.now(), nullable=False)
-    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    alignment_type = relationship("StructuralAlignmentType")
 
 
-class CEAlignResults(Base):
-    """
-    Represents the results of a CE (Combinatorial Extension) alignment process for protein structures.
-
-    This class stores the results of structural alignment computations, typically involving methods like CEAlign.
-    It is useful for analyzing and comparing the structural alignment of protein clusters.
-
-    Attributes:
-        id (int): Unique identifier for each CEAlign result entry in the database.
-        cluster_entry_id (int): Foreign key referencing the 'Cluster' entity. It is used to identify the specific protein
-            cluster associated with this alignment result.
-        rms (Float): Root Mean Square Deviation (RMSD) value resulting from the CE alignment. RMSD is a measure of the
-            distance between the atoms (usually the backbone atoms) of superimposed proteins.
-
-    The relationship with 'Cluster' allows each CEAlign result to be directly associated with a specific protein cluster, providing insights into
-    the structural similarity within the cluster.
-    """
-    __tablename__ = 'ce_align_results'
+class StructuralAlignmentResults(Base):
+    __tablename__ = 'structural_alignment_results'
     id = Column(Integer, primary_key=True)
     cluster_entry_id = Column(Integer, ForeignKey('clusters.id'))
-    rms = Column(Float)
-
-
-class TMAlignResults(Base):
-    """
-    Represents the results of a TM-align alignment process for protein structures.
-
-    This class stores the results of structural alignment computations, typically involving methods like TM-align.
-    It is useful for analyzing and comparing the structural alignment of protein clusters.
-
-    Attributes:
-        id (int): Unique identifier for each TM-align result entry in the database.
-        cluster_entry_id (int): Foreign key referencing the 'Cluster' entity. It is used to identify the specific protein
-            cluster associated with this alignment result.
-        rmsd (Float): Root Mean Square Deviation (RMSD) value resulting from the TM-align. RMSD is a measure of the
-            distance between the atoms (usually the backbone atoms) of superimposed proteins.
-        seq_id (Float): Sequence identity in the alignment.
-        tm_score_chain_1 (Float): TM-score with respect to the first chain, providing a measure of structural similarity.
-        tm_score_chain_2 (Float): TM-score with respect to the second chain.
-
-    The relationship with 'Cluster' allows each TM-align result to be directly associated with a specific protein cluster, providing insights into
-    the structural similarity within the cluster.
-    """
-    __tablename__ = 'tm_align_results'
-    id = Column(Integer, primary_key=True)
-    cluster_entry_id = Column(Integer, ForeignKey('clusters.id'))
-    rmsd = Column(Float)
-    seq_id = Column(Float)
+    alignment_type_id = Column(Integer, ForeignKey('structural_alignment_types.id'), nullable=False)
+    ce_rms = Column(Float)
+    tm_rms = Column(Float)
+    tm_seq_id = Column(Float)
     tm_score_chain_1 = Column(Float)
     tm_score_chain_2 = Column(Float)
+
+    alignment_type = relationship("StructuralAlignmentType")  # Cambiado
+
 
 class GOTerm(Base):
     """

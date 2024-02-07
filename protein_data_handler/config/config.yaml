@@ -8,10 +8,7 @@ DB_HOST: localhost
 DB_PORT: 5432
 DB_NAME: BioData
 
-
-
-
-
+## Information System
 # Uniprot Extraction
 search_criteria: '(structure_3d:true)'
 limit: 100
@@ -26,6 +23,8 @@ file_format: "mmCif"
 # NMR
 allow_multiple_chain_models: False
 
+## Operations
+constants: "config/constants.yaml"
 # Sequence Clustering
 fasta_path: "/home/frapercan/data/complete.fasta"
 cdhit_out_path: "/home/frapercan/data/out"
@@ -37,10 +36,14 @@ most_representative_search: 1
 force_representatives: "/home/frapercan/data/input_data/metamorphic_pairs.csv"
 
 
+# Structural Alignment
+structural_alignment:
+  types:
+    - 1
+#    - 2
 
-#CE-Align
-retry_timeout: 1
-retry_count: 25
-batch_size: 1000
-task_timeout: 3
+  retry_timeout: 1
+  retry_count: 25
+  batch_size: 1000
+  task_timeout: 3
 
