@@ -1,5 +1,6 @@
 #System
-max_workers: 18
+max_workers: 12
+binaries_path: '../binaries'
 
 # DB CONFIGURATION
 DB_USERNAME: usuario
@@ -16,9 +17,12 @@ limit: 100
 # PDB Extraction
 resolution_threshold: 2.5
 server: "https://files.wwpdb.org/"
-pdb_path: "/home/frapercan/data/pdb"
-pdb_chains_path: "/home/frapercan/data/chains"
+pdb_path: "/home/bioxaxi/data/pdb"
+pdb_chains_path: "/home/bioxaxi/data/chains"
+
 file_format: "mmCif"
+
+pdb_chains_path_old_format: "/home/bioxaxi/data/chains_pdb"
 
 # NMR
 allow_multiple_chain_models: False
@@ -26,24 +30,25 @@ allow_multiple_chain_models: False
 ## Operations
 constants: "config/constants.yaml"
 # Sequence Clustering
-fasta_path: "/home/frapercan/data/complete.fasta"
-cdhit_out_path: "/home/frapercan/data/out"
+fasta_path: "/home/bioxaxi/data/complete.fasta"
+cdhit_out_path: "/home/bioxaxi/data/out"
 sequence_identity_threshold: 0.95
 alignment_coverage: 0.95
 memory_usage: 25000
 most_representative_search: 1
 
-force_representatives: "/home/frapercan/data/input_data/metamorphic_pairs.csv"
+force_representatives: "/home/bioxaxi/data/input_data/metamorphic_pairs.csv"
 
 
 # Structural Alignment
 structural_alignment:
   types:
     - 1
-#    - 2
+    - 2
+    - 3
 
   retry_timeout: 1
-  retry_count: 25
+  retry_count: 5
   batch_size: 1000
-  task_timeout: 3
+  task_timeout: 20
 

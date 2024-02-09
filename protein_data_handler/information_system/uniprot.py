@@ -9,7 +9,7 @@ from urllib.parse import quote
 from protein_data_handler.helpers.parser.parser import extract_float, process_chain_string
 from protein_data_handler.information_system.base.extractor import ExtractorBase
 
-from protein_data_handler.sql.model import Accession, Protein, PDBReference, UniprotChains, GOTerm
+from protein_data_handler.sql.model import Accession, Protein, PDBReference, GOTerm
 
 
 class UniProtExtractor(ExtractorBase):
@@ -222,34 +222,34 @@ class UniProtExtractor(ExtractorBase):
                             protein=protein,
                         )
                         self.session.add(pdb_ref)
-                    chains = reference[4].split(',')
-                    for chain_obj in chains:
-                        chain_name, start, end = process_chain_string(chain_obj)
-                        pdb_id = (self.session.query(PDBReference)
-                                  .filter_by(pdb_id=reference[1]).first().id)
+                    # chains = reference[4].split(',')
+                    # for chain_obj in chains:
+                    #     chain_name, start, end = process_chain_string(chain_obj)
+                    #     pdb_id = (self.session.query(PDBReference)
+                    #               .filter_by(pdb_id=reference[1]).first().id)
 
-                        chain = (
-                            self.session.query(UniprotChains)
-                            .filter_by(pdb_reference_id=pdb_id, chain=chain_name)
-                            .first()
-                        )
-                        if chain is None:
-                            chain = UniprotChains(pdb_reference_id=pdb_id,
-                                                  chain=chain_name,
-                                                  seq_start=start,
-                                                  seq_end=end)
-                        chain.insert_sequence(protein.sequence)
-                        self.session.add(chain)
-                elif reference[0] == "GO":
-                    go_term_exists = self.session.query(exists().where(GOTerm.go_id == reference[1])).scalar()
-                    if not go_term_exists:
-                        go_term = GOTerm(
-                            go_id=reference[1],
-                            category=reference[2].split(":")[0],
-                            description=reference[2].split(":")[1],
-                            protein=protein,
-                        )
-                        self.session.add(go_term)
+                        # chain = (
+                        #     self.session.query(UniprotChains)
+                        #     .filter_by(pdb_reference_id=pdb_id, chain=chain_name)
+                        #     .first()
+                        # )
+                        # if chain is None:
+                        #     chain = UniprotChains(pdb_reference_id=pdb_id,
+                        #                           chain=chain_name,
+                        #                           seq_start=start,
+                        #                           seq_end=end)
+                        # chain.insert_sequence(protein.sequence)
+                        # self.session.add(chain)
+                # elif reference[0] == "GO":
+                #     go_term_exists = self.session.query(exists().where(GOTerm.go_id == reference[1])).scalar()
+                #     if not go_term_exists:
+                #         go_term = GOTerm(
+                #             go_id=reference[1],
+                #             category=reference[2].split(":")[0],
+                #             description=reference[2].split(":")[1],
+                #             protein=protein,
+                #         )
+                #         self.session.add(go_term)
 
             self.session.commit()
 

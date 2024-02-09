@@ -4,7 +4,7 @@ import os
 from Bio.PDB import MMCIFParser, CEAligner
 
 
-def align_task(alignment_entry,conf):
+def align_task(alignment_entry, conf):
     """
     Performs the alignment task for a given pair of protein structures.
 
@@ -39,12 +39,11 @@ def align_task(alignment_entry,conf):
 
         result = {
             'cluster_entry_id': alignment_entry.cluster_id,
-            'rms': rms
+            'ce_rms': rms
         }
-        print(result)
 
         align_task_logger.info("Alignment completed successfully.")
-        return result
+        return alignment_entry.queue_entry_id, result
     except Exception as e:
         error_object = {'cluster_entry_id': alignment_entry.cluster_id, 'error_message': e}
-        return error_object
+        return alignment_entry.queue_entry_id, error_object

@@ -1,17 +1,13 @@
 import importlib
-import logging
 import multiprocessing
-import os
 from datetime import datetime, timedelta
 from multiprocessing import Pool
 
-from Bio.PDB import CEAligner, MMCIFParser
 from sqlalchemy.orm import aliased
 
-from protein_data_handler.operations.structural_alignment_tasks import universal, combinatorial_extension
 from protein_data_handler.operations.base.operator import OperatorBase
 from protein_data_handler.sql.model import PDBChains, Cluster, PDBReference, StructuralAlignmentQueue, \
-    StructuralAlignmentType
+    StructuralAlignmentType, StructuralAlignmentResults
 
 
 class StructuralAlignmentManager(OperatorBase):
@@ -42,8 +38,6 @@ class StructuralAlignmentManager(OperatorBase):
                 # Almacena la referencia al módulo en el diccionario self.types
                 self.types[type_obj.id] = module
 
-        print(self.types)
-
     def start(self):
         """
         Begin the structural alignment process using the CE algorithm.
@@ -60,6 +54,7 @@ class StructuralAlignmentManager(OperatorBase):
                 queue_items = self.fetch_queue_items()
                 self.execute_aligns(queue_items)
 
+
         except Exception as e:
             self.logger.error(f"Error during structural alignment process: {e}")
             raise
@@ -68,7 +63,7 @@ class StructuralAlignmentManager(OperatorBase):
         for type_entry in self.types.items():
             type_id = type_entry[0]
             type_task_name = type_entry[1]
-            self.logger.info(f"Type: {type_task_name} - Loading cluster entries from database.")
+            self.logger.info(f"Loading cluster entries from database.")
 
             queued_cluster_ids = self.session.query(StructuralAlignmentQueue.cluster_entry_id) \
                 .filter(StructuralAlignmentQueue.alignment_type_id == type_id) \
@@ -160,7 +155,7 @@ class StructuralAlignmentManager(OperatorBase):
 
         # Realiza la consulta principal con un join a la subconsulta
         queue_items = self.session.query(
-            StructuralAlignmentQueue.id,
+            StructuralAlignmentQueue.id.label("queue_entry_id"),
             StructuralAlignmentQueue.alignment_type_id,
             Cluster.id.label("cluster_id"),
             PDBReference.pdb_id,
@@ -186,31 +181,33 @@ class StructuralAlignmentManager(OperatorBase):
         ).limit(
             batch_size
         ).all()
-
         return queue_items
 
     def execute_aligns(self, queue_items):
         num_workers = self.conf.get('max_workers', 4)
-        timeout = self.conf.get('task_timeout', 1)
+        timeout = self.conf['structural_alignment']['task_timeout']
         self.logger.info(f"Performing CE alignment with {num_workers} workers.")
 
         results = []
 
         with Pool(num_workers) as pool:
-            print(queue_items[0]._asdict())
-            tasks = [pool.apply_async(self.types[item.alignment_type_id].align_task, args=(item, self.conf)) for item
-                     in queue_items]
+            tasks_with_args = []
+            for item in queue_items:
+                args = (item, self.conf)
+                task = pool.apply_async(self.types[item.alignment_type_id].align_task, args=args)
+                tasks_with_args.append((task, args))
 
-            for task in tasks:
+            for task, args in tasks_with_args:
                 try:
                     result = task.get(timeout=timeout)
                     results.append(result)
-                except multiprocessing.TimeoutError:
-                    self.logger.error("Timeout error: La tarea excedió el tiempo límite establecido")
+                except multiprocessing.TimeoutError as e:
+                    error_message = f"Timeout error: La tarea excedió el tiempo límite establecido ({timeout})"
+                    self.logger.error(error_message)
+                    results.append((args[0].queue_entry_id, {'error_message': error_message}))
 
         self.logger.info(f"CE alignment completed for {len(results)} entries.")
-
-        # self.insert_results(results)
+        self.insert_results(results)
         self.logger.info("CE alignment results inserted into the database successfully.")
 
     def insert_results(self, results):
@@ -237,27 +234,27 @@ class StructuralAlignmentManager(OperatorBase):
             - The states are defined as 0 for 'pending', 1 for 'in process', 2 for 'completed', and 3 for 'error'.
         """
         self.logger.info("Processing CE alignment results.")
-
         for result in results:
+            queue_entry_id = result[0]
+            result = result[1]
             if 'error_message' in result.keys():
                 self.logger.warn(f"Error in alignment task: {result}")
 
-                queue_item = self.session.query(CEAlignQueue).filter_by(
-                    cluster_entry_id=result['cluster_entry_id']).first()
+                queue_item = self.session.query(StructuralAlignmentQueue).filter_by(
+                    id=queue_entry_id).first()
                 if queue_item:
                     queue_item.state = 3  # Error state
                     queue_item.retry_count += 1
                     queue_item.error_message = str(result['error_message'])
                     self.session.add(queue_item)
             else:
-                new_result = CEAlignResults(
-                    cluster_entry_id=result['cluster_entry_id'],
-                    rms=result['rms']
+                new_result = StructuralAlignmentResults(
+                    **result
                 )
                 self.session.add(new_result)
 
-                queue_item = self.session.query(CEAlignQueue).filter_by(
-                    cluster_entry_id=result['cluster_entry_id']).first()
+                queue_item = self.session.query(StructuralAlignmentQueue).filter_by(
+                    id=queue_entry_id).first()
                 if queue_item:
                     queue_item.state = 2
                     self.session.add(queue_item)
@@ -332,8 +329,6 @@ def map_representatives_to_targets(cluster_entries, pdb_chains_path):
     for entry in cluster_entries:
 
         if not entry['is_representative']:
-            print(representative_map)
-            print(entry)
             rep = representative_map[entry['cluster_id']]
             pair_dict = {'representative': rep, 'target': entry, 'pdb_chains_path': pdb_chains_path}
             pairs_list.append(pair_dict)

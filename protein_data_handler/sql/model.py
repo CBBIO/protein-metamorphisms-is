@@ -151,47 +151,47 @@ class PDBReference(Base):
     # Method used for the determination of the structure
     method = Column(String)
     resolution = Column(Float)  # Resolution of the structure
-    uniprot_chains = relationship("UniprotChains", back_populates="pdb_reference")
+    # uniprot_chains = relationship("UniprotChains", back_populates="pdb_reference")
     pdb_chains = relationship("PDBChains", back_populates="pdb_reference")
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, onupdate=func.now())
 
 
-class UniprotChains(Base):
-    """
-    Represents an individual chain within a protein structure in the Protein Data Bank (PDB) database.
-
-    This class is used to store and manage information about specific chains that are part of a protein structure as
-    recorded in the PDB. It includes details about the chain's sequence and its position within the overall protein
-    structure.
-
-    Attributes:
-        id (int): Unique identifier for each chain in the database.
-        pdb_reference_id (int): Foreign key referencing the unique identifier of the protein structure in the PDB
-            database to which this chain belongs.
-        chain (str): Identifier of the chain within the protein structure, such as 'A', 'B', etc.
-        sequence (str): Amino acid sequence of the chain.
-        seq_start (int): Starting position of the chain's sequence in the protein structure.
-        seq_end (int): Ending position of the chain's sequence in the protein structure.
-        pdb_reference (relationship): Relationship with the 'PDBReference' entity, representing the complete protein
-            structure to which this chain belongs.
-        created_at (DateTime): Date and time when the chain record was created.
-        updated_at (DateTime): Date and time of the last update to the chain record.
-
-    The relationship with 'PDBReference' allows each chain to be associated with its corresponding protein structure in
-        the PDB database.
-    """
-
-    __tablename__ = "uniprot_chains"
-    id = Column(Integer, primary_key=True)
-    pdb_reference_id = Column(Integer, ForeignKey('pdb_references.id'))
-    chain = Column(String)
-    sequence = Column(String)
-    seq_start = Column(Integer)
-    seq_end = Column(Integer)
-    pdb_reference = relationship("PDBReference", back_populates="uniprot_chains")
-    created_at = Column(DateTime, default=func.now())
-    updated_at = Column(DateTime, onupdate=func.now())
+# class UniprotChains(Base):
+#     """
+#     Represents an individual chain within a protein structure in the Protein Data Bank (PDB) database.
+#
+#     This class is used to store and manage information about specific chains that are part of a protein structure as
+#     recorded in the PDB. It includes details about the chain's sequence and its position within the overall protein
+#     structure.
+#
+#     Attributes:
+#         id (int): Unique identifier for each chain in the database.
+#         pdb_reference_id (int): Foreign key referencing the unique identifier of the protein structure in the PDB
+#             database to which this chain belongs.
+#         chain (str): Identifier of the chain within the protein structure, such as 'A', 'B', etc.
+#         sequence (str): Amino acid sequence of the chain.
+#         seq_start (int): Starting position of the chain's sequence in the protein structure.
+#         seq_end (int): Ending position of the chain's sequence in the protein structure.
+#         pdb_reference (relationship): Relationship with the 'PDBReference' entity, representing the complete protein
+#             structure to which this chain belongs.
+#         created_at (DateTime): Date and time when the chain record was created.
+#         updated_at (DateTime): Date and time of the last update to the chain record.
+#
+#     The relationship with 'PDBReference' allows each chain to be associated with its corresponding protein structure in
+#         the PDB database.
+#     """
+#
+#     __tablename__ = "uniprot_chains"
+#     id = Column(Integer, primary_key=True)
+#     pdb_reference_id = Column(Integer, ForeignKey('pdb_references.id'))
+#     chain = Column(String)
+#     sequence = Column(String)
+#     seq_start = Column(Integer)
+#     seq_end = Column(Integer)
+#     pdb_reference = relationship("PDBReference", back_populates="uniprot_chains")
+#     created_at = Column(DateTime, default=func.now())
+#     updated_at = Column(DateTime, onupdate=func.now())
 
     def insert_sequence(self, full_sequence):
         """
@@ -313,14 +313,17 @@ class StructuralAlignmentResults(Base):
     __tablename__ = 'structural_alignment_results'
     id = Column(Integer, primary_key=True)
     cluster_entry_id = Column(Integer, ForeignKey('clusters.id'))
-    alignment_type_id = Column(Integer, ForeignKey('structural_alignment_types.id'), nullable=False)
     ce_rms = Column(Float)
     tm_rms = Column(Float)
     tm_seq_id = Column(Float)
     tm_score_chain_1 = Column(Float)
     tm_score_chain_2 = Column(Float)
+    fc_rms = Column(Float)
+    fc_identity = Column(Float)
+    fc_similarity = Column(Float)
+    fc_score = Column(Float)
+    fc_align_len = Column(Float)
 
-    alignment_type = relationship("StructuralAlignmentType")  # Cambiado
 
 
 class GOTerm(Base):

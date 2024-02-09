@@ -1,6 +1,7 @@
 import re
 
 from Bio import SeqIO
+from Bio.PDB import MMCIFParser, PDBIO
 
 
 def extract_float(s):
@@ -134,3 +135,17 @@ def auth_chain_mapping(chain):
 
     resultado = '/'.join(elementos_transformados)
     return resultado
+
+
+def cif_to_pdb(cif_path, pdb_path):
+    """Convierte un archivo CIF a PDB."""
+    
+    parser = MMCIFParser()
+    structure = parser.get_structure('ID', cif_path)
+    io = PDBIO()
+    io.set_structure(structure)
+    for model in structure:
+        for chain in model:
+            if len(chain.id) > 1:
+                chain.id = "X"
+    io.save(pdb_path)

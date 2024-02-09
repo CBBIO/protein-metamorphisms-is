@@ -1,0 +1,1 @@
+g++ -static -O3 -ffast-math -o USalign USalign.cpp
