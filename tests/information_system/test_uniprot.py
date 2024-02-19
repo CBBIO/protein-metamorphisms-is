@@ -1,10 +1,12 @@
 import unittest
 from concurrent.futures import Future
-from unittest.mock import patch, MagicMock
+from http.client import HTTPException
+from unittest.mock import patch, MagicMock, call
 
 import requests
 
 from protein_metamorphisms_is.information_system.uniprot import UniProtExtractor
+
 
 class TestUniProtExtractor(unittest.TestCase):
 
@@ -19,7 +21,11 @@ class TestUniProtExtractor(unittest.TestCase):
             "limit": 100,
             "max_workers": 2  # Asegúrate de definir esto si tu clase lo requiere
         }
-        self.extractor = UniProtExtractor(self.conf)
+        with patch('protein_metamorphisms_is.information_system.base.extractor.setup_logger'), \
+                patch('protein_metamorphisms_is.information_system.base.extractor.create_engine'), \
+                patch('protein_metamorphisms_is.information_system.base.extractor.sessionmaker',
+                      return_value=MagicMock()):
+            self.extractor = UniProtExtractor(self.conf)
 
     @patch('protein_metamorphisms_is.information_system.uniprot.UniProtExtractor.extract_entries')
     @patch('protein_metamorphisms_is.information_system.uniprot.UniProtExtractor.load_access_codes')
@@ -62,16 +68,13 @@ class TestUniProtExtractor(unittest.TestCase):
             # Añade más aserciones para verificar el comportamiento de tu función
 
     @patch('requests.get')
-    @patch('sqlalchemy.orm.Session.add')
-    @patch('sqlalchemy.orm.Session.commit')
-    @patch('sqlalchemy.orm.session.Session.query')
-    def test_load_access_codes_with_new_accessions(self, mock_query, mock_commit, mock_add, mock_get):
+    def test_load_access_codes_with_new_accessions(self, mock_get):
         # Configura el mock de requests.get para simular una respuesta exitosa
         mock_response = MagicMock(status_code=200, text="P12345\nP67890")
         mock_get.return_value = mock_response
 
         # Configura el mock de session.query().scalar() para simular que los códigos de acceso no existen
-        mock_query.return_value.scalar.return_value = False
+        self.extractor.session.query.return_value.scalar.side_effect = [False, False]
 
         # Ejecuta la función bajo prueba
         self.extractor.load_access_codes("example search criteria", 2)
@@ -80,15 +83,13 @@ class TestUniProtExtractor(unittest.TestCase):
         mock_get.assert_called_once()
 
         # Verifica que session.add fue llamado para cada nuevo código de acceso
-        self.assertEqual(mock_add.call_count, 2)
+        self.assertEqual(self.extractor.session.add.call_count, 2)
 
         # Verifica que session.commit fue llamado para confirmar los cambios
-        mock_commit.assert_called_once()
+        self.extractor.session.commit.assert_called_once()
 
     @patch('requests.get')
-    @patch('sqlalchemy.orm.session.Session.rollback')
-    @patch('sqlalchemy.orm.session.Session.query')
-    def test_load_access_codes_exception_handling(self, mock_query, mock_rollback, mock_get):
+    def test_load_access_codes_exception_handling(self, mock_get):
         # Configura el mock de requests.get para lanzar una excepción
         mock_get.side_effect = requests.exceptions.HTTPError("Error de solicitud")
 
@@ -99,12 +100,13 @@ class TestUniProtExtractor(unittest.TestCase):
             pass  # Aquí simplemente pasamos ya que estamos probando el manejo de la excepción dentro de la función
 
         # Verifica que se llamó al rollback de la sesión debido a la excepción
-        mock_rollback.assert_called_once()
+        self.extractor.session.rollback.assert_called_once()
 
         # Verifica que el logger registró el error
         with patch.object(self.extractor.logger, 'error') as mock_log_error:
             self.extractor.load_access_codes("example search criteria", 2)
             mock_log_error.assert_called_with("Error: Error de solicitud")
+
     @patch('Bio.ExPASy.get_sprot_raw')
     @patch('Bio.SwissProt.read')
     def test_download_record(self, mock_read, mock_get_sprot_raw):
@@ -135,46 +137,32 @@ class TestUniProtExtractor(unittest.TestCase):
             # Verifica que el logger haya registrado el error
             mock_log_error.assert_called_with("Error downloading the entry P12345: Error de prueba")
 
-    @patch('protein_metamorphisms_is.information_system.uniprot.UniProtExtractor.download_record',
-           return_value=MagicMock())
+    @patch('protein_metamorphisms_is.information_system.uniprot.UniProtExtractor.download_record')
     @patch('protein_metamorphisms_is.information_system.uniprot.UniProtExtractor.store_entry')
-    @patch('sqlalchemy.orm.Session.query')
-    def test_extract_entries(self, mock_query, mock_store_entry, mock_download_record):
-        # Primero, mockeamos el retorno del método .all() de la consulta
-        mock_accession = MagicMock(accession_code='P12345')
-        mock_query.return_value.all.return_value = [mock_accession]
+    def test_extract_entries(self, mock_store_entry, mock_download_record):
+        # Configura mock_download_record para devolver datos, None, y luego lanzar una excepción
+        mock_download_record.side_effect = [MagicMock(), None, Exception("Failed to download")]
 
-        # Ahora ejecutamos extract_entries
+        # Configura la respuesta de la base de datos simulada con tres accesiones
+        self.extractor.session.query.return_value.all.return_value = [
+            MagicMock(accession_code="ABC123"),
+            MagicMock(accession_code="DEF456"),
+            MagicMock(accession_code="GHI789"),
+        ]
+
         self.extractor.extract_entries()
 
-        # Verificaciones
-        mock_download_record.assert_called_once_with('P12345')
-        mock_store_entry.assert_called()
+        # Verifica que download_record fue llamado tres veces, una para cada accession_code
+        expected_calls = [call('ABC123'), call('DEF456'), call('GHI789')]
+        mock_download_record.assert_has_calls(expected_calls, any_order=True)
 
-    from unittest.mock import patch, MagicMock
-    from concurrent.futures import Future
-    import logging
+        # Verifica que store_entry fue llamado solo una vez
+        mock_store_entry.assert_called_once()
 
-    @patch('sqlalchemy.orm.session.Session.query')
-    def test_extract_entries_exception_handling(self, mock_query):
-        # Configura la respuesta de la base de datos simulada
-        mock_accession = MagicMock(accession_code='P12345')
-        mock_query.return_value.all.return_value = [mock_accession]
+        # Verifica que el logger registró el error para la tercera llamada que lanza una excepción
+        self.extractor.logger.error.assert_called()
 
-        # Configura el mock del ThreadPoolExecutor y future.result para lanzar una excepción
-        mock_future = MagicMock(spec=Future)
-        mock_future.result.side_effect = Exception("Error durante la descarga")
-
-        # Configura un mock para el logger
-        with patch.object(self.extractor.logger, 'error') as mock_log_error:
-            self.extractor.extract_entries()
-
-            mock_log_error.assert_called()
-
-
-    @patch('sqlalchemy.orm.Session.add')
-    @patch('sqlalchemy.orm.Session.commit')
-    def test_store_entry(self, mock_commit, mock_add):
+    def test_store_entry(self):
         # Crea un registro SwissProt.Record simulado
         mock_record = MagicMock()
         mock_record.entry_name = 'SampleEntry'
@@ -185,14 +173,10 @@ class TestUniProtExtractor(unittest.TestCase):
         self.extractor.store_entry(mock_record)
 
         # Verifica que Session.add fue llamado
-        mock_add.assert_called()
-        # Verifica que Session.commit fue llamado para confirmar los cambios
-        mock_commit.assert_called()
+        self.extractor.session.add.assert_called()
+        self.extractor.session.commit.assert_called()
 
-    @patch('sqlalchemy.orm.session.Session.add')
-    @patch('sqlalchemy.orm.session.Session.commit')
-    @patch('sqlalchemy.orm.session.Session.query')
-    def test_store_entry_with_new_accession_and_pdb_reference(self, mock_query, mock_commit, mock_add):
+    def test_store_entry_with_new_accession_and_pdb_reference(self):
         # Prepara un registro SwissProt.Record simulado con los datos necesarios
         mock_record = MagicMock()
         mock_record.entry_name = 'SampleEntry'
@@ -202,18 +186,93 @@ class TestUniProtExtractor(unittest.TestCase):
         # Añade más configuraciones al mock_record según sea necesario
 
         # Configura los mocks para simular la verificación de existencia y la creación de nuevas entradas
-        mock_query.scalar.side_effect = [False, False]
+        self.extractor.session.scalar.side_effect = [False, False]
 
         # Ejecuta store_entry
         self.extractor.store_entry(mock_record)
 
         # Verifica que se agregaron las entradas y referencias nuevas a la sesión
-        self.assertEqual(mock_add.call_count, 1)  # Cambia este número según el número esperado de llamadas a add()
+        self.assertEqual(self.extractor.session.add.call_count,
+                         1)  # Cambia este número según el número esperado de llamadas a add()
         # Verifica que se llamó a commit para confirmar los cambios
-        mock_commit.assert_called_once()
+        self.extractor.session.commit.assert_called_once()
 
         # Verifica que se haya llamado correctamente a la consulta de existencia
-        self.assertEqual(mock_query.call_count, 4)  # Ajusta este número según el número esperado de llamadas a query()
+        self.assertEqual(self.extractor.session.query.call_count,
+                         4)  # Ajusta este número según el número esperado de llamadas a query()
+
+    def test_store_entry_updates_existing_protein(self):
+        mock_record = MagicMock()
+        mock_record.entry_name = 'ExistingEntry'
+        mock_record.data_class = 'UpdatedClass'
+        # Configura los demás campos necesarios de mock_record según tu implementación
+
+        # Simula que la entrada de proteína ya existe
+        self.extractor.session.query.return_value.scalar.return_value = True
+        self.extractor.session.query.return_value.filter_by.return_value.first.return_value = MagicMock()
+
+        self.extractor.store_entry(mock_record)
+
+        # Verifica que se actualizó la entrada existente sin intentar crear una nueva
+        self.extractor.session.add.assert_called()
+        self.extractor.session.commit.assert_called()
+
+    def test_store_entry_exception_handling(self):
+        mock_record = MagicMock()
+        mock_record.entry_name = 'FaultyEntry'
+        # Configura los demás campos necesarios de mock_record según tu implementación
+
+        # Simula una excepción al intentar hacer commit
+        self.extractor.session.commit.side_effect = HTTPException("Commit failed")
+
+        with patch.object(self.extractor.logger, 'error') as mock_log_error:
+            self.extractor.store_entry(mock_record)
+
+            # Verifica que se llamó a rollback debido a la excepción
+            self.extractor.session.rollback.assert_called_once()
+
+            # Verifica que el logger registró el error
+            self.extractor.logger.error.assert_called_with("Error while dumping the entry: Commit failed")
+
+            # Asegura que la sesión se cierra correctamente
+            self.extractor.session.close.assert_called_once()
+
+    def test_store_entry_creates_new_protein_when_not_exists(self):
+        # Crea un registro SwissProt.Record simulado con los datos necesarios
+        mock_record = MagicMock()
+        mock_record.entry_name = 'NewEntry'
+        mock_record.data_class = 'SampleClass'
+        mock_record.molecule_type = 'Protein'
+        mock_record.sequence_length = 123
+        mock_record.created = ['2022-01-01']
+        mock_record.sequence = 'MVLSPADKTNVKAAWGKVGAHAGEYGAEALERMFLSFPTTKTYFPHF...'
+        mock_record.sequence_update = ['2022-01-02']
+        mock_record.annotation_update = ['2022-01-03']
+        mock_record.description = 'A sample protein'
+        mock_record.gene_name = 'GENE1'
+        mock_record.organism = 'Sample Organism'
+        mock_record.organelle = 'Cell'
+        mock_record.organism_classification = ['Eukaryota', 'Metazoa']
+        mock_record.taxonomy_id = ['9606']
+        mock_record.host_organism = ['Host Organism']
+        mock_record.host_taxonomy_id = ['9607']
+        mock_record.comments = ['Function: Sample function.']
+        mock_record.keywords = ['Keyword1', 'Keyword2']
+        mock_record.protein_existence = 'Evidence at protein level'
+        mock_record.seqinfo = (123, 'A123B456', 'V1')
+        mock_record.accessions = ['A12345']
+        mock_record.cross_references = [('PDB', 'P12345', 'Method', '2.0')]
+
+        self.extractor.session.query.return_value.scalar.side_effect = [False,
+                                                                        False, False]
+
+        # Ejecuta store_entry
+        self.extractor.store_entry(mock_record)
+
+        # Verifica que se creó una nueva entrada de proteína y se agregó a la sesión
+        self.extractor.session.add.assert_called()
+        # Verifica que se llamó a commit para confirmar los cambios
+        self.extractor.session.commit.assert_called_once()
 
 
 if __name__ == '__main__':

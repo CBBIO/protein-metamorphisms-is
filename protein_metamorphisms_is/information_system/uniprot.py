@@ -130,7 +130,6 @@ class UniProtExtractor(ExtractorBase):
                 ): accession
                 for accession in accessions
             }
-
             for future in as_completed(future_to_uniprot_id):
                 uniprot_id = future_to_uniprot_id[future]
                 try:
