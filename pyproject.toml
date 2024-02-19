@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "protein-data-handler"
+name = "protein_metamorphisms_is"
 version = "1.0.9"
 description = "Comprehensive Python Module for Protein Data Management: Designed for streamlined integration and processing of protein information from both UniProt and PDB. Equipped with features for concurrent data fetching, robust error handling, and database synchronization."
 authors = ["frapercan <frapercan1@alum.us.es>"]
@@ -42,7 +42,7 @@ fail_under = 100
 html_docs = "make html -C docs"
 lint = "poetry run flake8 protein_data_handler"
 autopep = "autopep8 --in-place --recursive . --max-line-length=79"
-coverage = "poetry run coverage run -m --source=protein_data_handler pytest tests && poetry run coverage report -m"
+coverage = "poetry run coverage run -m --source=protein_metamorphisms_is pytest tests && poetry run coverage report -m"
 
 
 

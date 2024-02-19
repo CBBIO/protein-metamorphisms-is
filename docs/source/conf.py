@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.abspath("../.."))
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = "protein_data_handler"
+project = "protein_metamorphisms_is"
 copyright = "2023, frapercan"
 author = "frapercan"
 

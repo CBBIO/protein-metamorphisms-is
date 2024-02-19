@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch, mock_open
 
-from protein_data_handler.helpers.config.yaml import read_yaml_config
+from protein_metamorphisms_is.helpers.config.yaml import read_yaml_config
 
 
 class TestReadYamlConfig(unittest.TestCase):
