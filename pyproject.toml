@@ -14,6 +14,7 @@ sqlalchemy = "^2.0.23"
 pyyaml = "^6.0.1"
 py-cdhit = "^0.8.0"
 psycopg2-binary = "^2.9.9"
+pyarrow = "^15.0.0"
 
 
 
@@ -40,7 +41,7 @@ fail_under = 100
 
 [tool.taskipy.tasks]
 html_docs = "make html -C docs"
-lint = "poetry run flake8 protein_data_handler"
+lint = "poetry run flake8 protein_metamorphisms_is"
 autopep = "autopep8 --in-place --recursive . --max-line-length=79"
 coverage = "poetry run coverage run -m --source=protein_metamorphisms_is pytest tests && poetry run coverage report -m"
 

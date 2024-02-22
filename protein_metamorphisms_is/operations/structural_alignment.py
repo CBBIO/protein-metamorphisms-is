@@ -29,7 +29,7 @@ class StructuralAlignmentManager(OperatorBase):
             conf (dict): Configuration parameters, including database connections and operational settings.
         """
         super().__init__(conf)
-        self.logger.info("CEAlign instance created with configuration.")
+        self.logger.info("Structural Alignment Manager instance created.")
 
     def fetch_tasks_info(self):
         """
@@ -303,7 +303,7 @@ class StructuralAlignmentManager(OperatorBase):
             queue_entry_id = result[0]
             result = result[1]
             if 'error_message' in result.keys():
-                self.logger.warn(f"Error in alignment task: {result}")
+                self.logger.warning(f"Error in alignment task: {result}")
 
                 queue_item = self.session.query(StructuralAlignmentQueue).filter_by(
                     id=queue_entry_id).first()
@@ -326,6 +326,3 @@ class StructuralAlignmentManager(OperatorBase):
 
         self.session.commit()
         self.logger.info("Structural alignment results processed and queue updated.")
-
-
-

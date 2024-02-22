@@ -23,3 +23,6 @@ class DatabaseManager:
 
     def get_session(self):
         return self.Session()
+
+    def get_engine(self):
+        return self.engine

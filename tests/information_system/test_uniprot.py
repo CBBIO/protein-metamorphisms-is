@@ -21,9 +21,9 @@ class TestUniProtExtractor(unittest.TestCase):
             "limit": 100,
             "max_workers": 2  # Asegúrate de definir esto si tu clase lo requiere
         }
-        with patch('protein_metamorphisms_is.information_system.base.extractor.setup_logger'), \
-                patch('protein_metamorphisms_is.information_system.base.extractor.create_engine'), \
-                patch('protein_metamorphisms_is.information_system.base.extractor.sessionmaker',
+        with patch('protein_metamorphisms_is.information_system.base.extractor.setup_logger') as mock_logger, \
+                patch('protein_metamorphisms_is.sql.base.database_manager.create_engine'), \
+                patch('protein_metamorphisms_is.sql.base.database_manager.sessionmaker',
                       return_value=MagicMock()):
             self.extractor = UniProtExtractor(self.conf)
 

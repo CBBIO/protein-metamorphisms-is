@@ -1,11 +1,8 @@
 from abc import abstractmethod, ABC
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-
 from protein_metamorphisms_is.helpers.logger.logger import setup_logger
+from protein_metamorphisms_is.sql.base.database_manager import DatabaseManager
 from protein_metamorphisms_is.sql.model import Base
-
 
 class ExtractorBase(ABC):
     """
@@ -25,9 +22,9 @@ class ExtractorBase(ABC):
         session_required (bool): Flag to indicate if a database session is required.
     """
 
-    def __init__(self, conf, session_required):
+    def __init__(self, conf, session_required=False):
         """
-        Initialize the BioinfoExtractorBase class.
+        Initialize the ExtractorBase class.
 
         Sets up the configuration and logger. Initializes the database session if required.
         """
@@ -38,27 +35,16 @@ class ExtractorBase(ABC):
         if session_required:
             self.session_init()
 
-
-
     def session_init(self):
         """
-        Initialize the database session.
+        Initialize the database session using DatabaseManager.
 
-        Sets up the database connection using SQLAlchemy and creates the database schema.
+        Sets up the database connection and session using the DatabaseManager class.
         """
-        self.logger.info("Initializing database session")
-        DATABASE_URI = \
-            (f"postgresql+psycopg2://{self.conf['DB_USERNAME']}:"
-             f"{self.conf['DB_PASSWORD']}"
-             f"@{self.conf['DB_HOST']}:"
-             f"{self.conf['DB_PORT']}/"
-             f"{self.conf['DB_NAME']}")
-        engine = create_engine(DATABASE_URI)
-        self.engine = engine
-        Base.metadata.create_all(engine)
-        Session = sessionmaker(bind=engine)
-
-        self.session = Session()
+        self.logger.info("Initializing database session using DatabaseManager")
+        db_manager = DatabaseManager(self.conf)
+        self.engine = db_manager.get_engine()
+        self.session = db_manager.get_session()
 
     @abstractmethod
     def start(self):

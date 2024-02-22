@@ -15,7 +15,6 @@ class OperatorBase(ABC):
 
         db_manager = DatabaseManager(conf)
         self.session = db_manager.get_session()
-        open(conf['constants'])
         constants = yaml.safe_load(open(conf['constants']))
         handle_structural_complexity_levels(self.session, constants)
         handle_structural_alignment_types(self.session, constants)
