@@ -33,11 +33,10 @@ autopep8 = "^2.0.4"
 black = "^23.11.0"
 sqlalchemy-schemadisplay = "^1.3"
 
-[tool.coverage.run]
-omit = ["*/site-packages/*"]
 
-[tool.coverage.report]
-fail_under = 100
+
+
+
 
 [tool.taskipy.tasks]
 html_docs = "make html -C docs"

@@ -139,7 +139,7 @@ def auth_chain_mapping(chain):
 
 def cif_to_pdb(cif_path, pdb_path):
     """Convierte un archivo CIF a PDB."""
-    
+
     parser = MMCIFParser()
     structure = parser.get_structure('ID', cif_path)
     io = PDBIO()
@@ -147,5 +147,5 @@ def cif_to_pdb(cif_path, pdb_path):
     for model in structure:
         for chain in model:
             if len(chain.id) > 1:
-                chain.id = "X"
+                chain.id = f"X"
     io.save(pdb_path)

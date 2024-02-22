@@ -5,15 +5,12 @@ from protein_metamorphisms_is.operations.cdhit import CDHit
 from protein_metamorphisms_is.operations.structural_alignment import StructuralAlignmentManager
 
 
-if __name__ == "__main__":
-    conf = read_yaml_config("config/config.yaml")
-
+def main(config_path="config/config.yaml"):
+    conf = read_yaml_config(config_path)
     UniProtExtractor(conf).start()
-
     PDBExtractor(conf).start()
-
     CDHit(conf).start()
-
     StructuralAlignmentManager(conf).start()
 
-
+if __name__ == "__main__":
+    main()

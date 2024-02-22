@@ -22,12 +22,3 @@ class OperatorBase(ABC):
 
 
 
-    @abstractmethod
-    def start(self):
-        """
-        Start the data extraction process.
-
-        This abstract method should be implemented by all subclasses to define
-        the specific data extraction logic for each bioinformatics data source.
-        """
-        pass

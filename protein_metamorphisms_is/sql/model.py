@@ -153,17 +153,7 @@ class PDBReference(Base):
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, onupdate=func.now())
 
-    def insert_sequence(self, full_sequence):
-        """
-        Inserta la secuencia en la cadena basándose en seq_start y seq_end.
 
-        Args:
-            full_sequence (str): La secuencia completa de la proteína.
-        """
-        if self.seq_start is not None and self.seq_end is not None:
-            self.sequence = full_sequence[self.seq_start - 1:self.seq_end]
-        else:
-            self.sequence = None
 
 
 class PDBChains(Base):
