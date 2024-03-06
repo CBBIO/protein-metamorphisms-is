@@ -107,8 +107,6 @@ class UniProtExtractor(ExtractorBase):
             self.session.rollback()
             self.logger.error(f"Error: {e}")
 
-
-
     def extract_entries(self):
         """
         Download and process UniProt entries concurrently using multi-threading.

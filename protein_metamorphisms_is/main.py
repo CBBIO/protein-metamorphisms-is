@@ -12,5 +12,6 @@ def main(config_path="config/config.yaml"):
     CDHit(conf).start()
     StructuralAlignmentManager(conf).start()
 
+
 if __name__ == "__main__":
     main()

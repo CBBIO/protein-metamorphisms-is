@@ -154,8 +154,6 @@ class PDBReference(Base):
     updated_at = Column(DateTime, onupdate=func.now())
 
 
-
-
 class PDBChains(Base):
     """
     Represents an individual polypeptide chain within a protein structure as cataloged in the Protein Data Bank (PDB).
@@ -254,9 +252,24 @@ class StructuralComplexityLevel(Base):
 
 class StructuralAlignmentType(Base):
     """
-    Outlines various methodologies for aligning protein structures, aiding in the comparative analysis of proteins.
+    Provides a framework for aligning protein structures, crucial for understanding
+    the functional and evolutionary relationships between proteins. This class
+    enables the use of various alignment strategies, supporting a comprehensive
+    approach to protein comparison.
 
-    Structural alignment is crucial for understanding the functional and evolutionary relationships between proteins. This class provides a framework for defining and utilizing different alignment strategies, such as CE-align, US-align, and FATCAT. Each method offers unique insights, from identifying similar backbone arrangements to accommodating flexibility in protein structures. By cataloging these methods, the class supports diverse approaches to protein comparison, fostering deeper insights into protein functionality and evolution.
+    Structural alignment methods integrated within this framework include:
+
+    - CE-align: Identifies optimal alignments based on the Combinatorial Extension
+      method, focusing on similar backbone arrangements.
+    - US-align: Utilizes an advanced algorithm for measuring structural similarity,
+      offering insights into sequence identity and alignment scores.
+    - FATCAT: Capable of accommodating protein flexibility during alignment,
+      allowing for the detection of functionally important variations.
+
+    By incorporating these methodologies, the class facilitates diverse approaches
+    to protein comparison. This enables researchers to gain deeper insights into
+    protein functionality and evolution, highlighting the significance of structural
+    alignment in the field of bioinformatics.
 
     Attributes:
         id (Integer): Unique identifier for each alignment type.

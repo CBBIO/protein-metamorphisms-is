@@ -6,23 +6,40 @@ import subprocess
 
 def align_task(alignment_entry, conf):
     """
-    Executes a protein structure alignment task using US-align.
+    Executes a protein structure alignment task using the US-align algorithm.
 
-    This function aligns a target protein structure against a representative structure using the US-align algorithm, which is an advanced method for measuring the structural similarity between protein structures. It executes an external US-align binary, captures its output, and extracts key metrics such as RMSD (Root Mean Square Deviation), sequence identity, and alignment scores.
+    This function aligns a target protein structure against a representative
+    structure using US-align, an advanced algorithm for measuring structural
+    similarity between protein structures. It runs an external US-align binary,
+    captures its output, and extracts key metrics such as RMSD (Root Mean Square
+    Deviation), sequence identity, and alignment scores.
 
-    The function constructs file paths for the representative and target structures based on their PDB IDs, chain identifiers, and model numbers, executing the US-align binary with these structures as input. It parses the output using regular expressions to extract alignment metrics.
+    File paths for the representative and target structures are constructed based
+    on their PDB IDs, chain identifiers, and model numbers. The US-align binary is
+    executed with these structures as input, and its output is parsed using regular
+    expressions to extract alignment metrics.
 
-    Upon successful execution, it returns a dictionary containing these metrics. If US-align encounters an error or if an exception occurs during execution, the function logs the error and returns an error object containing the error message.
+    If execution is successful, a dictionary containing these metrics is returned.
+    If US-align encounters an error or if an exception occurs, the error is logged
+    and an error object with the error message is returned.
 
     Args:
-        alignment_entry (object): An object containing data for the alignment task, including PDB IDs, chain identifiers, model numbers for both the representative and target structures, and the cluster entry ID.
-        conf (dict): A dictionary containing configuration settings, specifically the paths to the directory where PDB chain files are stored and the directory containing the US-align binary.
+        alignment_entry (object): Contains data for the alignment task, including
+            PDB IDs, chain identifiers, model numbers for both representative and
+            target structures, and the cluster entry ID.
+        conf (dict): Configuration settings, including paths to the directory where
+            PDB chain files are stored and the directory containing the US-align
+            binary.
 
     Returns:
-        tuple: A tuple containing the queue entry ID of the alignment task and either a result dictionary with keys for 'cluster_entry_id', 'us_rms', 'us_seq_id', 'us_score', or an error object with 'cluster_entry_id' and 'error_message'.
+        tuple: Contains the queue entry ID of the alignment task and either a result
+            dictionary with keys for 'cluster_entry_id', 'us_rms', 'us_seq_id',
+            'us_score', or an error object with 'cluster_entry_id' and
+            'error_message'.
 
     Raises:
-        Exception: Captures any exceptions that occur during the process, logs them, and returns an error object with the error message.
+        Exception: Any exceptions during the process are captured, logged, and
+            an error object with the error message is returned.
 
     Example:
         >>> alignment_entry = {

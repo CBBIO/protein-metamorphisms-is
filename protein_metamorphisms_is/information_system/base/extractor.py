@@ -1,8 +1,8 @@
-from abc import abstractmethod, ABC
+from abc import ABC, abstractmethod
 
 from protein_metamorphisms_is.helpers.logger.logger import setup_logger
 from protein_metamorphisms_is.sql.base.database_manager import DatabaseManager
-from protein_metamorphisms_is.sql.model import Base
+
 
 class ExtractorBase(ABC):
     """
@@ -46,3 +46,12 @@ class ExtractorBase(ABC):
         self.engine = db_manager.get_engine()
         self.session = db_manager.get_session()
 
+    @abstractmethod
+    def start(self):
+        """
+        Start the data extraction process.
+
+        This abstract method should be implemented by all subclasses to define
+        the specific data extraction logic for each bioinformatics data source.
+        """
+        pass

@@ -144,8 +144,9 @@ def cif_to_pdb(cif_path, pdb_path):
     structure = parser.get_structure('ID', cif_path)
     io = PDBIO()
     io.set_structure(structure)
+
     for model in structure:
         for chain in model:
             if len(chain.id) > 1:
-                chain.id = f"X"
+                chain.id = "X"
     io.save(pdb_path)

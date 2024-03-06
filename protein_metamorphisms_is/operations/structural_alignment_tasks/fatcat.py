@@ -130,5 +130,3 @@ def align_task(alignment_entry, conf):
 
         error_object = {'error_message': e}
         return alignment_entry.queue_entry_id, error_object
-
-

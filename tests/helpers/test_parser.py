@@ -64,28 +64,30 @@ def test_auth_chain_mapping():
 
 @patch('protein_metamorphisms_is.helpers.parser.parser.MMCIFParser')
 @patch('protein_metamorphisms_is.helpers.parser.parser.PDBIO')
-def test_cif_to_pdb_chain_id_modification(mock_mmcif_parser, mock_pdbio):
-    # Simula la estructura, modelo y cadena
-    mock_chain_long_id = MagicMock()
-    mock_chain_long_id.id = "AB"  # Este id debería ser cambiado a "X"
-    mock_chain_short_id = MagicMock()
-    mock_chain_short_id.id = "A"  # Este id debería permanecer igual
+def test_cif_to_pdb_chain_id_modification(mock_pdbio, mock_mmcif_parser):
+    # Crear mocks para las cadenas con diferentes IDs
+    mock_chain_long_id = MagicMock(spec=['id'])
+    mock_chain_long_id.id = "AB"  # Este ID debería ser cambiado a "X"
+    mock_chain_short_id = MagicMock(spec=['id'])
+    mock_chain_short_id.id = "A"  # Este ID debería permanecer igual
 
+    # Simular la iteración sobre modelos y cadenas directamente
     mock_model = MagicMock()
-    mock_model.__iter__.return_value = [mock_chain_long_id, mock_chain_short_id]
+    mock_model.__iter__.return_value = iter([mock_chain_long_id, mock_chain_short_id])
 
     mock_structure = MagicMock()
-    mock_structure.get_models.return_value = [mock_model]
+    mock_structure.__iter__.return_value = iter([mock_model])
 
+    # Configurar el MMCIFParser mock para retornar la estructura mock
     mock_mmcif_parser.return_value.get_structure.return_value = mock_structure
 
-    # Ejecuta la función
-    cif_to_pdb('dummy.cif', 'dummy.pdb')
+    # Llamar a la función bajo prueba
+    cif_to_pdb('dummy_path.cif', 'dummy_path.pdb')
 
-    # Comprueba que se intentó cambiar el id de las cadenas
-    mock_chain_long_id.id = "X"
-    mock_chain_short_id.id = "A"
+    # Verificar las modificaciones de los IDs
+    assert mock_chain_long_id.id == "X", "El ID de la cadena larga debe ser cambiado a 'X'"
+    assert mock_chain_short_id.id == "A", "El ID de la cadena corta debe permanecer igual"
 
-    # Verifica que se llamó a save en PDBIO
-    mock_pdbio_instance = mock_pdbio.return_value
-    # mock_pdbio_instance.save.assert_called_once_with('dummy.pdb')
+    # Verificar que set_structure y save se llamaron correctamente
+    mock_pdbio().set_structure.assert_called_once_with(mock_structure)
+    mock_pdbio().save.assert_called_once_with('dummy_path.pdb')

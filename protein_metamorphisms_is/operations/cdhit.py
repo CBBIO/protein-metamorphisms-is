@@ -1,7 +1,7 @@
 from protein_metamorphisms_is.operations.base.operator import OperatorBase
-from protein_metamorphisms_is.sql.model import PDBChains, Cluster, PDBReference
+from protein_metamorphisms_is.sql.model import PDBChains, Cluster
 from pycdhit import cd_hit, read_clstr
-import pandas as pd
+
 
 class CDHit(OperatorBase):
     """
@@ -137,4 +137,3 @@ class CDHit(OperatorBase):
             self.session.add(cluster)
         self.session.commit()
         self.logger.info("CD-HIT clustering data stored in the database")
-

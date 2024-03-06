@@ -67,7 +67,6 @@ class StructuralAlignmentManager(OperatorBase):
                 queue_items = self.fetch_queue_items()
                 self.execute_aligns(queue_items)
 
-
         except Exception as e:
             self.logger.error(f"Error during structural alignment process: {e}")
             raise
@@ -82,7 +81,7 @@ class StructuralAlignmentManager(OperatorBase):
         for type_entry in self.types.items():
             type_id = type_entry[0]
             type_task_name = type_entry[1]
-            self.logger.info(f"Loading cluster entries from database.")
+            self.logger.info("Loading cluster entries from database.")
 
             queued_cluster_ids = self.session.query(StructuralAlignmentQueue.cluster_entry_id) \
                 .filter(StructuralAlignmentQueue.alignment_type_id == type_id) \
@@ -92,7 +91,7 @@ class StructuralAlignmentManager(OperatorBase):
 
             clusters_not_queued = self.session.query(Cluster).filter(
                 Cluster.id.notin_(queued_cluster_ids),
-                Cluster.is_representative == False
+                not Cluster.is_representative
             ).all()
 
             self.logger.info(f"Found {len(clusters_not_queued)} clusters not in queue, adding to queue.")
@@ -186,7 +185,7 @@ class StructuralAlignmentManager(OperatorBase):
         ).join(
             PDBReference, PDBChains.pdb_reference_id == PDBReference.id  # Join adicional para acceder a PDBReference
         ).filter(
-            Cluster.is_representative == True
+            Cluster.is_representative
         ).subquery()
 
         # Alias para hacer más fácil la referencia a la subconsulta
@@ -260,7 +259,7 @@ class StructuralAlignmentManager(OperatorBase):
                 try:
                     result = task.get(timeout=timeout)
                     results.append(result)
-                except multiprocessing.TimeoutError as e:
+                except multiprocessing.TimeoutError:
                     error_message = f"Timeout error: La tarea excedió el tiempo límite establecido ({timeout})"
                     self.logger.error(error_message)
                     results.append((args[0].queue_entry_id, {'error_message': error_message}))
