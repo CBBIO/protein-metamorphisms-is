@@ -3,7 +3,7 @@ from sqlalchemy.orm import sessionmaker
 
 from protein_data_handler.chain import ChainExtractor
 from protein_data_handler.helpers.config.yaml import read_yaml_config
-from protein_data_handler.models.uniprot import Base
+from protein_data_handler.sql.model import Base
 
 if __name__ == "__main__":
     config = read_yaml_config("./config.yaml")
