@@ -1,8 +1,9 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from protein_data_handler.alignment import UniProtPDBMapping
+from protein_data_handler.chain import ChainExtractor
 from protein_data_handler.helpers.config.yaml import read_yaml_config
+from protein_data_handler.sql.model import Base
 
 if __name__ == "__main__":
     config = read_yaml_config("./config.yaml")
@@ -15,8 +16,7 @@ if __name__ == "__main__":
     engine = create_engine(DATABASE_URI)
     Session = sessionmaker(bind=engine)
     session = Session()
-
-    mapping = UniProtPDBMapping(session)
-    pares = mapping.realizar_consulta_cadenas_iguales()
-    mapping.volcar_datos_alineamiento(pares)
+    Base.metadata.create_all(engine)
+    chain_extractor = ChainExtractor(session,config['pdb_dir'],config['chain_dir'])
+    chain_extractor.create_decomposed_structure()
 

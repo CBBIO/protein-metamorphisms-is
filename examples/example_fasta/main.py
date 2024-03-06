@@ -2,9 +2,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from protein_data_handler.helpers.config.yaml import read_yaml_config
-from protein_data_handler.helpers.database.database import create_session
 from protein_data_handler.fasta import FastaHandler  # Asegúrate de ajustar la ruta de importación
-from protein_data_handler.models.uniprot import Base, PDBReference
+from protein_data_handler.sql.model import Base, PDBReference
 
 
 def main():
@@ -24,7 +23,7 @@ def main():
     with Session() as session:
         query = session.query(PDBReference).filter(
             PDBReference.resolution < config.get("resolution_threshold", 2.5)).all()
-        pdb_ids = [pdb_ref.pdb_id for pdb_ref in query[:3000]]
+        pdb_ids = [pdb_ref.pdb_id for pdb_ref in query]
 
     # Se inicia una nueva sesión para las operaciones de descarga y escritura
     with Session() as session:

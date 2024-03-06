@@ -1,0 +1,47 @@
+#System
+max_workers: 12
+binaries_path: '../binaries'
+
+# DB CONFIGURATION
+DB_USERNAME: usuario
+DB_PASSWORD: clave
+DB_HOST: localhost
+DB_PORT: 5432
+DB_NAME: BioData
+
+## Information System
+# Uniprot Extraction
+search_criteria: '(structure_3d:true)'
+limit: 100
+
+# PDB Extraction
+resolution_threshold: 2.5
+server: "https://files.wwpdb.org/"
+pdb_path: "/home/bioxaxi/data/pdb"
+pdb_chains_path: "/home/bioxaxi/data/chains"
+file_format: "mmCif"
+allow_multiple_chain_models: False # NMR
+
+## Operations
+constants: "config/constants.yaml"
+
+# Sequence Clustering
+fasta_path: "/home/bioxaxi/data/complete.fasta"
+cdhit_out_path: "/home/bioxaxi/data/out"
+sequence_identity_threshold: 0.95
+alignment_coverage: 0.95
+memory_usage: 25000
+most_representative_search: 1
+
+# Structural Alignment
+structural_alignment:
+  types:
+    - 1
+    - 2
+    - 3
+
+  retry_timeout: 1
+  retry_count: 5
+  batch_size: 1000
+  task_timeout: 20
+
