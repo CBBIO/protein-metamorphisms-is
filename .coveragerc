@@ -3,3 +3,9 @@ fail_under = 100
 omit =
     "*/site-packages/*",
     protein_metamorphisms_is/main.py
+
+[report]
+exclude_lines =
+    pragma: no cover
+    if __name__ == .__main__.:
+    pass
