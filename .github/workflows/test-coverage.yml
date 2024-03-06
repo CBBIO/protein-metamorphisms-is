@@ -11,6 +11,7 @@ jobs:
         os: [ ubuntu-22.04 ]
     runs-on: ${{ matrix.os }}
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
@@ -18,6 +19,8 @@ jobs:
         uses: abatilo/actions-poetry@v2
         with:
           poetry-version: ${{ matrix.poetry-version }}
+      - name: Install MAFFT
+        run: sudo apt-get install mafft
       - name: install dependecies
         run: |
           poetry install 
