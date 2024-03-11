@@ -18,3 +18,12 @@ structural_complexity_levels:
   - name: "Secondary Structures"
     description: Secondary structures refer to the local spatial arrangement of the protein's backbone, excluding the side chains of the amino acids. The two most common types of secondary structures are alpha-helices and beta-sheets. Alpha-helices are right-handed coils stabilized by hydrogen bonds between the backbone atoms, while beta-sheets consist of two or more strands aligned next to each other, forming a sheet-like structure also stabilized by hydrogen bonding. These structures are fundamental components of a protein's overall three-dimensional conformation and play critical roles in defining its function. Secondary structures are formed as a result of hydrogen bonds between the amide hydrogen and carbonyl oxygen atoms in the peptide backbone, and their formation is driven by the protein's primary sequence.
 
+embedding_types:
+  - name: "ESM"
+    description: "Evolutionary Scale Modeling (ESM) embeddings are designed to capture the evolutionary information of protein sequences, utilizing deep learning to generate representations that enhance sequence analysis and prediction tasks."
+    task_name: "esm"
+    model_name: facebook/esm2_t6_8M_UR50D
+  - name: "Prost-T5"
+    description: "Prot-T5 embeddings leverage the capabilities of the T5 (Text-to-Text Transfer Transformer) model adapted for protein sequences, offering advanced sequence representation by considering both local and global sequence features."
+    task_name:  prost_t5
+    model_name: Rostlab/ProstT5

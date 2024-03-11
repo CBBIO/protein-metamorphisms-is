@@ -11,7 +11,7 @@ DB_NAME: BioData
 
 ## Information System
 # Uniprot Extraction
-search_criteria: '(structure_3d:true)'
+search_criteria: '(organism_id:9615) AND (structure_3d:true)'
 limit: 100
 
 # PDB Extraction
@@ -45,3 +45,8 @@ structural_alignment:
   batch_size: 1000
   task_timeout: 20
 
+# Embedding
+embedding:
+  types:
+#    - 1
+    - 2
