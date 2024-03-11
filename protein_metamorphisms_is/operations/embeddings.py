@@ -5,7 +5,6 @@ from multiprocessing import Pool
 
 from sqlalchemy.orm import aliased
 
-
 from protein_metamorphisms_is.operations.base.operator import OperatorBase
 from protein_metamorphisms_is.sql.model import PDBChains, Cluster, PDBReference, StructuralAlignmentQueue, \
     StructuralAlignmentType, StructuralAlignmentResults, EmbeddingType
@@ -47,7 +46,7 @@ class EmbeddingManager(OperatorBase):
                 # Importa dinámicamente el módulo usando importlib
                 module = importlib.import_module(module_name)
                 # Almacena la referencia al módulo en el diccionario self.types
-                self.types[type_obj.id] = {'module': module, 'model_name' : type_obj.model_name}
+                self.types[type_obj.id] = {'module': module, 'model_name': type_obj.model_name, 'id': type_obj.id}
 
         print(self.types)
 
@@ -61,19 +60,16 @@ class EmbeddingManager(OperatorBase):
         try:
             self.logger.info("Starting structural alignment process.")
             chains = self.load_chains()
+            print(len(chains))
             self.fetch_models_info()
 
             for type in self.types.values():
                 print(type)
-                module, model = type['module'], type['model_name']
-                module.embedding_task(self.session,chains,module,model)
+                module, model_name, embedding_type_id = type['module'], type['model_name'], type['id']
+                module.embedding_task(self.session, chains, model_name, embedding_type_id)
 
 
 
         except Exception as e:
             self.logger.error(f"Error during structural alignment process: {e}")
             raise
-
-
-
-

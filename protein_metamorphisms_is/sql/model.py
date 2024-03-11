@@ -1,5 +1,6 @@
 from sqlalchemy import (Column, Integer, String, Date, ForeignKey, DateTime,
                         func, Float, Boolean)
+from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import relationship, declarative_base
 
 Base = declarative_base()
@@ -190,6 +191,21 @@ class PDBChains(Base):
     model = Column(Integer)
 
     pdb_reference = relationship("PDBReference", back_populates="pdb_chains")
+    embeddings = relationship("ChainEmbedding", back_populates="pdb_chain")
+
+
+class ChainEmbedding(Base):
+    __tablename__ = 'chain_embeddings'
+    id = Column(Integer, primary_key=True)
+    pdb_chain_id = Column(Integer, ForeignKey('pdb_chains.id'), nullable=False)
+    embedding_type_id = Column(Integer, ForeignKey('embedding_types.id'))
+    embedding = Column(ARRAY(Float))  # Asegúrate de que tu base de datos soporta este tipo o adapta según sea necesario
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, onupdate=func.now())
+
+    pdb_chain = relationship("PDBChains", back_populates="embeddings")
+    embedding_type = relationship("EmbeddingType", back_populates="chain_embeddings")
+
 
 
 class Cluster(Base):
@@ -302,6 +318,8 @@ class EmbeddingType(Base):
     description = Column(String)
     task_name = Column(String)
     model_name = Column(String)
+
+    chain_embeddings = relationship("ChainEmbedding", back_populates="embedding_type")  # Ajuste aquí
 
 
 class StructuralAlignmentQueue(Base):

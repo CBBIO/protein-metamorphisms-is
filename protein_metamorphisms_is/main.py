@@ -8,11 +8,11 @@ from protein_metamorphisms_is.operations.structural_alignment import StructuralA
 
 def main(config_path="config/config.yaml"):
     conf = read_yaml_config(config_path)
-    UniProtExtractor(conf).start()
-    PDBExtractor(conf).start()
-    CDHit(conf).start()
+    # UniProtExtractor(conf).start()
+    # PDBExtractor(conf).start()
+    # CDHit(conf).start()
     EmbeddingManager(conf).start()
-    StructuralAlignmentManager(conf).start()
+    # StructuralAlignmentManager(conf).start()
 
 
 if __name__ == "__main__":
