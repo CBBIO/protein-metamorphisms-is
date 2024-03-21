@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from sqlalchemy import (Column, Integer, String, Date, ForeignKey, DateTime,
                         func, Float, Boolean)
 from sqlalchemy.dialects.postgresql import ARRAY
@@ -192,6 +194,8 @@ class PDBChains(Base):
 
     pdb_reference = relationship("PDBReference", back_populates="pdb_chains")
     embeddings = relationship("ChainEmbedding", back_populates="pdb_chain")
+    # Añade esta línea para definir la relación con SubclusterEntry
+    subcluster_entries = relationship("SubclusterEntry", back_populates="pdb_chain")
 
 
 class ChainEmbedding(Base):
@@ -207,41 +211,62 @@ class ChainEmbedding(Base):
     embedding_type = relationship("EmbeddingType", back_populates="chain_embeddings")
 
 
-
 class Cluster(Base):
-    """
-    Represents a cluster of protein chains, where each cluster is formed by chains with significant similarity,
-    determined using the cd-hit tool.
-
-    This class is instrumental in grouping protein chains that are highly similar to each other, aiding in the
-    identification of common structures and functions.
-
-    Attributes:
-        id (int): Unique identifier for each cluster.
-        pdb_chain_id (int): Foreign key referencing the 'PDBChains' entity. It is used to identify the specific protein
-        chain in the PDB database associated with this cluster.
-        cluster_id (int): Identifier of the cluster, typically a unique string representing this specific group of
-            protein chains.
-        is_representative (Boolean): Indicates whether the cluster is representative of a larger set of similar chains.
-            'True' for yes, 'False' for no.
-        sequence_length (int): Average length of the sequences of the chains in the cluster.
-        identity (Float): Value representing the average sequence identity within the cluster, usually a percentage
-            indicating how similar the chains are within the group.
-
-    The relationship with 'PDBChains' allows each cluster to be connected to its specific chain in the PDB database,
-    providing a direct link to detailed structural information.
-    """
     __tablename__ = 'clusters'
-
     id = Column(Integer, primary_key=True)
+    description = Column(String)  # Ejemplo de campo adicional
+    created_at = Column(DateTime, default=datetime.now)
+
+    # Relación con ClusterEntries
+    entries = relationship("ClusterEntry", back_populates="cluster")
+
+    # Relación con Subcluster
+    subclusters = relationship("Subcluster", back_populates="cluster")
+
+
+class ClusterEntry(Base):
+    __tablename__ = 'cluster_entries'
+    id = Column(Integer, primary_key=True)
+    cluster_id = Column(Integer, ForeignKey('clusters.id'))
     pdb_chain_id = Column(Integer, ForeignKey('pdb_chains.id'))
-    cluster_id = Column(Integer)
     is_representative = Column(Boolean)
     sequence_length = Column(Integer)
     identity = Column(Float)
-    complexity_level_id = Column(Integer, ForeignKey('structural_complexity_levels.id'))
+    created_at = Column(DateTime, default=datetime.now)
 
-    complexity_level = relationship("StructuralComplexityLevel", backref="clusters")
+    # Relaciones con Cluster y PDBChains
+    cluster = relationship("Cluster", back_populates="entries")
+    pdb_chain = relationship("PDBChains")  # Asegúrate de definir esta relación en PDBChains si aún no existe
+
+
+class Subcluster(Base):
+    __tablename__ = 'subclusters'
+    id = Column(Integer, primary_key=True)
+    cluster_id = Column(Integer, ForeignKey('clusters.id'))
+    description = Column(String)  # Una descripción opcional del subcluster
+    created_at = Column(DateTime, default=datetime.now)
+
+    # Relación de vuelta a Cluster
+    cluster = relationship("Cluster", back_populates="subclusters")
+
+    # Relación con SubclusterEntry
+    entries = relationship("SubclusterEntry", back_populates="subcluster")
+
+
+class SubclusterEntry(Base):
+    __tablename__ = 'subcluster_entries'
+    id = Column(Integer, primary_key=True)
+    subcluster_id = Column(Integer, ForeignKey('subclusters.id'))
+    pdb_chain_id = Column(Integer, ForeignKey('pdb_chains.id'))
+    is_representative = Column(Boolean)
+    sequence_length = Column(Integer)
+    identity = Column(Float)
+    created_at = Column(DateTime, default=datetime.now)
+
+    # Relaciones con Subcluster y PDBChains
+    subcluster = relationship("Subcluster", back_populates="entries")
+    pdb_chain = relationship("PDBChains", back_populates="subcluster_entries")
+
 
 
 class StructuralComplexityLevel(Base):

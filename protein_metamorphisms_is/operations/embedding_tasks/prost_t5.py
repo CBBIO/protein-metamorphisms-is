@@ -20,14 +20,12 @@ def embedding_task(session,chains,model_name, embedding_type_id):
             sequence_processed = "<AA2fold> " + sequence_processed if sequence_processed.isupper() else "<fold2AA> " + sequence_processed
             inputs = tokenizer(sequence_processed, return_tensors="pt", padding=True, truncation=True, max_length=512, add_special_tokens=True).to(device)
 
-            # Generación de embeddings
             outputs = model(input_ids=inputs.input_ids, attention_mask=inputs.attention_mask)
-            embeddings = outputs.last_hidden_state.mean(dim=1).cpu().numpy().tolist()[0]  # Convertir a lista para almacenamiento
+            embeddings = outputs.last_hidden_state.mean(dim=1).cpu().numpy().tolist()[0]
 
-            # Crear y guardar el embedding en la base de datos
             embedding_entry = ChainEmbedding(
-                pdb_chain_id=chain.id,  # Asume que `chain` tiene un atributo `id` referenciando a `PDBChains.id`
-                embedding_type_id=embedding_type_id,  # Asegúrate de tener este id desde tu lógica de negocio
+                pdb_chain_id=chain.id,
+                embedding_type_id=embedding_type_id,
                 embedding=embeddings
             )
             session.add(embedding_entry)

@@ -60,11 +60,9 @@ class EmbeddingManager(OperatorBase):
         try:
             self.logger.info("Starting structural alignment process.")
             chains = self.load_chains()
-            print(len(chains))
             self.fetch_models_info()
 
             for type in self.types.values():
-                print(type)
                 module, model_name, embedding_type_id = type['module'], type['model_name'], type['id']
                 module.embedding_task(self.session, chains, model_name, embedding_type_id)
 
