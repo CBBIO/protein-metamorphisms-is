@@ -11,6 +11,8 @@ DB_NAME: BioData
 
 ## Information System
 # Uniprot Extraction
+load_accesion_csv: '../data/all_manual_curated_moondb.csv'
+load_accesion_column: 'UniprotAC'
 search_criteria: '(structure_3d:true)'
 limit: 100
 

@@ -67,14 +67,18 @@ class Protein(Base):
     comments = Column(String)
 
     pdb_references = relationship("PDBReference", back_populates="protein")
-    go_terms = relationship("GOTerm", back_populates="protein")
+    go_terms = relationship("GOTerm", secondary="protein_go_term_association", back_populates="proteins",
+                            overlaps="go_term_associations")
 
-    keywords = Column(String)
-    protein_existence = Column(Integer)
-    seqinfo = Column(String)
-    disappeared = Column(Boolean)
-    created_at = Column(DateTime, default=func.now())
-    updated_at = Column(DateTime, onupdate=func.now())
+    go_term_associations = relationship("ProteinGOTermAssociation", back_populates="protein", overlaps="go_terms")
+
+
+keywords = Column(String)
+protein_existence = Column(Integer)
+seqinfo = Column(String)
+disappeared = Column(Boolean)
+created_at = Column(DateTime, default=func.now())
+updated_at = Column(DateTime, onupdate=func.now())
 
 
 class Accession(Base):
@@ -344,6 +348,21 @@ class StructuralAlignmentResults(Base):
     fc_align_len = Column(Float)
 
 
+class ProteinGOTermAssociation(Base):
+    __tablename__ = 'protein_go_term_association'
+    protein_entry_name = Column(String, ForeignKey('proteins.entry_name'), primary_key=True)
+    go_id = Column(String, ForeignKey('go_terms.go_id'), primary_key=True)
+
+    # Relaciones para facilitar el acceso bidireccional
+    protein_entry_name = Column(String, ForeignKey('proteins.entry_name'), primary_key=True)
+    go_id = Column(String, ForeignKey('go_terms.go_id'), primary_key=True)
+
+    protein = relationship("Protein", back_populates="go_term_associations", overlaps="go_terms")
+    go_term = relationship("GOTerm", back_populates="protein_associations", overlaps="proteins")
+
+
+
+
 class GOTerm(Base):
     """
     Represents a Gene Ontology (GO) term associated with a protein.
@@ -362,11 +381,25 @@ class GOTerm(Base):
     The relationship with the 'Protein' class allows for the association of functional, process, or component annotations with specific proteins.
     """
     __tablename__ = "go_terms"
-    id = Column(Integer, primary_key=True)
-    go_id = Column(String, nullable=False)
-    protein_entry_name = Column(String, ForeignKey("proteins.entry_name"))
-    protein = relationship("Protein", back_populates="go_terms")
+    go_id = Column(String, primary_key=True, nullable=False)
     category = Column(String)
     description = Column(String)
-    created_at = Column(DateTime, default=func.now())
-    updated_at = Column(DateTime, onupdate=func.now())
+    evidences = Column(String, nullable=True)
+    proteins = relationship("Protein", secondary="protein_go_term_association", back_populates="go_terms",
+                            overlaps="protein_associations")
+
+    protein_associations = relationship("ProteinGOTermAssociation", back_populates="go_term", overlaps="proteins")
+
+
+class GOTermRelationship(Base):
+    __tablename__ = 'go_term_relationships'
+    id = Column(Integer, primary_key=True)
+    go_term_1_id = Column(String, ForeignKey('go_terms.go_id'))
+    go_term_2_id = Column(String, ForeignKey('go_terms.go_id'))
+    information_content = Column(Float)
+    resnik_distance = Column(Float)
+    minimum_branch_length = Column(Float)
+
+    go_term_1 = relationship("GOTerm", foreign_keys=[go_term_1_id])
+    go_term_2 = relationship("GOTerm", foreign_keys=[go_term_2_id])
+
