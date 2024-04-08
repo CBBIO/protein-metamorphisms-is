@@ -396,7 +396,8 @@ class GOTermRelationship(Base):
     id = Column(Integer, primary_key=True)
     go_term_1_id = Column(String, ForeignKey('go_terms.go_id'))
     go_term_2_id = Column(String, ForeignKey('go_terms.go_id'))
-    information_content = Column(Float)
+    information_content_1 = Column(Float)
+    information_content_2 = Column(Float)
     resnik_distance = Column(Float)
     minimum_branch_length = Column(Float)
 

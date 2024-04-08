@@ -14,7 +14,6 @@ class GoMetrics(OperatorBase):
         try:
             self.logger.info("Starting CD-HIT clustering process")
             go_terms_per_protein = self.load_go_terms_per_protein()
-            print(go_terms_per_protein)
             self.calculate_metrics(go_terms_per_protein)
             # self.explore_representatives()
 
@@ -54,31 +53,42 @@ class GoMetrics(OperatorBase):
         return go_terms_per_protein
 
     def calculate_metrics(self, go_terms_per_protein):
-        # Inicializar TermCounts para calcular el IC de los términos GO
+        # Construir el diccionario completo de anotaciones de GO para todas las proteínas
+        all_go_terms = {}
+        for protein, terms_per_category in go_terms_per_protein.items():
+            all_terms = []
+            for category, terms in terms_per_category.items():
+                all_terms.extend(terms)
+            all_go_terms[protein] = all_terms
+        term_counts = TermCounts(self.go, all_go_terms)
+
+        # Inicializar TermCounts una sola vez con todas las anotaciones
+
 
         for protein, terms_per_category in go_terms_per_protein.items():
             for category, terms in terms_per_category.items():
-
+                # Iterar sobre todos los pares únicos de términos GO como antes
                 for i, go_term_1 in enumerate(terms):
                     for go_term_2 in terms[i + 1:]:
-                        # Asegúrate de que go_term_1 y go_term_2 no sean el mismo término
                         if go_term_1 != go_term_2:
-                            # Calcular métricas
-                            lca = 0
-                            resnik = 0
+                            # Calcular el ancestro común más profundo (DCA)
+                            ic1 = get_info_content(go_term_1, term_counts)
+                            ic2 = get_info_content(go_term_2, term_counts)
+                            resnik = resnik_sim(go_term_1, go_term_2, self.go, term_counts)
+                            # Calcular la longitud mínima de la rama (MBL)
                             mbl = min_branch_length(go_term_1, go_term_2, self.go, branch_dist=None)
 
-                            # Guardar resultados en la base de datos
-                            self.save_go_term_relationship(go_term_1, go_term_2, lca , resnik, mbl)
+                            self.save_go_term_relationship(go_term_1, go_term_2, ic1,ic2, resnik, mbl)
 
-    def save_go_term_relationship(self, go_term_1_id, go_term_2_id, information_content, resnik_distance,
+    def save_go_term_relationship(self, go_term_1_id, go_term_2_id, information_content_1,information_content_2, resnik_distance,
                                   minimum_branch_length):
         session = self.session
         try:
             new_relationship = GOTermRelationship(
                 go_term_1_id=go_term_1_id,
                 go_term_2_id=go_term_2_id,
-                information_content=information_content,
+                information_content_1=information_content_1,
+                information_content_2=information_content_2,
                 resnik_distance=resnik_distance,
                 minimum_branch_length=minimum_branch_length
             )

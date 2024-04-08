@@ -251,6 +251,8 @@ class UniProtExtractor(ExtractorBase):
                 if reference[0] == "GO":
                     # Buscar o crear el término GO
                     go_id, category, description, evidence = reference[1], reference[2].split(":")[0], reference[2].split(":")[1], reference[3].split(":")[0]
+                    if evidence not in self.conf['allowed_evidences']:
+                        continue
                     go_term = self.session.query(GOTerm).filter_by(go_id=go_id).first()
                     print(reference)
 
