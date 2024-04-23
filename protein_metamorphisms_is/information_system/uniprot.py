@@ -1,6 +1,7 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from http.client import HTTPException
 
+import pandas as pd
 import requests
 from Bio import ExPASy, SwissProt
 from sqlalchemy import func, exists
@@ -9,7 +10,7 @@ from urllib.parse import quote
 from protein_metamorphisms_is.helpers.parser.parser import extract_float
 from protein_metamorphisms_is.information_system.base.extractor import ExtractorBase
 
-from protein_metamorphisms_is.sql.model import Accession, Protein, PDBReference
+from protein_metamorphisms_is.sql.model import Accession, Protein, PDBReference, GOTerm, ProteinGOTermAssociation
 
 
 class UniProtExtractor(ExtractorBase):
@@ -40,15 +41,13 @@ class UniProtExtractor(ExtractorBase):
         """
         try:
             self.logger.info("Starting UniProt data extraction")
-            search_criteria = self.conf.get("search_criteria")
-            limit = self.conf.get("limit")
-            self.load_access_codes(search_criteria, limit)
+            self.load_access_codes()
             self.extract_entries()
 
         except Exception as e:
             self.logger.error(f"Error during extraction process: {e}")
 
-    def load_access_codes(self, search_criteria, limit):
+    def load_access_codes(self):
         """
         Load access codes from UniProt based on the given search criteria and limit.
 
@@ -60,13 +59,39 @@ class UniProtExtractor(ExtractorBase):
             limit (int): The maximum number of results to fetch from UniProt. (A parameter requested by Uniprot with no
             significant impact.)
         """
-        encoded_search_criteria = quote(search_criteria)
-        url = (
-            f"https://rest.uniprot.org/uniprotkb/stream?"
-            f"query={encoded_search_criteria}"
-            f"&format=list&size={limit}"
-        )
-        self.logger.info(f"Requested URL: {url}")
+        csv_path = self.conf.get("load_accesion_csv")
+        accession_column = self.conf.get("load_accesion_column")
+        search_criteria = self.conf.get("search_criteria")
+        limit = self.conf.get("limit")
+
+        # Inicializa encoded_search_criteria por si acaso no entre en ninguna condición
+        encoded_search_criteria = ''
+
+        # Intenta leer el CSV si se proporciona una ruta
+        if csv_path:
+            try:
+                data = pd.read_csv(csv_path)
+                accessions = data[accession_column].dropna().unique()
+                self.logger.info(f"Total unique accession codes loaded: {len(accessions)}")
+
+                # Construir la consulta de búsqueda a partir de los códigos de acceso
+                query = " OR ".join([f"(accession:{accession})" for accession in accessions])
+                encoded_search_criteria = quote(query)
+
+            except Exception as e:
+                self.logger.error(f"Error loading access codes from CSV: {e}")
+
+        # Si no se especifica un CSV o falla la lectura, y se ha proporcionado search_criteria, usar eso
+        if not encoded_search_criteria and search_criteria:
+            encoded_search_criteria = quote(search_criteria)
+
+        # Asegúrate de que tengamos criterios de búsqueda antes de construir la URL
+        if encoded_search_criteria:
+            url = f"https://rest.uniprot.org/uniprotkb/stream?query={encoded_search_criteria}&format=list&size={limit}"
+            self.logger.info(f"Requested URL: {url}")
+        else:
+            self.logger.error("No search criteria specified or could be constructed from CSV.")
+
         try:
             response = requests.get(url)
             response.raise_for_status()
@@ -205,10 +230,17 @@ class UniProtExtractor(ExtractorBase):
                 exists_query = exists().where(Accession.accession_code == accession_code)
                 accession_exists = self.session.query(exists_query).scalar()
 
-                if not accession_exists:
+                if accession_exists:
+                    existing_accession = self.session.query(Accession).filter(
+                        Accession.accession_code == accession_code).first()
+                    if existing_accession:
+                        existing_accession.protein_entry_name = protein.entry_name
+                        self.session.add(existing_accession)
+                else:
                     new_accession = Accession(accession_code=accession_code, primary=False)
                     new_accession.protein_entry_name = protein.entry_name
                     self.session.add(new_accession)
+                break
 
             for reference in data.cross_references:
                 if reference[0] == "PDB":
@@ -221,6 +253,23 @@ class UniProtExtractor(ExtractorBase):
                             protein=protein,
                         )
                         self.session.add(pdb_ref)
+
+            for reference in data.cross_references:
+                if reference[0] == "GO":
+                    # Buscar o crear el término GO
+                    go_id, category, description, evidence = reference[1], reference[2].split(":")[0], reference[2].split(":")[1], reference[3].split(":")[0]
+                    if evidence not in self.conf['allowed_evidences']:
+                        continue
+                    go_term = self.session.query(GOTerm).filter_by(go_id=go_id).first()
+
+                    if not go_term:
+                        go_term = GOTerm(go_id=go_id, category=category, description=description,evidences=evidence)
+                        self.session.add(go_term)
+
+                    association = ProteinGOTermAssociation(protein_entry_name=protein.entry_name, go_id=go_id)
+                    self.session.add(association)
+
+            self.session.commit()
 
             self.session.commit()
 
