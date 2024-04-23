@@ -1,26 +1,31 @@
 from protein_metamorphisms_is.operations.base.operator import OperatorBase
-from protein_metamorphisms_is.sql.model import PDBChains, Cluster, ProteinGOTermAssociation, GOTerm, GOTermRelationship
-from pycdhit import cd_hit, read_clstr
+from protein_metamorphisms_is.sql.model import ProteinGOTermAssociation, GOTerm, GOTermRelationship
 from goatools import obo_parser
-from goatools.semantic import TermCounts, resnik_sim, min_branch_length, deepest_common_ancestor, get_info_content
+from goatools.semantic import TermCounts, resnik_sim, min_branch_length, get_info_content
+from goatools.anno.gaf_reader import GafReader
+
 
 class GoMetrics(OperatorBase):
     def __init__(self, conf):
         super().__init__(conf)
-        self.go = obo_parser.GODag('../data/go-basic.obo')
+        self.go = obo_parser.GODag(conf['obo'])
+        self.annotations = self.load_annotations_from_gaf(conf['go_annotation_file'])
         self.logger.info("GoMetrics instance created")
+
+    def load_annotations_from_gaf(self, gaf_path):
+        gaf = GafReader(gaf_path).read_gaf()
+        return gaf
 
     def start(self):
         try:
-            self.logger.info("Starting CD-HIT clustering process")
+            self.logger.info("Starting GO Metrics calculation")
             go_terms_per_protein = self.load_go_terms_per_protein()
             self.calculate_metrics(go_terms_per_protein)
-            # self.explore_representatives()
 
-            self.logger.info("Clustering process completed successfully")
+            self.logger.info("GO Metrics calculation process completed successfully")
 
         except Exception as e:
-            self.logger.error(f"Error during clustering process: {e}")
+            self.logger.error(f"Error during GO Metrics calculation process: {e}")
             raise
 
     def load_go_terms_per_protein(self):
@@ -31,6 +36,7 @@ class GoMetrics(OperatorBase):
             # Asumiendo que tienes un modelo GOTerm que incluye un campo 'category'
             associations = session.query(ProteinGOTermAssociation, GOTerm).join(GOTerm,
                                                                                 ProteinGOTermAssociation.go_id == GOTerm.go_id).all()
+
             for association, go_term in associations:
                 if association.protein_entry_name not in go_terms_per_protein:
                     go_terms_per_protein[association.protein_entry_name] = {"P": [],
@@ -53,34 +59,44 @@ class GoMetrics(OperatorBase):
         return go_terms_per_protein
 
     def calculate_metrics(self, go_terms_per_protein):
-        # Construir el diccionario completo de anotaciones de GO para todas las proteínas
-        all_go_terms = {}
-        for protein, terms_per_category in go_terms_per_protein.items():
-            all_terms = []
-            for category, terms in terms_per_category.items():
-                all_terms.extend(terms)
-            all_go_terms[protein] = all_terms
-        term_counts = TermCounts(self.go, all_go_terms)
-
-        # Inicializar TermCounts una sola vez con todas las anotaciones
-
+        term_counts = TermCounts(self.go, self.annotations)
+        missing_go_terms = set()  # Para registrar los términos GO faltantes
 
         for protein, terms_per_category in go_terms_per_protein.items():
             for category, terms in terms_per_category.items():
-                # Iterar sobre todos los pares únicos de términos GO como antes
                 for i, go_term_1 in enumerate(terms):
                     for go_term_2 in terms[i + 1:]:
                         if go_term_1 != go_term_2:
-                            # Calcular el ancestro común más profundo (DCA)
-                            ic1 = get_info_content(go_term_1, term_counts)
-                            ic2 = get_info_content(go_term_2, term_counts)
-                            resnik = resnik_sim(go_term_1, go_term_2, self.go, term_counts)
-                            # Calcular la longitud mínima de la rama (MBL)
-                            mbl = min_branch_length(go_term_1, go_term_2, self.go, branch_dist=None)
+                            # Asegurar orden alfabético para la consistencia
+                            go_term_1_id, go_term_2_id = sorted([go_term_1, go_term_2])
 
-                            self.save_go_term_relationship(go_term_1, go_term_2, ic1,ic2, resnik, mbl)
+                            # Verificar si la relación ya existe en la base de datos
+                            exists = self.session.query(GOTermRelationship).filter(
+                                ((GOTermRelationship.go_term_1_id == go_term_1_id) & (
+                                        GOTermRelationship.go_term_2_id == go_term_2_id)) |
+                                ((GOTermRelationship.go_term_1_id == go_term_2_id) & (
+                                        GOTermRelationship.go_term_2_id == go_term_1_id))
+                            ).first()
 
-    def save_go_term_relationship(self, go_term_1_id, go_term_2_id, information_content_1,information_content_2, resnik_distance,
+                            if exists:
+                                continue
+
+                            try:
+                                ic1 = get_info_content(go_term_1_id, term_counts)
+                                ic2 = get_info_content(go_term_2_id, term_counts)
+                                resnik = resnik_sim(go_term_1_id, go_term_2_id, self.go, term_counts)
+                                mbl = min_branch_length(go_term_1_id, go_term_2_id, self.go, branch_dist=None)
+                            except KeyError as e:
+                                missing_go_terms.add(str(e))
+                                continue
+
+                            self.save_go_term_relationship(go_term_1_id, go_term_2_id, ic1, ic2, resnik, mbl)
+
+        if missing_go_terms:
+            self.logger.error(f"Missing GO terms: {missing_go_terms}")
+
+    def save_go_term_relationship(self, go_term_1_id, go_term_2_id, information_content_1, information_content_2,
+                                  resnik_distance,
                                   minimum_branch_length):
         session = self.session
         try:

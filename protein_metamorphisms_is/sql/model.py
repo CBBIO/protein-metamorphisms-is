@@ -361,8 +361,6 @@ class ProteinGOTermAssociation(Base):
     go_term = relationship("GOTerm", back_populates="protein_associations", overlaps="proteins")
 
 
-
-
 class GOTerm(Base):
     """
     Represents a Gene Ontology (GO) term associated with a protein.
@@ -403,4 +401,3 @@ class GOTermRelationship(Base):
 
     go_term_1 = relationship("GOTerm", foreign_keys=[go_term_1_id])
     go_term_2 = relationship("GOTerm", foreign_keys=[go_term_2_id])
-

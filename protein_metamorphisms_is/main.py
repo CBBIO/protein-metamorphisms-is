@@ -10,9 +10,9 @@ def main(config_path="config/config.yaml"):
     conf = read_yaml_config(config_path)
     UniProtExtractor(conf).start()
     GoMetrics(conf).start()
-    # PDBExtractor(conf).start()
-    # CDHit(conf).start()
-    # StructuralAlignmentManager(conf).start()
+    PDBExtractor(conf).start()
+    CDHit(conf).start()
+    StructuralAlignmentManager(conf).start()
 
 
 if __name__ == "__main__":

@@ -11,8 +11,8 @@ DB_NAME: BioData
 
 ## Information System
 # Uniprot Extraction
-load_accesion_csv: '../data/all_manual_curated_moondb.csv'
-load_accesion_column: 'UniprotAC'
+load_accesion_csv: '../data/moon_dataset.csv'
+load_accesion_column: 'UniProt IDs'
 search_criteria: '(structure_3d:true)'
 limit: 100
 
@@ -46,4 +46,20 @@ structural_alignment:
   retry_count: 5
   batch_size: 1000
   task_timeout: 20
+
+
+# GO Metrics
+ontology: 'data/go-basic.obo'
+go_annotation_file: 'data/cgd.gaf'
+
+allowed_evidences:
+  - EXP
+  - IDA
+  - IPI
+  - IMP
+  - IGI
+  - IEP
+  - TAS
+  - IC
+
 

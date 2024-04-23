@@ -230,10 +230,17 @@ class UniProtExtractor(ExtractorBase):
                 exists_query = exists().where(Accession.accession_code == accession_code)
                 accession_exists = self.session.query(exists_query).scalar()
 
-                if not accession_exists:
+                if accession_exists:
+                    existing_accession = self.session.query(Accession).filter(
+                        Accession.accession_code == accession_code).first()
+                    if existing_accession:
+                        existing_accession.protein_entry_name = protein.entry_name
+                        self.session.add(existing_accession)
+                else:
                     new_accession = Accession(accession_code=accession_code, primary=False)
                     new_accession.protein_entry_name = protein.entry_name
                     self.session.add(new_accession)
+                break
 
             for reference in data.cross_references:
                 if reference[0] == "PDB":
@@ -254,13 +261,11 @@ class UniProtExtractor(ExtractorBase):
                     if evidence not in self.conf['allowed_evidences']:
                         continue
                     go_term = self.session.query(GOTerm).filter_by(go_id=go_id).first()
-                    print(reference)
 
                     if not go_term:
                         go_term = GOTerm(go_id=go_id, category=category, description=description,evidences=evidence)
                         self.session.add(go_term)
 
-                    # Crear o actualizar la asociación en la tabla intermedia, asumiendo que podrías tener datos de evidencia
                     association = ProteinGOTermAssociation(protein_entry_name=protein.entry_name, go_id=go_id)
                     self.session.add(association)
 
