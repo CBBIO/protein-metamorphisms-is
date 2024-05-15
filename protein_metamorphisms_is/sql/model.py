@@ -8,6 +8,17 @@ from sqlalchemy.orm import relationship, declarative_base
 Base = declarative_base()
 
 
+class Sequence(Base):
+    """
+    Model for storing sequences independently. It does not directly link to any entity,
+    allowing flexible referencing from multiple entities.
+    """
+    __tablename__ = 'sequences'
+
+    id = Column(Integer, primary_key=True)
+    sequence = Column(String, unique=True, nullable=False)
+
+
 class Protein(Base):
     """
     Represents a protein, encapsulating its properties and relationships within a database.
@@ -51,8 +62,8 @@ class Protein(Base):
     entry_name = Column(String, primary_key=True, unique=True, nullable=False)
     data_class = Column(String)
     molecule_type = Column(String)
-    sequence = Column(String)
-    sequence_length = Column(Integer)
+    sequence_id = Column(Integer, ForeignKey('sequences.id'))
+    sequence = relationship("Sequence", uselist=False)  # Single sequence per PDB reference
     accessions = relationship(
         "Accession", back_populates="protein"
     )
@@ -156,6 +167,8 @@ class PDBReference(Base):
     protein_entry_name = Column(String, ForeignKey("proteins.entry_name"))
     protein = relationship("Protein", back_populates="pdb_references")
     method = Column(String)
+    sequence_id = Column(Integer, ForeignKey('sequences.id'))
+    sequence = relationship("Sequence", uselist=False)  # Single sequence per protein
     resolution = Column(Float)
     pdb_chains = relationship("PDBChains", back_populates="pdb_reference")
     created_at = Column(DateTime, default=func.now())
@@ -193,27 +206,31 @@ class PDBChains(Base):
     __tablename__ = 'pdb_chains'
     id = Column(Integer, primary_key=True)
     chains = Column(String)
-    sequence = Column(String, nullable=False)
+    sequence_id = Column(Integer, ForeignKey('sequences.id'))
+    sequence = relationship("Sequence", uselist=False)  # Single sequence per protein
     pdb_reference_id = Column(Integer, ForeignKey('pdb_references.id'))
     model = Column(Integer)
 
     pdb_reference = relationship("PDBReference", back_populates="pdb_chains")
-    embeddings = relationship("ChainEmbedding", back_populates="pdb_chain")
     # Añade esta línea para definir la relación con SubclusterEntry
     subcluster_entries = relationship("SubclusterEntry", back_populates="pdb_chain")
 
 
-class ChainEmbedding(Base):
-    __tablename__ = 'chain_embeddings'
+class SequenceEmbedding(Base):
+    __tablename__ = 'sequence_embeddings'
     id = Column(Integer, primary_key=True)
-    pdb_chain_id = Column(Integer, ForeignKey('pdb_chains.id'), nullable=False)
+    sequence_id = Column(Integer, ForeignKey('sequences.id'), nullable=False)
     embedding_type_id = Column(Integer, ForeignKey('embedding_types.id'))
-    embedding = Column(ARRAY(Float))  # Asegúrate de que tu base de datos soporta este tipo o adapta según sea necesario
+    embedding = Column(ARRAY(Float))
+    shape = Column(ARRAY(Integer))  # Almacena las dimensiones del embedding como un array de enteros
+    created_at = Column(DateTime, default=func.now())
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, onupdate=func.now())
 
-    pdb_chain = relationship("PDBChains", back_populates="embeddings")
-    embedding_type = relationship("EmbeddingType", back_populates="chain_embeddings")
+    sequence = relationship("Sequence")
+    embedding_type = relationship("EmbeddingType")
+
+
 
 
 class Cluster(Base):
@@ -349,7 +366,7 @@ class EmbeddingType(Base):
     task_name = Column(String)
     model_name = Column(String)
 
-    chain_embeddings = relationship("ChainEmbedding", back_populates="embedding_type")  # Ajuste aquí
+    seq_embeddings = relationship("SequenceEmbedding", back_populates="embedding_type")  # Ajuste aquí
 
 
 class StructuralAlignmentQueue(Base):

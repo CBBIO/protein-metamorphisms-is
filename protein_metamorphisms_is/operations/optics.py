@@ -3,7 +3,7 @@ import numpy as np
 
 from protein_metamorphisms_is.operations.base.operator import OperatorBase
 from protein_metamorphisms_is.sql.model import Subcluster, SubclusterEntry, ClusterEntry, PDBChains, Cluster, \
-    ChainEmbedding
+    SequenceEmbedding
 
 
 class OpticsClustering(OperatorBase):
@@ -33,11 +33,11 @@ class OpticsClustering(OperatorBase):
         # Obtiene los embeddings y pdb_chain_ids para un cluster_id específico
         entries = self.session.query(
             ClusterEntry.pdb_chain_id,
-            ChainEmbedding.embedding
+            SequenceEmbedding.embedding
         ).join(
             PDBChains, ClusterEntry.pdb_chain_id == PDBChains.id
         ).join(
-            ChainEmbedding, PDBChains.id == ChainEmbedding.pdb_chain_id
+            SequenceEmbedding, PDBChains.id == SequenceEmbedding.pdb_chain_id
         ).filter(
             ClusterEntry.cluster_id == cluster_id
         ).all()

@@ -1,3 +1,4 @@
+import traceback
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from http.client import HTTPException
 
@@ -7,10 +8,11 @@ from Bio import ExPASy, SwissProt
 from sqlalchemy import func, exists
 from urllib.parse import quote
 
-from protein_metamorphisms_is.helpers.parser.parser import extract_float
+from protein_metamorphisms_is.helpers.parser.parser import extract_float, process_chain_string
 from protein_metamorphisms_is.information_system.base.extractor import ExtractorBase
 
-from protein_metamorphisms_is.sql.model import Accession, Protein, PDBReference, GOTerm, ProteinGOTermAssociation
+from protein_metamorphisms_is.sql.model import Accession, Protein, PDBReference, GOTerm, ProteinGOTermAssociation, \
+    Sequence
 
 
 class UniProtExtractor(ExtractorBase):
@@ -161,6 +163,7 @@ class UniProtExtractor(ExtractorBase):
                     if data:
                         self.store_entry(data)
                 except Exception as e:
+                    traceback.print_exc()
                     self.logger.error(f"Error processing the entry {uniprot_id}: {e}")
 
     def download_record(self, accession_code):
@@ -194,20 +197,22 @@ class UniProtExtractor(ExtractorBase):
             data (SwissProt.Record): The UniProt data record to store.
         """
         try:
-            exists_query = exists().where(Protein.entry_name == data.entry_name)
-            protein_exists = self.session.query(exists_query).scalar()
-
-            if protein_exists:
-                protein = self.session.query(Protein).filter_by(entry_name=data.entry_name).first()
-            else:
+            protein = self.session.query(Protein).filter_by(entry_name=data.entry_name).first()
+            if not protein:
                 protein = Protein(entry_name=data.entry_name)
                 self.session.add(protein)
+
+            existing_sequence = self.session.query(Sequence).filter_by(sequence=data.sequence).first()
+            if not existing_sequence:
+                existing_sequence = Sequence(sequence=data.sequence)
+                self.session.add(existing_sequence)
+            protein.sequence = existing_sequence
 
             protein.data_class = data.data_class
             protein.molecule_type = data.molecule_type
             protein.sequence_length = data.sequence_length
             protein.created_date = data.created[0]
-            protein.sequence = data.sequence
+            protein.sequence = existing_sequence
             protein.sequence_update_date = data.sequence_update[0]
             protein.annotation_update_date = data.annotation_update[0]
             protein.description = data.description
@@ -247,13 +252,29 @@ class UniProtExtractor(ExtractorBase):
                 if reference[0] == "PDB":
                     pdb_ref_exists = self.session.query(exists().where(PDBReference.pdb_id == reference[1])).scalar()
                     if not pdb_ref_exists:
-                        pdb_ref = PDBReference(
-                            pdb_id=reference[1],
-                            method=reference[2],
-                            resolution=extract_float(reference[3]),
-                            protein=protein,
-                        )
-                        self.session.add(pdb_ref)
+                        # Usar la función para procesar el rango de la secuencia
+                        chain_name, start, end = process_chain_string(reference[4])
+
+                        if start is not None and end is not None:
+
+                            sequence = existing_sequence.sequence[start - 1:end]  # Python usa índices basados en 0
+                            print(sequence)
+                            existing_sequence = self.session.query(Sequence).filter_by(sequence=sequence).first()
+                            print(bool(existing_sequence))
+                            if not existing_sequence:
+                                existing_sequence = Sequence(sequence=sequence)
+                                self.session.add(existing_sequence)
+
+                            # Crear la referencia de PDB con la secuencia
+                            pdb_ref = PDBReference(
+                                pdb_id=reference[1],
+                                method=reference[2],
+                                resolution=extract_float(reference[3]),
+                                sequence=existing_sequence,
+                                protein=protein,
+                            )
+                            # Añadir o guardar el pdb_ref según corresponda
+                            self.session.add(pdb_ref)
 
             for reference in data.cross_references:
                 if reference[0] == "GO":

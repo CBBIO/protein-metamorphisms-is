@@ -9,7 +9,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql.operators import or_
 
 from protein_metamorphisms_is.information_system.base.extractor import ExtractorBase
-from protein_metamorphisms_is.sql.model import PDBReference, PDBChains
+from protein_metamorphisms_is.sql.model import PDBReference, PDBChains, Sequence
 
 
 class ChainSelect(Select):
@@ -18,6 +18,7 @@ class ChainSelect(Select):
     This class is used in conjunction with Bio.PDB's PDBIO to selectively write
     specific chains of a PDB structure to a file.
     """
+
     def __init__(self, chain_id, model_id):
         """
         Initializes the ChainSelect with the specified chain ID
@@ -86,6 +87,7 @@ class PDBExtractor(ExtractorBase):
             self.logger.info("Iniciando la extracción de datos del PDB")
 
             pdb_references = self.load_pdb_ids()
+            print(len(pdb_references))
 
             self.download_pdb_structures(pdb_references)
 
@@ -133,16 +135,17 @@ class PDBExtractor(ExtractorBase):
                in the database.
         """
         local_session = sessionmaker(bind=self.engine)()
-
         pdb_id = pdb_reference.pdb_id
+        print(pdb_id)
         pdbl = PDB.PDBList(server=self.conf.get("server", "ftp.wwpdb.org"), pdb=self.conf.get("pdb_path", "pdb_files"))
         try:
             file_path = pdbl.retrieve_pdb_file(pdb_id, file_format=self.conf.get("file_format", "mmCif"),
                                                pdir=self.conf.get("pdb_path", "pdb_files"))
+            print(file_path)
             self.logger.info(f"Descargado PDB {pdb_id}")
 
             self.populate_pdb_chains(file_path, pdb_reference.pdb_id, local_session)
-
+            print('sale')
         except Exception as e:
             self.logger.error(f"Error al descargar y procesar PDB {pdb_id}: {e}\n{traceback.format_exc()}")
 
@@ -175,6 +178,7 @@ class PDBExtractor(ExtractorBase):
         - The directory for saving individual chain CIF files is configurable and defaults to 'pdb_chain_files'.
         """
         parser = MMCIFParser()
+        print('entra')
         structure = parser.get_structure(pdb_reference_id, pdb_file_path)
         pdb_reference_id_result = local_session.query(PDBReference.id).filter(
             PDBReference.pdb_id == pdb_reference_id).first()
@@ -192,7 +196,12 @@ class PDBExtractor(ExtractorBase):
                 for residue in chain:
                     if residue.id[0] == ' ' and residue.resname in protein_letters_3to1:
                         sequence += protein_letters_3to1[residue.resname]
-                pdb_chain = PDBChains(chains=chain_id, sequence=sequence, pdb_reference_id=pdb_reference_id_value,
+                existing_sequence = local_session.query(Sequence).filter_by(sequence=sequence).first()
+                if not existing_sequence:
+                    existing_sequence = Sequence(sequence=sequence)
+                    local_session.add(existing_sequence)
+                pdb_chain = PDBChains(chains=chain_id, sequence=existing_sequence,
+                                      pdb_reference_id=pdb_reference_id_value,
                                       model=model_id)
                 local_session.add(pdb_chain)
 
@@ -203,7 +212,7 @@ class PDBExtractor(ExtractorBase):
                     io = MMCIFIO()
                     io.set_structure(structure)
                     io.save(chain_file_path, select=ChainSelect(chain_id, model_id))
-
+        print(pdb_chain)
         local_session.commit()
         local_session.close()
 
