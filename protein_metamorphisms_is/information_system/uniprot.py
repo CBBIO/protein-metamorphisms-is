@@ -1,6 +1,7 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from http.client import HTTPException
 
+import pandas as pd
 import requests
 from Bio import ExPASy, SwissProt
 from sqlalchemy import func, exists
@@ -9,7 +10,7 @@ from urllib.parse import quote
 from protein_metamorphisms_is.helpers.parser.parser import extract_float
 from protein_metamorphisms_is.information_system.base.extractor import ExtractorBase
 
-from protein_metamorphisms_is.sql.model import Accession, Protein, PDBReference
+from protein_metamorphisms_is.sql.model import Accession, Protein, PDBReference, GOTerm, ProteinGOTermAssociation
 
 
 class UniProtExtractor(ExtractorBase):
@@ -40,72 +41,97 @@ class UniProtExtractor(ExtractorBase):
         """
         try:
             self.logger.info("Starting UniProt data extraction")
-            search_criteria = self.conf.get("search_criteria")
-            limit = self.conf.get("limit")
-            self.load_access_codes(search_criteria, limit)
+            self.load_access_codes()
             self.extract_entries()
 
         except Exception as e:
             self.logger.error(f"Error during extraction process: {e}")
 
-    def load_access_codes(self, search_criteria, limit):
-        """
-        Load access codes from UniProt based on the given search criteria and limit.
+    def load_access_codes(self):
+        csv_path = self.conf.get("load_accesion_csv")
+        accession_column = self.conf.get("load_accesion_column")
+        search_criteria = self.conf.get("search_criteria")
+        limit = self.conf.get("limit")
+        tag = self.conf.get("tag")
 
-        Fetches accession codes from UniProt using RESTful API calls. Accession codes are unique identifiers for protein records in UniProt.
-        The function uses these codes to selectively download detailed protein information in later stages.
+        encoded_search_criteria = ''
 
-        Args:
-            search_criteria (str): The search criteria for querying UniProt.
-            limit (int): The maximum number of results to fetch from UniProt. (A parameter requested by Uniprot with no
-            significant impact.)
-        """
-        encoded_search_criteria = quote(search_criteria)
-        url = (
-            f"https://rest.uniprot.org/uniprotkb/stream?"
-            f"query={encoded_search_criteria}"
-            f"&format=list&size={limit}"
-        )
-        self.logger.info(f"Requested URL: {url}")
-        try:
-            response = requests.get(url)
-            response.raise_for_status()
-            accessions = response.text.strip().split("\n")
-            self.logger.info(f"Number of Accessions in UniProt: {len(accessions)}")
+        if csv_path:
+            try:
+                data = pd.read_csv(csv_path)
+                accessions = data[accession_column].dropna().unique()
+                self.logger.info(f"Total unique accession codes loaded: {len(accessions)}")
 
-            found_accessions = []
-            new_accessions = []
+                existing_accessions = {acc[0] for acc in self.session.query(Accession.accession_code).filter(
+                    Accession.accession_code.in_(accessions)).all()}
+                new_accessions = []
 
-            for accession_code in accessions:
-                exists_query = exists().where(Accession.accession_code == accession_code)
-                accession_exists = self.session.query(exists_query).scalar()
+                for accession_code in accessions:
+                    if accession_code not in existing_accessions:
+                        new_accession = Accession(
+                            accession_code=accession_code,
+                            primary=True,
+                            tag=tag,
+                            disappeared=False
+                        )
+                        self.session.add(new_accession)
+                        new_accessions.append(new_accession)
 
-                if accession_exists:
-                    self.session.query(Accession) \
-                        .filter_by(accession_code=accession_code) \
-                        .update({"updated_at": func.now(), "disappeared": False})
-                    found_accessions.append(accession_code)
-                else:
-                    new_accession = Accession(accession_code=accession_code, primary=True)
-                    self.session.add(new_accession)
-                    new_accessions.append(new_accession)
+                self.session.commit()
+                self.logger.info(f"New accessions added: {len(new_accessions)}")
 
-            not_found_accessions = (
-                self.session.query(Accession)
-                .filter(~Accession.accession_code.in_(accessions))
-                .filter(~Accession.disappeared)
-                .update({Accession.disappeared: True}, synchronize_session=False)
-            )
-            self.logger.info(f"Accessions not found: {not_found_accessions}")
+            except Exception as e:
+                self.session.rollback()
+                self.logger.error(f"Error loading access codes from CSV: {e}")
+        else:
+            if search_criteria:
+                encoded_search_criteria = quote(search_criteria)
 
-            self.session.commit()
+            if encoded_search_criteria:
+                url = f"https://rest.uniprot.org/uniprotkb/stream?query={encoded_search_criteria}&format=list&size={limit}"
+                self.logger.info(f"Requested URL: {url}")
 
-            self.logger.info(f"Existing accessions: {len(found_accessions)}")
-            self.logger.info(f"New accessions: {len(new_accessions)}")
+                try:
+                    response = requests.get(url)
+                    response.raise_for_status()
+                    accessions = response.text.strip().split("\n")
+                    self.logger.info(f"Number of Accessions in UniProt: {len(accessions)}")
 
-        except Exception as e:
-            self.session.rollback()
-            self.logger.error(f"Error: {e}")
+                    found_accessions = []
+                    new_accessions = []
+
+                    for accession_code in accessions:
+                        exists_query = exists().where(Accession.accession_code == accession_code)
+                        accession_exists = self.session.query(exists_query).scalar()
+
+                        if accession_exists:
+                            self.session.query(Accession) \
+                                .filter_by(accession_code=accession_code) \
+                                .update({"updated_at": func.now(), "disappeared": False})
+                            found_accessions.append(accession_code)
+                        else:
+                            new_accession = Accession(accession_code=accession_code, primary=True)
+                            self.session.add(new_accession)
+                            new_accessions.append(new_accession)
+
+                    not_found_accessions = (
+                        self.session.query(Accession)
+                        .filter(~Accession.accession_code.in_(accessions))
+                        .filter(~Accession.disappeared)
+                        .update({Accession.disappeared: True}, synchronize_session=False)
+                    )
+                    self.logger.info(f"Accessions not found: {not_found_accessions}")
+
+                    self.session.commit()
+
+                    self.logger.info(f"Existing accessions: {len(found_accessions)}")
+                    self.logger.info(f"New accessions: {len(new_accessions)}")
+
+                except Exception as e:
+                    self.session.rollback()
+                    self.logger.error(f"Error: {e}")
+            else:
+                self.logger.error("No search criteria specified or could be constructed from CSV.")
 
     def extract_entries(self):
         """
@@ -205,10 +231,17 @@ class UniProtExtractor(ExtractorBase):
                 exists_query = exists().where(Accession.accession_code == accession_code)
                 accession_exists = self.session.query(exists_query).scalar()
 
-                if not accession_exists:
+                if accession_exists:
+                    existing_accession = self.session.query(Accession).filter(
+                        Accession.accession_code == accession_code).first()
+                    if existing_accession:
+                        existing_accession.protein_entry_name = protein.entry_name
+                        self.session.add(existing_accession)
+                else:
                     new_accession = Accession(accession_code=accession_code, primary=False)
                     new_accession.protein_entry_name = protein.entry_name
                     self.session.add(new_accession)
+                break
 
             for reference in data.cross_references:
                 if reference[0] == "PDB":
@@ -221,6 +254,33 @@ class UniProtExtractor(ExtractorBase):
                             protein=protein,
                         )
                         self.session.add(pdb_ref)
+
+            for reference in data.cross_references:
+                if reference[0] == "GO":
+                    # Buscar o crear el término GO
+                    go_id, category, description, evidence = reference[1], reference[2].split(":")[0], reference[2].split(":")[1], reference[3].split(":")[0]
+                    if evidence not in self.conf['allowed_evidences']:
+                        continue
+                    go_term = self.session.query(GOTerm).filter_by(go_id=go_id).first()
+
+                    if not go_term:
+                        go_term = GOTerm(go_id=go_id, category=category, description=description,evidences=evidence)
+                        self.session.add(go_term)
+
+                    # Verificar si la asociación ya existe antes de intentar insertarla
+                    exists_query = exists().where(
+                        ProteinGOTermAssociation.protein_entry_name == protein.entry_name).where(
+                        ProteinGOTermAssociation.go_id == go_id)
+                    association_exists = self.session.query(exists_query).scalar()
+
+                    if not association_exists:
+                        association = ProteinGOTermAssociation(protein_entry_name=protein.entry_name, go_id=go_id)
+                        self.session.add(association)
+                    else:
+                        self.logger.info(
+                            f"Association between {protein.entry_name} and GO Term {go_id} already exists.")
+
+            self.session.commit()
 
             self.session.commit()
 
