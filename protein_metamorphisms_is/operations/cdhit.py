@@ -1,5 +1,5 @@
 from protein_metamorphisms_is.operations.base.operator import OperatorBase
-from protein_metamorphisms_is.sql.model import PDBChains, Cluster
+from protein_metamorphisms_is.sql.model import PDBChains, Cluster, ClusterEntry
 from pycdhit import cd_hit, read_clstr
 
 
@@ -94,13 +94,6 @@ class CDHit(OperatorBase):
                 fasta_file.write(f"{header}\n{sequence}\n")
 
     def cluster(self):
-        """
-        Execute the CD-HIT algorithm for sequence clustering.
-
-        Runs the CD-HIT algorithm on the prepared FASTA file, then reads the output cluster file to store the clustering
-        results in the database. Configuration parameters such as sequence identity threshold, alignment coverage, accurate mode and
-        memory usage are used to control the CD-HIT execution.
-        """
         fasta_file_path = self.conf.get('fasta_path', './complete.fasta')
         cdhit_out_path = self.conf.get('cdhit_out_path', './out.clstr')
 
@@ -125,15 +118,24 @@ class CDHit(OperatorBase):
 
         self.logger.info(f"Reading CD-HIT output from {cdhit_out_path}.clstr")
         df_clstr = read_clstr(f"{cdhit_out_path}.clstr")
+
+        # Asociar cada cadena con su cluster correspondiente y marcar si es representativa
+        clusters_dict = {}
         for _, row in df_clstr.iterrows():
-            chain_id = row["identifier"]
-            cluster = Cluster(
-                cluster_id=row['cluster'],
-                pdb_chain_id=chain_id,
+            cluster_id = row['cluster']
+            if cluster_id not in clusters_dict:
+                cluster = Cluster()
+                self.session.add(cluster)
+                self.session.flush()  # Esto es para obtener el id generado para el cluster
+                clusters_dict[cluster_id] = cluster.id
+
+            cluster_entry = ClusterEntry(
+                cluster_id=clusters_dict[cluster_id],
+                pdb_chain_id=row["identifier"],
                 is_representative=row['is_representative'],
                 sequence_length=row['size'],
                 identity=row['identity']
             )
-            self.session.add(cluster)
+            self.session.add(cluster_entry)
         self.session.commit()
         self.logger.info("CD-HIT clustering data stored in the database")

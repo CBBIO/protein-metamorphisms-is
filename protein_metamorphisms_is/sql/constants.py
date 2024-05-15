@@ -1,4 +1,4 @@
-from protein_metamorphisms_is.sql.model import StructuralComplexityLevel, StructuralAlignmentType
+from protein_metamorphisms_is.sql.model import StructuralComplexityLevel, StructuralAlignmentType, EmbeddingType
 
 
 def handle_structural_complexity_levels(session, constants):
@@ -28,4 +28,16 @@ def handle_structural_alignment_types(session, constants):
             session.add(alignment_type)
 
     # Comprometer los cambios en la base de datos
+    session.commit()
+
+
+def handle_embedding_types(session, constants):
+    embedding_types = constants['embedding_types']
+
+    for type_data in embedding_types:
+        exists = session.query(EmbeddingType).filter_by(name=type_data['name']).first()
+        if not exists:
+            embedding_type = EmbeddingType(**type_data)
+            session.add(embedding_type)
+
     session.commit()

@@ -11,6 +11,7 @@ DB_NAME: BioData
 
 ## Information System
 # Uniprot Extraction
+
 load_accesion_csv: '../data/uniprot_ids.csv'
 load_accesion_column: 'UniProt IDs'
 tag: 'GOA'
@@ -20,8 +21,8 @@ limit: 100
 # PDB Extraction
 resolution_threshold: 2.5
 server: "https://files.wwpdb.org/"
-pdb_path: "/home/bioxaxi/data/pdb"
-pdb_chains_path: "/home/bioxaxi/data/chains"
+pdb_path: "/home/frapercan/data/pdb"
+pdb_chains_path: "/home/frapercan/data/chains"
 file_format: "mmCif"
 allow_multiple_chain_models: False # NMR
 
@@ -29,8 +30,8 @@ allow_multiple_chain_models: False # NMR
 constants: "config/constants.yaml"
 
 # Sequence Clustering
-fasta_path: "/home/bioxaxi/data/complete.fasta"
-cdhit_out_path: "/home/bioxaxi/data/out"
+fasta_path: "/home/frapercan/data/complete.fasta"
+cdhit_out_path: "/home/frapercan/data/out"
 sequence_identity_threshold: 0.95
 alignment_coverage: 0.95
 memory_usage: 25000
@@ -49,6 +50,13 @@ structural_alignment:
   task_timeout: 20
 
 
+# Embedding
+embedding:
+  types:
+    - 1
+    - 2
+
+
 # GO Metrics
 obo: '../data/go-basic.obo'
 go_annotation_file: '../data/cgd.gaf'
@@ -62,5 +70,6 @@ allowed_evidences:
   - IEP
   - TAS
   - IC
+
 
 
