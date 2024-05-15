@@ -11,8 +11,9 @@ DB_NAME: BioData
 
 ## Information System
 # Uniprot Extraction
-load_accesion_csv: '../data/moon_dataset.csv'
+load_accesion_csv: '../data/uniprot_ids.csv'
 load_accesion_column: 'UniProt IDs'
+tag: 'GOA'
 search_criteria: '(structure_3d:true)'
 limit: 100
 
@@ -49,8 +50,8 @@ structural_alignment:
 
 
 # GO Metrics
-ontology: 'data/go-basic.obo'
-go_annotation_file: 'data/cgd.gaf'
+obo: '../data/go-basic.obo'
+go_annotation_file: '../data/cgd.gaf'
 
 allowed_evidences:
   - EXP

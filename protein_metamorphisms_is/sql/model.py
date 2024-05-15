@@ -73,12 +73,12 @@ class Protein(Base):
     go_term_associations = relationship("ProteinGOTermAssociation", back_populates="protein", overlaps="go_terms")
 
 
-keywords = Column(String)
-protein_existence = Column(Integer)
-seqinfo = Column(String)
-disappeared = Column(Boolean)
-created_at = Column(DateTime, default=func.now())
-updated_at = Column(DateTime, onupdate=func.now())
+    keywords = Column(String)
+    protein_existence = Column(Integer)
+    seqinfo = Column(String)
+    disappeared = Column(Boolean)
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, onupdate=func.now())
 
 
 class Accession(Base):
@@ -114,6 +114,7 @@ class Accession(Base):
     protein_entry_name = Column(String, ForeignKey("proteins.entry_name"))
     protein = relationship("Protein", back_populates="accessions")
     disappeared = Column(Boolean)
+    tag = Column(String)
     primary = Column(Boolean)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, onupdate=func.now())
