@@ -1,22 +1,29 @@
 from datetime import datetime
 
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import (Column, Integer, String, Date, ForeignKey, DateTime,
-                        func, Float, Boolean)
+                        func, Float, Boolean, Index, UniqueConstraint)
 from sqlalchemy.dialects.postgresql import ARRAY
-from sqlalchemy.orm import relationship, declarative_base
+from sqlalchemy.orm import relationship, declarative_base, mapped_column
 
 Base = declarative_base()
 
 
 class Sequence(Base):
-    """
-    Model for storing sequences independently. It does not directly link to any entity,
-    allowing flexible referencing from multiple entities.
-    """
     __tablename__ = 'sequences'
-
     id = Column(Integer, primary_key=True)
-    sequence = Column(String, unique=True, nullable=False)
+    sequence = Column(String, nullable=False)
+    sequence_hash = Column(String, index=True, unique=True)
+
+    go_predictions = relationship("SequenceGOPrediction", back_populates="sequence")
+
+    # Adding a default value to automatically compute the hash when a sequence is added
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.sequence_hash = func.md5(self.sequence)
+
+
+Index('idx_sequence_hash', Sequence.sequence_hash)
 
 
 class Protein(Base):
@@ -85,7 +92,7 @@ class Protein(Base):
                             overlaps="go_term_associations")
 
     go_term_associations = relationship("ProteinGOTermAssociation", back_populates="protein", overlaps="go_terms")
-
+    go_per_protein_semantic_distances = relationship("GOPerProteinSemanticDistance", back_populates="protein")
 
     keywords = Column(String)
     protein_existence = Column(Integer)
@@ -221,7 +228,7 @@ class SequenceEmbedding(Base):
     id = Column(Integer, primary_key=True)
     sequence_id = Column(Integer, ForeignKey('sequences.id'), nullable=False)
     embedding_type_id = Column(Integer, ForeignKey('embedding_types.id'))
-    embedding = Column(ARRAY(Float))
+    embedding = mapped_column(Vector())
     shape = Column(ARRAY(Integer))  # Almacena las dimensiones del embedding como un array de enteros
     created_at = Column(DateTime, default=func.now())
     created_at = Column(DateTime, default=func.now())
@@ -229,8 +236,6 @@ class SequenceEmbedding(Base):
 
     sequence = relationship("Sequence")
     embedding_type = relationship("EmbeddingType")
-
-
 
 
 class Cluster(Base):
@@ -288,7 +293,6 @@ class SubclusterEntry(Base):
     # Relaciones con Subcluster y PDBChains
     subcluster = relationship("Subcluster", back_populates="entries")
     pdb_chain = relationship("PDBChains", back_populates="subcluster_entries")
-
 
 
 class StructuralComplexityLevel(Base):
@@ -367,6 +371,7 @@ class EmbeddingType(Base):
     model_name = Column(String)
 
     seq_embeddings = relationship("SequenceEmbedding", back_populates="embedding_type")  # Ajuste aquí
+    sequence_predictions = relationship("SequenceGOPrediction", back_populates="embedding_type")
 
 
 class StructuralAlignmentQueue(Base):
@@ -429,15 +434,11 @@ class StructuralAlignmentResults(Base):
     fc_align_len = Column(Float)
 
 
+
 class ProteinGOTermAssociation(Base):
     __tablename__ = 'protein_go_term_association'
     protein_entry_name = Column(String, ForeignKey('proteins.entry_name'), primary_key=True)
     go_id = Column(String, ForeignKey('go_terms.go_id'), primary_key=True)
-
-    # Relaciones para facilitar el acceso bidireccional
-    protein_entry_name = Column(String, ForeignKey('proteins.entry_name'), primary_key=True)
-    go_id = Column(String, ForeignKey('go_terms.go_id'), primary_key=True)
-
     protein = relationship("Protein", back_populates="go_term_associations", overlaps="go_terms")
     go_term = relationship("GOTerm", back_populates="protein_associations", overlaps="proteins")
 
@@ -464,10 +465,11 @@ class GOTerm(Base):
     category = Column(String)
     description = Column(String)
     evidences = Column(String, nullable=True)
+
     proteins = relationship("Protein", secondary="protein_go_term_association", back_populates="go_terms",
                             overlaps="protein_associations")
-
     protein_associations = relationship("ProteinGOTermAssociation", back_populates="go_term", overlaps="proteins")
+    sequence_predictions = relationship("SequenceGOPrediction", back_populates="go_term")
 
 
 class GOTermRelationship(Base):
@@ -482,3 +484,37 @@ class GOTermRelationship(Base):
 
     go_term_1 = relationship("GOTerm", foreign_keys=[go_term_1_id])
     go_term_2 = relationship("GOTerm", foreign_keys=[go_term_2_id])
+
+
+class SequenceGOPrediction(Base):
+    __tablename__ = 'sequence_go_predictions'
+    id = Column(Integer, primary_key=True)
+    sequence_id = Column(Integer, ForeignKey('sequences.id'))
+    ref_protein_entry_name = Column(String, ForeignKey('proteins.entry_name'))
+    go_id = Column(String, ForeignKey('go_terms.go_id'), nullable=False)
+    embedding_type_id = Column(Integer, ForeignKey('embedding_types.id'), nullable=False)
+    prediction_method_id = Column(Integer, ForeignKey('prediction_methods.id'))  # Vinculación con PredictionMethod
+    k = Column(Integer)
+
+    sequence = relationship("Sequence", back_populates="go_predictions")
+    go_term = relationship("GOTerm", back_populates="sequence_predictions")
+    embedding_type = relationship("EmbeddingType", back_populates="sequence_predictions")
+
+
+class PredictionMethod(Base):
+    __tablename__ = 'prediction_methods'
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False, unique=True)
+    description = Column(String)
+
+
+class GOPerProteinSemanticDistance(Base):
+    __tablename__ = 'go_per_protein_semantic_distances'
+    id = Column(Integer, primary_key=True)
+    protein_entry_name = Column(String, ForeignKey('proteins.entry_name'))
+    embedding_type_id = Column(Integer, ForeignKey('embedding_types.id'))
+    prediction_method_id = Column(Integer, ForeignKey('prediction_methods.id'))  # Vinculación con PredictionMethod
+    group_distance = Column(Float, nullable=False)
+
+    protein = relationship("Protein", back_populates="go_per_protein_semantic_distances")
+    embedding_type = relationship("EmbeddingType")

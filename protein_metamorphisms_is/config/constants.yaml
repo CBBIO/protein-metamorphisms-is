@@ -27,3 +27,8 @@ embedding_types:
     description: "Prot-T5 embeddings leverage the capabilities of the T5 (Text-to-Text Transfer Transformer) model adapted for protein sequences, offering advanced sequence representation by considering both local and global sequence features."
     task_name:  prost_t5
     model_name: Rostlab/ProstT5
+
+prediction_methods:
+  - name: "Cosine Similarity"
+    description: "Cosine similarity measures the cosine of the angle between two non-zero vectors of an inner product space. It is used to measure the similarity between two embedding spaces."
+

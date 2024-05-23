@@ -163,7 +163,6 @@ class UniProtExtractor(ExtractorBase):
                     if data:
                         self.store_entry(data)
                 except Exception as e:
-                    traceback.print_exc()
                     self.logger.error(f"Error processing the entry {uniprot_id}: {e}")
 
     def download_record(self, accession_code):
@@ -249,7 +248,7 @@ class UniProtExtractor(ExtractorBase):
                 break
 
             for reference in data.cross_references:
-                if reference[0] == "PDB":
+                if reference[0] == "PDB" and False == True:
                     pdb_ref_exists = self.session.query(exists().where(PDBReference.pdb_id == reference[1])).scalar()
                     if not pdb_ref_exists:
                         # Usar la función para procesar el rango de la secuencia
@@ -258,9 +257,7 @@ class UniProtExtractor(ExtractorBase):
                         if start is not None and end is not None:
 
                             sequence = existing_sequence.sequence[start - 1:end]  # Python usa índices basados en 0
-                            print(sequence)
                             existing_sequence = self.session.query(Sequence).filter_by(sequence=sequence).first()
-                            print(bool(existing_sequence))
                             if not existing_sequence:
                                 existing_sequence = Sequence(sequence=sequence)
                                 self.session.add(existing_sequence)
@@ -280,8 +277,8 @@ class UniProtExtractor(ExtractorBase):
                 if reference[0] == "GO":
                     # Buscar o crear el término GO
                     go_id, category, description, evidence = reference[1], reference[2].split(":")[0], reference[2].split(":")[1], reference[3].split(":")[0]
-                    if evidence not in self.conf['allowed_evidences']:
-                        continue
+                    # if evidence not in self.conf['allowed_evidences']:
+                    #     continue
                     go_term = self.session.query(GOTerm).filter_by(go_id=go_id).first()
 
                     if not go_term:

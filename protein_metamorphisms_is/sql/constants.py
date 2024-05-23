@@ -1,4 +1,5 @@
-from protein_metamorphisms_is.sql.model import StructuralComplexityLevel, StructuralAlignmentType, EmbeddingType
+from protein_metamorphisms_is.sql.model import StructuralComplexityLevel, StructuralAlignmentType, EmbeddingType, \
+    PredictionMethod
 
 
 def handle_structural_complexity_levels(session, constants):
@@ -39,5 +40,17 @@ def handle_embedding_types(session, constants):
         if not exists:
             embedding_type = EmbeddingType(**type_data)
             session.add(embedding_type)
+
+    session.commit()
+
+
+def handle_prediction_methods(session, constants):
+    prediction_methods = constants['prediction_methods']
+
+    for method_data in prediction_methods:
+        exists = session.query(PredictionMethod).filter_by(name=method_data['name']).first()
+        if not exists:
+            prediction_method = PredictionMethod(**method_data)
+            session.add(prediction_method)
 
     session.commit()

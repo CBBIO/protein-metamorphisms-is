@@ -1,5 +1,5 @@
 #System
-max_workers: 12
+max_workers: 24
 binaries_path: '../binaries'
 
 # DB CONFIGURATION
@@ -53,9 +53,8 @@ structural_alignment:
 # Embedding
 embedding:
   types:
-    - 1
-    - 2
-
+    - 1 # ESM
+    - 2 # Prost
 
 # GO Metrics
 obo: '../data/go-basic.obo'
@@ -71,5 +70,5 @@ allowed_evidences:
   - TAS
   - IC
 
-
+k: 5
 
