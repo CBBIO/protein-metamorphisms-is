@@ -10,7 +10,7 @@ from protein_metamorphisms_is.sql.model import (
     SequenceGOPrediction,
     GOPerProteinSemanticDistance,
     PredictionMethod,
-    EmbeddingType
+    EmbeddingType, Sequence
 )
 
 class GoPredictionMetricsPerProtein(OperatorBase):
@@ -41,8 +41,9 @@ class GoPredictionMetricsPerProtein(OperatorBase):
         return self.go_graph.subgraph(subgraph_nodes)
 
     def process_protein_metrics(self):
-
-        proteins = self.session.query(Protein).all()
+        proteins = (self.session.query(Protein)
+                    .join(SequenceGOPrediction, Protein.sequence_id == SequenceGOPrediction.sequence_id)
+                    .distinct().all())
         prediction_methods = self.session.query(PredictionMethod).all()
         embedding_types = self.session.query(EmbeddingType).all()
 
@@ -52,7 +53,7 @@ class GoPredictionMetricsPerProtein(OperatorBase):
             for method in prediction_methods:
                 for embedding in embedding_types:
                     predictions = {pred.go_term.go_id for pred in self.session.query(SequenceGOPrediction).filter_by(
-                        ref_protein_entry_name=protein.entry_name,
+                        sequence_id=protein.sequence_id,
                         prediction_method_id=method.id,
                         embedding_type_id=embedding.id
                     )}
