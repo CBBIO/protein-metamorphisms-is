@@ -1,5 +1,5 @@
 from protein_metamorphisms_is.operations.base.operator import OperatorBase
-from protein_metamorphisms_is.sql.model import PDBChains, Cluster, ClusterEntry
+from protein_metamorphisms_is.sql.model import PDBChains, Cluster, ClusterEntry, Sequence
 from pycdhit import cd_hit, read_clstr
 
 
@@ -41,97 +41,72 @@ class CDHit(OperatorBase):
     def start(self):
         """
         Start the protein sequence clustering process using CD-HIT.
-
-        Coordinates the steps for loading protein chains, creating a FASTA file, executing CD-HIT for clustering, and
-        handling exceptions and key events. Logs the progress and any errors encountered during the process.
         """
         try:
-            self.logger.info("Starting CD-HIT clustering process")
-            chains = self.load_chains()
-            # self.explore_representatives()
-
-            self.create_fasta(chains)
+            self.logger.info("Starting CD-HIT clustering process for sequences")
+            sequences = self.load_sequences()
+            self.create_fasta(sequences)
             self.cluster()
             self.logger.info("Clustering process completed successfully")
-
         except Exception as e:
             self.logger.error(f"Error during clustering process: {e}")
             raise
 
-    def load_chains(self):
+    def load_sequences(self):
         """
-        Retrieve protein chain data from the database.
+        Retrieve all unique sequences from the database for clustering.
 
-        Fetches all PDBChains records from the database. The method can be configured to include or exclude multiple chain
-        models based on the 'allow_multiple_chain_models' (NMR samples) configuration.
-
-        Returns:
-            list: A list of PDBChains objects representing protein chains.
+        Fetches all Sequence records from the database. Each sequence will be used for clustering to reduce redundancy.
         """
-        self.logger.info("Loading protein chains from the database")
-        if not self.conf.get("allow_multiple_chain_models"):
-            chains = self.session.query(PDBChains).filter(PDBChains.model == 0).all()
-        else:
-            chains = self.session.query(PDBChains).all()
-        return chains
+        self.logger.info("Loading sequences from the database")
+        sequences = self.session.query(Sequence.id, Sequence.sequence).all()
+        return sequences
 
-    def create_fasta(self, chains):
+    def create_fasta(self, sequences):
         """
-        Generate a FASTA file from a list of protein chains.
-
-        Writes the provided protein chains to a FASTA formatted file. The path for the FASTA file is specified in the
-        configuration.
+        Generate a FASTA file from a list of sequences.
 
         Args:
-            chains (list): A list of PDBChains objects to be written to the FASTA file.
+            sequences (list): A list of tuples, each containing a sequence ID and its sequence string.
         """
-        fasta_path = self.conf.get('fasta_path', './complete.fasta')
-        self.logger.info(f"Writing protein chains to FASTA file at {fasta_path}")
+        fasta_path = self.conf.get('fasta_path', './sequences.fasta')
+        self.logger.info(f"Writing sequences to FASTA file at {fasta_path}")
         with open(fasta_path, "w") as fasta_file:
-            for chain in chains:
-                header = f">{chain.id}"
-                sequence = chain.sequence
+            for seq_id, sequence in sequences:
+                header = f">{seq_id}"
                 fasta_file.write(f"{header}\n{sequence}\n")
 
     def cluster(self):
-        fasta_file_path = self.conf.get('fasta_path', './complete.fasta')
+        fasta_file_path = self.conf.get('fasta_path', './sequences.fasta')
         cdhit_out_path = self.conf.get('cdhit_out_path', './out.clstr')
-
-        sequence_identity_threshold = self.conf.get('sequence_identity_threshold')
-        alignment_coverage = self.conf.get('alignment_coverage')
-        memory_usage = self.conf.get('memory_usage')
-        num_threads = self.conf.get('max_workers')
-        most_representative_search = self.conf.get('most_representative_search')
 
         self.logger.info(f"Running CD-HIT on {fasta_file_path}")
         cd_hit(
             i=fasta_file_path,
             o=cdhit_out_path,
-            c=sequence_identity_threshold,
+            c=self.conf.get('sequence_identity_threshold', 0.9),
             d=0,
             sc=1,
-            aL=alignment_coverage,
-            M=memory_usage,
-            T=num_threads,
-            g=most_representative_search
+            aL=self.conf.get('alignment_coverage', 0.9),
+            M=self.conf.get('memory_usage', 1024),
+            T=self.conf.get('max_workers', 4),
+            g=self.conf.get('most_representative_search', 1)
         )
 
         self.logger.info(f"Reading CD-HIT output from {cdhit_out_path}.clstr")
         df_clstr = read_clstr(f"{cdhit_out_path}.clstr")
-
-        # Asociar cada cadena con su cluster correspondiente y marcar si es representativa
         clusters_dict = {}
         for _, row in df_clstr.iterrows():
             cluster_id = row['cluster']
             if cluster_id not in clusters_dict:
                 cluster = Cluster()
                 self.session.add(cluster)
-                self.session.flush()  # Esto es para obtener el id generado para el cluster
+                self.session.flush()  # To obtain the generated cluster ID
                 clusters_dict[cluster_id] = cluster.id
 
             cluster_entry = ClusterEntry(
                 cluster_id=clusters_dict[cluster_id],
-                pdb_chain_id=row["identifier"],
+                sequence_id=row["identifier"],
                 is_representative=row['is_representative'],
                 sequence_length=row['size'],
                 identity=row['identity']
@@ -139,3 +114,4 @@ class CDHit(OperatorBase):
             self.session.add(cluster_entry)
         self.session.commit()
         self.logger.info("CD-HIT clustering data stored in the database")
+

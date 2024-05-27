@@ -220,7 +220,6 @@ class PDBChains(Base):
 
     pdb_reference = relationship("PDBReference", back_populates="pdb_chains")
     # Añade esta línea para definir la relación con SubclusterEntry
-    subcluster_entries = relationship("SubclusterEntry", back_populates="pdb_chain")
 
 
 class SequenceEmbedding(Base):
@@ -241,12 +240,9 @@ class SequenceEmbedding(Base):
 class Cluster(Base):
     __tablename__ = 'clusters'
     id = Column(Integer, primary_key=True)
-    description = Column(String)  # Ejemplo de campo adicional
     created_at = Column(DateTime, default=datetime.now)
-
     # Relación con ClusterEntries
     entries = relationship("ClusterEntry", back_populates="cluster")
-
     # Relación con Subcluster
     subclusters = relationship("Subcluster", back_populates="cluster")
 
@@ -255,7 +251,7 @@ class ClusterEntry(Base):
     __tablename__ = 'cluster_entries'
     id = Column(Integer, primary_key=True)
     cluster_id = Column(Integer, ForeignKey('clusters.id'))
-    pdb_chain_id = Column(Integer, ForeignKey('pdb_chains.id'))
+    sequence_id = Column(Integer, ForeignKey('sequences.id'), nullable=False)
     is_representative = Column(Boolean)
     sequence_length = Column(Integer)
     identity = Column(Float)
@@ -263,7 +259,7 @@ class ClusterEntry(Base):
 
     # Relaciones con Cluster y PDBChains
     cluster = relationship("Cluster", back_populates="entries")
-    pdb_chain = relationship("PDBChains")  # Asegúrate de definir esta relación en PDBChains si aún no existe
+    sequence = relationship("Sequence")
 
 
 class Subcluster(Base):
@@ -272,6 +268,10 @@ class Subcluster(Base):
     cluster_id = Column(Integer, ForeignKey('clusters.id'))
     description = Column(String)  # Una descripción opcional del subcluster
     created_at = Column(DateTime, default=datetime.now)
+
+    embedding_type_id = Column(Integer, ForeignKey('embedding_types.id'), nullable=False)
+
+    embedding_type = relationship("EmbeddingType",back_populates="subclusters")
 
     # Relación de vuelta a Cluster
     cluster = relationship("Cluster", back_populates="subclusters")
@@ -284,7 +284,7 @@ class SubclusterEntry(Base):
     __tablename__ = 'subcluster_entries'
     id = Column(Integer, primary_key=True)
     subcluster_id = Column(Integer, ForeignKey('subclusters.id'))
-    pdb_chain_id = Column(Integer, ForeignKey('pdb_chains.id'))
+    sequence_id = Column(Integer, ForeignKey('sequences.id'), nullable=False)
     is_representative = Column(Boolean)
     sequence_length = Column(Integer)
     identity = Column(Float)
@@ -292,7 +292,7 @@ class SubclusterEntry(Base):
 
     # Relaciones con Subcluster y PDBChains
     subcluster = relationship("Subcluster", back_populates="entries")
-    pdb_chain = relationship("PDBChains", back_populates="subcluster_entries")
+    sequence = relationship("Sequence")
 
 
 class StructuralComplexityLevel(Base):
@@ -372,6 +372,7 @@ class EmbeddingType(Base):
 
     seq_embeddings = relationship("SequenceEmbedding", back_populates="embedding_type")  # Ajuste aquí
     sequence_predictions = relationship("SequenceGOPrediction", back_populates="embedding_type")
+    subclusters = relationship("Subcluster", back_populates="embedding_type")
 
 
 class StructuralAlignmentQueue(Base):
@@ -432,7 +433,6 @@ class StructuralAlignmentResults(Base):
     fc_similarity = Column(Float)
     fc_score = Column(Float)
     fc_align_len = Column(Float)
-
 
 
 class ProteinGOTermAssociation(Base):

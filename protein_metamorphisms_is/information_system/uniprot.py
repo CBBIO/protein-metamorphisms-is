@@ -248,7 +248,7 @@ class UniProtExtractor(ExtractorBase):
                 break
 
             for reference in data.cross_references:
-                if reference[0] == "PDB" and False == True:
+                if reference[0] == "PDB":
                     pdb_ref_exists = self.session.query(exists().where(PDBReference.pdb_id == reference[1])).scalar()
                     if not pdb_ref_exists:
                         # Usar la función para procesar el rango de la secuencia

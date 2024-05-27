@@ -94,6 +94,7 @@ class StructuralAlignmentManager(OperatorBase):
                 Cluster.is_representative == False
             ).all()
 
+
             self.logger.info(f"Found {len(clusters_not_queued)} clusters not in queue, adding to queue.")
 
             for cluster in clusters_not_queued:

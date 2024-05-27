@@ -136,16 +136,13 @@ class PDBExtractor(ExtractorBase):
         """
         local_session = sessionmaker(bind=self.engine)()
         pdb_id = pdb_reference.pdb_id
-        print(pdb_id)
         pdbl = PDB.PDBList(server=self.conf.get("server", "ftp.wwpdb.org"), pdb=self.conf.get("pdb_path", "pdb_files"))
         try:
             file_path = pdbl.retrieve_pdb_file(pdb_id, file_format=self.conf.get("file_format", "mmCif"),
                                                pdir=self.conf.get("pdb_path", "pdb_files"))
-            print(file_path)
             self.logger.info(f"Descargado PDB {pdb_id}")
 
             self.populate_pdb_chains(file_path, pdb_reference.pdb_id, local_session)
-            print('sale')
         except Exception as e:
             self.logger.error(f"Error al descargar y procesar PDB {pdb_id}: {e}\n{traceback.format_exc()}")
 
@@ -178,7 +175,6 @@ class PDBExtractor(ExtractorBase):
         - The directory for saving individual chain CIF files is configurable and defaults to 'pdb_chain_files'.
         """
         parser = MMCIFParser()
-        print('entra')
         structure = parser.get_structure(pdb_reference_id, pdb_file_path)
         pdb_reference_id_result = local_session.query(PDBReference.id).filter(
             PDBReference.pdb_id == pdb_reference_id).first()
@@ -212,7 +208,6 @@ class PDBExtractor(ExtractorBase):
                     io = MMCIFIO()
                     io.set_structure(structure)
                     io.save(chain_file_path, select=ChainSelect(chain_id, model_id))
-        print(pdb_chain)
         local_session.commit()
         local_session.close()
 
