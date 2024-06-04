@@ -1,5 +1,5 @@
 #System
-max_workers: 1
+max_workers: 6
 binaries_path: '../binaries'
 
 # DB CONFIGURATION
@@ -9,13 +9,14 @@ DB_HOST: localhost
 DB_PORT: 5432
 DB_NAME: BioData
 
-## Information System
+## Information System/
 # Uniprot Extraction
 
-load_accesion_csv: '../data/uniprot_ids.csv'
-load_accesion_column: 'UniProt IDs'
+load_accesion_csv: false
+load_accesion_column: false
 tag: 'GOA'
-search_criteria: '(structure_3d:true)'
+
+search_criteria: '(taxonomy_id:212035) AND (structure_3d:true)'
 limit: 100
 
 # PDB Extraction

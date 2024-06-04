@@ -1,3 +1,5 @@
+import queue
+import time
 from abc import ABC, abstractmethod
 
 from protein_metamorphisms_is.helpers.logger.logger import setup_logger
@@ -32,6 +34,8 @@ class ExtractorBase(ABC):
         self.logger = setup_logger(self.__class__.__name__)
         self.logger.info(f"Initializing {self.__class__.__name__}")
 
+        self.data_queue = queue.Queue()
+
         if session_required:
             self.session_init()
 
@@ -46,7 +50,6 @@ class ExtractorBase(ABC):
         self.engine = db_manager.get_engine()
         self.session = db_manager.get_session()
 
-    @abstractmethod
     def start(self):
         """
         Start the data extraction process.
@@ -54,4 +57,31 @@ class ExtractorBase(ABC):
         This abstract method should be implemented by all subclasses to define
         the specific data extraction logic for each bioinformatics data source.
         """
+        self.set_targets()
+        self.fetch()
+        self.add_to_db()
+
+    def add_to_db(self):
+        """
+        add fetched data from the queue to the database.
+        """
+        while not self.data_queue.empty():
+            try:
+                # Fetch data from the queue, wait if necessary
+                self.store_entry(self.data_queue.get())
+            except queue.Empty:
+                self.logger.info("No more data to process. Exiting.")
+                self.session.close()
+                break
+
+    @abstractmethod
+    def set_targets(self):
+        pass
+
+    @abstractmethod
+    def fetch(self):
+        pass
+
+    @abstractmethod
+    def store_entry(self, data):
         pass

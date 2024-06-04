@@ -88,10 +88,12 @@ class Protein(Base):
     comments = Column(String)
 
     pdb_references = relationship("PDBReference", back_populates="protein")
-    go_terms = relationship("GOTerm", secondary="protein_go_term_association", back_populates="proteins",
-                            overlaps="go_term_associations")
 
-    go_term_associations = relationship("ProteinGOTermAssociation", back_populates="protein", overlaps="go_terms")
+    go_term_associations = relationship(
+        "ProteinGOTermAssociation",
+        back_populates="protein",
+    )
+
     go_per_protein_semantic_distances = relationship("GOPerProteinSemanticDistance", back_populates="protein")
 
     keywords = Column(String)
@@ -439,8 +441,14 @@ class ProteinGOTermAssociation(Base):
     __tablename__ = 'protein_go_term_association'
     protein_entry_name = Column(String, ForeignKey('proteins.entry_name'), primary_key=True)
     go_id = Column(String, ForeignKey('go_terms.go_id'), primary_key=True)
-    protein = relationship("Protein", back_populates="go_term_associations", overlaps="go_terms")
-    go_term = relationship("GOTerm", back_populates="protein_associations", overlaps="proteins")
+    protein = relationship(
+        "Protein",
+        back_populates="go_term_associations",
+    )
+    go_term = relationship(
+        "GOTerm",
+        back_populates="protein_associations",
+    )
 
 
 class GOTerm(Base):
@@ -466,9 +474,10 @@ class GOTerm(Base):
     description = Column(String)
     evidences = Column(String, nullable=True)
 
-    proteins = relationship("Protein", secondary="protein_go_term_association", back_populates="go_terms",
-                            overlaps="protein_associations")
-    protein_associations = relationship("ProteinGOTermAssociation", back_populates="go_term", overlaps="proteins")
+    protein_associations = relationship(
+        "ProteinGOTermAssociation",
+        back_populates="go_term",
+    )
     sequence_predictions = relationship("SequenceGOPrediction", back_populates="go_term")
 
 
