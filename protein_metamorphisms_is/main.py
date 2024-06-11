@@ -16,12 +16,12 @@ from protein_metamorphisms_is.operations.structural_alignment import StructuralA
 
 def main(config_path="config/config.yaml"):
     conf = read_yaml_config(config_path)
-    UniProtExtractor(conf).start()
+    # UniProtExtractor(conf).start()
     # GoMetrics(conf).start()
     # PDBExtractor(conf).start()
-    # SequenceEmbeddingManager(conf).start()
-    # CDHit(conf).start()
-    # OpticsClustering(conf).start()
+    SequenceEmbeddingManager(conf).start()
+    CDHit(conf).start()
+    OpticsClustering(conf).start()
     # StructuralAlignmentManager(conf).start()
     # GoPrediction(conf).start()
     # GoPredictionMetricsPerProtein(conf).start()

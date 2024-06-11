@@ -17,26 +17,23 @@ from protein_metamorphisms_is.sql.model import Accession, ProteinGOTermAssociati
 
 class UniProtExtractor(ExtractorBase):
     """
-    A class for extracting and processing data from UniProt, a comprehensive resource for protein sequence and annotation data.
-    UniProt provides a rich collection of protein sequence and functional information, which includes protein names,
-    descriptions, taxonomic data, and sequence annotations.
-
-    This class extends BioinfoExtractorBase and provides specific implementations for extracting and processing data from UniPro...
+    Handles the extraction and processing of data from UniProt. This includes retrieving protein sequences,
+    annotations, and functional data. The class extends ExtractorBase to utilize base functionalities and ensures
+    integration with a database to store and manage the extracted data.
     """
 
     def __init__(self, conf):
         """
-        Initialize the UniProtExtractor class.
-        Sets up the configuration and logger. Initializes the database session if required.
-        Configurations can include number of threads, database connection details, logging settings, and specific
-        parameters related to UniProt data extraction.
+        Initializes the extractor with configuration for logging and database access.
+        Args:
+            conf (dict): Configuration dictionary specifying operational parameters.
         """
         super().__init__(conf, session_required=True)
         self.logger.info("UniProtExtractor initialized with configuration.")
 
     def set_targets(self):
         """
-        Sets the targets for data extraction from a CSV file or via a search URL.
+        Determines the data extraction targets from either a CSV file or a live API based on provided configuration.
         """
         csv_path = self.conf.get("load_accesion_csv")
         accession_column = self.conf.get("load_accesion_column")
@@ -54,6 +51,13 @@ class UniProtExtractor(ExtractorBase):
                 self.logger.error("No valid search criteria provided. Data extraction cannot proceed.")
 
     def _load_access_from_csv(self, csv_path, accession_column, csv_tag):
+        """
+        Loads accessions from a specified CSV file and processes them for data fetching.
+        Args:
+            csv_path (str): Path to the CSV file.
+            accession_column (str): Column name containing accession codes.
+            csv_tag (str): Tag associated with the accession for internal tracking.
+        """
         try:
             data = pd.read_csv(csv_path)
             accessions = data[accession_column].dropna().unique()
@@ -63,6 +67,12 @@ class UniProtExtractor(ExtractorBase):
             self.logger.error(f"Failed to load or process CSV: {traceback.format_exc()}")
 
     def _fetch_accessions_from_api(self, search_criteria, limit):
+        """
+        Fetches accession codes from UniProt API based on the specified search criteria.
+        Args:
+            search_criteria (str): Search parameters for the API query.
+            limit (int): Maximum number of accessions to fetch.
+        """
         encoded_search_criteria = quote(search_criteria)
         url = f"https://rest.uniprot.org/uniprotkb/stream?query={encoded_search_criteria}&format=list&size={limit}"
         self.logger.info(f"Fetching data from URL: {url}")
@@ -76,14 +86,27 @@ class UniProtExtractor(ExtractorBase):
             self.logger.error(f"Failed to fetch data from UniProt: {e}")
 
     def _process_new_accessions(self, accessions, tag):
+        """
+        Processes newly fetched accession codes, checking against the database to avoid duplicates,
+        and saves them if they are new.
+        Args:
+            accessions (list): List of accession codes to process.
+            tag (str): Tag to associate with new accessions.
+        """
         self.logger.info(f"Processing {len(accessions)} accessions.")
-        existing_accessions = {acc[0] for acc in self.session.query(Accession.accession_code).filter(Accession.accession_code.in_(accessions)).all()}
-        new_accessions = [Accession(accession_code=acc, primary=True, tag=tag) for acc in accessions if acc not in existing_accessions]
+        existing_accessions = {acc[0] for acc in self.session.query(Accession.accession_code).filter(
+            Accession.accession_code.in_(accessions)).all()}
+        new_accessions = [Accession(accession_code=acc, primary=True, tag=tag) for acc in accessions if
+                          acc not in existing_accessions]
         self.session.bulk_save_objects(new_accessions)
         self.session.commit()
         self.logger.info(f"Added {len(new_accessions)} new accessions to the database.")
 
     def fetch(self):
+        """
+        Initiates the download of UniProt entries. Downloads are processed concurrently using ThreadPoolExecutor
+        to manage multiple downloads efficiently. It handles exceptions and logs appropriate errors or warnings.
+        """
         self.logger.info("Starting the download of UniProt entries.")
 
         accessions = self.session.query(Accession).all()
@@ -109,8 +132,6 @@ class UniProtExtractor(ExtractorBase):
 
         # Signal to the consuming task(s) that fetching is complete by adding None or a similar sentinel value
         self.logger.info("All data fetching and queuing completed.")
-
-
 
     def _download_record(self, accession_code):
         """
@@ -157,6 +178,13 @@ class UniProtExtractor(ExtractorBase):
             self.session.rollback()
 
     def _get_or_create_protein(self, data):
+        """
+        Retrieves an existing protein record from the database using the entry_name from data or creates a new one if it does not exist.
+        Args:
+            data (SwissProt.Record): Data containing the entry_name of the protein.
+        Returns:
+            Protein: The retrieved or newly created protein object.
+        """
         protein = self.session.query(Protein).filter_by(entry_name=data.entry_name).first()
         if not protein:
             protein = Protein(entry_name=data.entry_name)
@@ -164,6 +192,13 @@ class UniProtExtractor(ExtractorBase):
         return protein
 
     def _update_protein_details(self, protein, data):
+        """
+        Updates the protein details based on the provided SwissProt data. All related protein attributes like sequence,
+        molecule type, organism details, etc., are updated.
+        Args:
+            protein (Protein): The protein object to update.
+            data (SwissProt.Record): Data used to update the protein object.
+        """
         protein.sequence = self._get_or_create_sequence(data.sequence)
         protein.data_class = data.data_class
         protein.molecule_type = data.molecule_type
@@ -186,6 +221,13 @@ class UniProtExtractor(ExtractorBase):
         self.session.add(protein)
 
     def _get_or_create_sequence(self, sequence):
+        """
+        Retrieves or creates a sequence entity in the database.
+        Args:
+            sequence (str): Amino acid sequence of a protein.
+        Returns:
+            Sequence: The retrieved or newly created sequence object.
+        """
         existing_sequence = self.session.query(Sequence).filter_by(sequence=sequence).first()
         if not existing_sequence:
             existing_sequence = Sequence(sequence=sequence)
@@ -193,12 +235,26 @@ class UniProtExtractor(ExtractorBase):
         return existing_sequence
 
     def _handle_accessions(self, protein, accessions):
+        """
+        Processes and links accession codes to the specified protein, ensuring no duplicates in the database.
+        Args:
+            protein (Protein): The protein object to which the accession codes will be linked.
+            accessions (list): List of accession codes.
+        """
         for accession_code in accessions:
             accession = self._get_or_create_accession(accession_code)
             accession.protein_entry_name = protein.entry_name
             self.session.add(accession)
 
     def _get_or_create_accession(self, accession_code):
+        """
+        Checks if an association between a protein and a GO term exists in the database and creates it if not.
+        Args:
+            entry_name (str): The name of the protein entry.
+            go_id (str): The GO term identifier.
+        Returns:
+            ProteinGOTermAssociation: The newly created association, or None if it already exists.
+        """
         exists_query = exists().where(Accession.accession_code == accession_code)
         accession_exists = self.session.query(exists_query).scalar()
         if accession_exists:
@@ -207,6 +263,12 @@ class UniProtExtractor(ExtractorBase):
             return Accession(accession_code=accession_code, primary=False)
 
     def _handle_cross_references(self, protein, cross_references):
+        """
+        Manages the cross-references associated with the protein, such as database links to PDB and GO terms.
+        Args:
+            protein (Protein): The protein object to manage.
+            cross_references (list): List of cross-reference data.
+        """
         for reference in cross_references:
             if reference[0] == "PDB":
                 self._handle_pdb_reference(protein, reference)
@@ -214,6 +276,12 @@ class UniProtExtractor(ExtractorBase):
                 self._handle_go_reference(protein, reference)
 
     def _handle_pdb_reference(self, protein, reference):
+        """
+        Specific handler for PDB references, extracting relevant segment if specified and storing it.
+        Args:
+            protein (Protein): The protein object associated with the PDB reference.
+            reference (list): PDB reference data, including sequence positions and PDB ID.
+        """
         if reference[0] == "PDB":
             chain_name, start, end = process_chain_string(reference[4])
             if start is not None and end is not None:
@@ -223,6 +291,15 @@ class UniProtExtractor(ExtractorBase):
                 self.session.add(pdb_ref)
 
     def _get_or_create_pdb_reference(self, reference, sequence):
+        """
+        Retrieves or creates a PDB reference in the database based on the provided PDB ID.
+        If the PDB reference does not exist, it creates a new one using the associated sequence.
+        Args:
+            reference (list): PDB reference data including PDB ID, method, and resolution.
+            sequence (str): Amino acid sequence associated with the PDB entry.
+        Returns:
+            PDBReference: The retrieved or newly created PDBReference object.
+        """
         pdb_id = reference[1]
         pdb_ref_exists = self.session.query(exists().where(PDBReference.pdb_id == pdb_id)).scalar()
         if not pdb_ref_exists:
@@ -237,12 +314,25 @@ class UniProtExtractor(ExtractorBase):
             return self.session.query(PDBReference).filter(PDBReference.pdb_id == pdb_id).first()
 
     def _handle_go_reference(self, protein, reference):
+        """
+        Handles GO term references, creating associations between proteins and GO terms.
+        Args:
+            protein (Protein): The protein object.
+            reference (list): GO reference data.
+        """
         go_term = self._get_or_create_go_term(reference)
         association = self._get_or_create_association(protein.entry_name, go_term.go_id)
         if association is None:
             self.logger.info(f"Association between {protein.entry_name} and GO Term {go_term.go_id} already exists.")
 
     def _get_or_create_go_term(self, reference):
+        """
+        Retrieves or creates a Gene Ontology (GO) term in the database based on provided reference data.
+        Args:
+            reference (list): Contains the GO term details extracted from UniProt data.
+        Returns:
+            GOTerm: The retrieved or newly created GOTerm object.
+        """
         go_id, category, description = reference[1], reference[2].split(':')[0], reference[2].split(':')[1]
         go_term = self.session.query(GOTerm).filter_by(go_id=go_id).first()
         if not go_term:
@@ -252,6 +342,16 @@ class UniProtExtractor(ExtractorBase):
         return go_term
 
     def _get_or_create_association(self, entry_name, go_id):
+        """
+        Retrieves or creates an association between a protein and a Gene Ontology (GO) term in the database.
+        It first checks if the association already exists to avoid duplication. If it does not exist, it creates
+        a new association and adds it to the database.
+        Args:
+            entry_ptr (str): The name of the protein entry.
+            go_id (str): The GO term identifier.
+        Returns:
+            ProteinGOTermAssociation: The newly created or existing association object.
+        """
         exists_query = exists().where(
             ProteinGOTermAssociation.protein_entry_name == entry_name).where(
             ProteinGOTermAssociation.go_id == go_id)
@@ -260,3 +360,4 @@ class UniProtExtractor(ExtractorBase):
             association = ProteinGOTermAssociation(protein_entry_name=entry_name, go_id=go_id)
             self.session.add(association)
             return association
+

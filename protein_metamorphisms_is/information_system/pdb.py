@@ -76,23 +76,33 @@ class PDBExtractor(ExtractorBase):
         """
         super().__init__(conf, session_required=True)
 
-    def start(self):
+    def set_targets(self):
         """
-        Begins the process of extracting data from the PDB.
-
-        This method initiates the download and processing of PDB structures based on
-        predefined criteria (like resolution threshold) from the configuration.
+        Sets the targets for extraction, which are the PDB IDs.
         """
-        try:
-            self.logger.info("Iniciando la extracción de datos del PDB")
+        self.logger.info("Loading PDB IDs from the database")
+        self.pdb_references = self.load_pdb_ids()
+        self.logger.info(f"Loaded {len(self.pdb_references)} PDB IDs")
 
-            pdb_references = self.load_pdb_ids()
-            print(len(pdb_references))
+    def fetch(self):
+        """
+        Fetches the data by downloading PDB structures in parallel.
+        """
+        max_workers = self.conf.get("max_workers", 5)
+        self.logger.info(f"Downloading PDB structures with {max_workers} workers")
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            executor.map(self.download_and_process_pdb_structure, self.pdb_references)
 
-            self.download_pdb_structures(pdb_references)
+    def store_entry(self, data):
+        """
+        Stores a single entry of processed data into the database.
 
-        except Exception as e:
-            self.logger.error(f"Error durante el proceso de extracción: {e}")
+        Args:
+            data (tuple): A tuple containing (pdb_file_path, pdb_reference_id).
+        """
+        pdb_file_path, pdb_reference_id = data
+        local_session = sessionmaker(bind=self.engine)()
+        self.populate_pdb_chains(pdb_file_path, pdb_reference_id, local_session)
 
     def load_pdb_ids(self):
         """
@@ -104,7 +114,7 @@ class PDBExtractor(ExtractorBase):
         Returns:
             list: A list of PDBReference objects meeting the resolution criteria.
         """
-        resolution_threshold = self.conf.get("resolution_threshold")  # Corregido aquí
+        resolution_threshold = self.conf.get("resolution_threshold")
         pdb_references = self.session.query(PDBReference).filter(
             or_(
                 PDBReference.resolution <= resolution_threshold,
@@ -126,25 +136,16 @@ class PDBExtractor(ExtractorBase):
         Args:
             pdb_reference (PDBReference): A PDBReference object that contains the PDB ID and other
                                           related metadata necessary for downloading and processing the file.
-
-        Steps:
-            1. Initiates a database session.
-            2. Retrieves the PDB file based on the PDB ID from the PDBReference object.
-            3. Downloads the file to a specified directory in the desired format.
-            4. Calls 'populate_pdb_chains' to process the downloaded file and store chain information
-               in the database.
         """
-        local_session = sessionmaker(bind=self.engine)()
         pdb_id = pdb_reference.pdb_id
         pdbl = PDB.PDBList(server=self.conf.get("server", "ftp.wwpdb.org"), pdb=self.conf.get("pdb_path", "pdb_files"))
         try:
             file_path = pdbl.retrieve_pdb_file(pdb_id, file_format=self.conf.get("file_format", "mmCif"),
                                                pdir=self.conf.get("pdb_path", "pdb_files"))
-            self.logger.info(f"Descargado PDB {pdb_id}")
-
-            self.populate_pdb_chains(file_path, pdb_reference.pdb_id, local_session)
+            self.logger.info(f"Downloaded PDB {pdb_id}")
+            self.data_queue.put((file_path, pdb_reference.pdb_id))
         except Exception as e:
-            self.logger.error(f"Error al descargar y procesar PDB {pdb_id}: {e}\n{traceback.format_exc()}")
+            self.logger.error(f"Error downloading and processing PDB {pdb_id}: {e}\n{traceback.format_exc()}")
 
     def populate_pdb_chains(self, pdb_file_path, pdb_reference_id, local_session):
         """
@@ -160,19 +161,6 @@ class PDBExtractor(ExtractorBase):
             pdb_file_path (str): Path to the PDB file to be processed.
             pdb_reference_id (int): The unique database identifier for the PDB reference.
             local_session (Session): An active SQLAlchemy session for executing database operations.
-
-        The method proceeds as follows:
-        - It queries the database to check if the provided 'pdb_reference_id' exists.
-        - For each chain in the PDB file:
-            - Extracts the chain ID, model ID, and the amino acid sequence.
-            - Creates a new PDBChains object with the extracted data and adds it to the session.
-            - Generates a CIF file for the chain, storing it in a specified directory if it doesn't already exist.
-
-        Note:
-        - The method assumes 'protein_letters_3to1' is a dictionary mapping three-letter amino acid
-          codes to their single-letter counterparts.
-        - 'ChainSelect' is a custom selector used by MMCIFIO for saving individual chains.
-        - The directory for saving individual chain CIF files is configurable and defaults to 'pdb_chain_files'.
         """
         parser = MMCIFParser()
         structure = parser.get_structure(pdb_reference_id, pdb_file_path)
@@ -210,18 +198,3 @@ class PDBExtractor(ExtractorBase):
                     io.save(chain_file_path, select=ChainSelect(chain_id, model_id))
         local_session.commit()
         local_session.close()
-
-    def download_pdb_structures(self, pdb_references):
-        """
-        Downloads and processes PDB structures in parallel given their IDs.
-
-        This method uses concurrent processing to handle multiple PDB structure
-        downloads and processing simultaneously, enhancing efficiency.
-
-        Args:
-            pdb_references (list): A list of PDBReference objects to be processed.
-        """
-        max_workers = self.conf.get("max_workers", 5)
-        self.logger.info("Downloading PDB structures with {} workers".format(max_workers))
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            executor.map(self.download_and_process_pdb_structure, pdb_references)
