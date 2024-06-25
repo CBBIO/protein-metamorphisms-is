@@ -1,3 +1,4 @@
+import multiprocessing
 import queue
 import time
 from abc import ABC, abstractmethod
@@ -34,7 +35,7 @@ class ExtractorBase(ABC):
         self.logger = setup_logger(self.__class__.__name__)
         self.logger.info(f"Initializing {self.__class__.__name__}")
 
-        self.data_queue = queue.Queue()
+        self.data_queue = multiprocessing.Queue()
 
         if session_required:
             self.session_init()
@@ -58,21 +59,31 @@ class ExtractorBase(ABC):
         the specific data extraction logic for each bioinformatics data source.
         """
         self.set_targets()
+        self.start_db_process()
         self.fetch()
-        self.add_to_db()
+        self.data_queue.put(None)  # Señal de terminación para el proceso de base de datos
+        self.db_process.join()  # Esperar a que el proceso de base de datos finalice
+
+
+    def start_db_process(self):
+        """Inicia el proceso que maneja la inserción en la base de datos."""
+        self.db_process = multiprocessing.Process(target=self.add_to_db)
+        self.db_process.start()
 
     def add_to_db(self):
         """
-        add fetched data from the queue to the database.
+        Procesa elementos de la cola y los añade a la base de datos.
         """
-        while not self.data_queue.empty():
-            try:
-                # Fetch data from the queue, wait if necessary
-                self.store_entry(self.data_queue.get())
-            except queue.Empty:
-                self.logger.info("No more data to process. Exiting.")
-                self.session.close()
+        while True:
+            data = self.data_queue.get()
+            if data is None:  # Verificar si es la señal de terminación
                 break
+            try:
+                self.store_entry(data)
+            except Exception as e:
+                self.logger.error(f"Error processing data: {str(e)}")
+        self.session.close()
+        self.logger.info("Database session closed and process ending.")
 
     @abstractmethod
     def set_targets(self):
