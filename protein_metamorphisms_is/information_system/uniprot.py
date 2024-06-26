@@ -228,11 +228,15 @@ class UniProtExtractor(ExtractorBase):
         Returns:
             Sequence: The retrieved or newly created sequence object.
         """
-        existing_sequence = self.session.query(Sequence).filter_by(sequence=sequence).first()
-        if not existing_sequence:
-            existing_sequence = Sequence(sequence=sequence)
-            self.session.add(existing_sequence)
-        return existing_sequence
+        try:
+            existing_sequence = self.session.query(Sequence).filter_by(sequence=sequence).first()
+            if not existing_sequence:
+                existing_sequence = Sequence(sequence=sequence)
+                self.session.add(existing_sequence)
+            return existing_sequence
+        except Exception as e:
+            self.logger.error(f"Failed to retrieve or create sequence: {e}")
+            raise
 
     def _handle_accessions(self, protein, accessions):
         """
@@ -241,10 +245,14 @@ class UniProtExtractor(ExtractorBase):
             protein (Protein): The protein object to which the accession codes will be linked.
             accessions (list): List of accession codes.
         """
-        for accession_code in accessions:
-            accession = self._get_or_create_accession(accession_code)
-            accession.protein_entry_name = protein.entry_name
-            self.session.add(accession)
+        try:
+            for accession_code in accessions:
+                accession = self._get_or_create_accession(accession_code)
+                accession.protein_entry_name = protein.entry_name
+                self.session.add(accession)
+        except Exception as e:
+            self.logger.error(f"Error handling accession {accession_code} from {accessions}: {e}")
+            raise
 
     def _get_or_create_accession(self, accession_code):
         """
@@ -255,12 +263,16 @@ class UniProtExtractor(ExtractorBase):
         Returns:
             ProteinGOTermAssociation: The newly created association, or None if it already exists.
         """
-        exists_query = exists().where(Accession.accession_code == accession_code)
-        accession_exists = self.session.query(exists_query).scalar()
-        if accession_exists:
-            return self.session.query(Accession).filter(Accession.accession_code == accession_code).first()
-        else:
-            return Accession(accession_code=accession_code, primary=False)
+        try:
+            exists_query = exists().where(Accession.accession_code == accession_code)
+            accession_exists = self.session.query(exists_query).scalar()
+            if accession_exists:
+                return self.session.query(Accession).filter(Accession.accession_code == accession_code).first()
+            else:
+                return Accession(accession_code=accession_code, primary=False)
+        except Exception as e:
+            self.logger.error(f"Failed to retrieve or create accession {accession_code}: {e}")
+            raise
 
     def _handle_cross_references(self, protein, cross_references):
         """
@@ -269,11 +281,15 @@ class UniProtExtractor(ExtractorBase):
             protein (Protein): The protein object to manage.
             cross_references (list): List of cross-reference data.
         """
-        for reference in cross_references:
-            if reference[0] == "PDB":
-                self._handle_pdb_reference(protein, reference)
-            elif reference[0] == "GO":
-                self._handle_go_reference(protein, reference)
+        try:
+            for reference in cross_references:
+                if reference[0] == "PDB":
+                    self._handle_pdb_reference(protein, reference)
+                elif reference[0] == "GO":
+                    self._handle_go_reference(protein, reference)
+        except Exception as e:
+            self.logger.error(f"Failed to handle cross references for {protein.entry_name}: {e}")
+            raise
 
     def _handle_pdb_reference(self, protein, reference):
         """
@@ -282,13 +298,19 @@ class UniProtExtractor(ExtractorBase):
             protein (Protein): The protein object associated with the PDB reference.
             reference (list): PDB reference data, including sequence positions and PDB ID.
         """
-        if reference[0] == "PDB":
-            chain_name, start, end = process_chain_string(reference[4])
-            if start is not None and end is not None:
-                sequence = protein.sequence.sequence[start - 1:end]  # Ajuste para índices de Python
-                pdb_ref = self._get_or_create_pdb_reference(reference, sequence)
-                pdb_ref.protein = protein
-                self.session.add(pdb_ref)
+        try:
+            if reference[0] == "PDB":
+                segments = reference[4].split(", ")
+                for segment in segments:
+                    chain_name, start, end = process_chain_string(segment)
+                    if start is not None and end is not None:
+                        sequence = protein.sequence.sequence[start - 1:end]  # Adjust indices for Python (0-based index)
+                        pdb_ref = self._get_or_create_pdb_reference(reference, sequence)
+                        pdb_ref.protein = protein
+                        self.session.add(pdb_ref)
+        except Exception as e:
+            self.logger.error(f"Error handling PDB reference {reference}: {e}")
+            raise
 
     def _get_or_create_pdb_reference(self, reference, sequence):
         """
@@ -300,30 +322,35 @@ class UniProtExtractor(ExtractorBase):
         Returns:
             PDBReference: The retrieved or newly created PDBReference object.
         """
-        pdb_id = reference[1]
-        pdb_ref_exists = self.session.query(exists().where(PDBReference.pdb_id == pdb_id)).scalar()
-        if not pdb_ref_exists:
-            existing_sequence = self._get_or_create_sequence(sequence)
-            return PDBReference(
-                pdb_id=pdb_id,
-                method=reference[2],
-                resolution=extract_float(reference[3]),
-                sequence=existing_sequence
-            )
-        else:
-            return self.session.query(PDBReference).filter(PDBReference.pdb_id == pdb_id).first()
+        try:
+            pdb_id = reference[1]
+            print(reference)
+            self.logger.info(f"Retrieving PDB reference {pdb_id} from database")
+            pdb_ref_exists = self.session.query(exists().where(PDBReference.pdb_id == pdb_id)).scalar()
+            if not pdb_ref_exists:
+                existing_sequence = self._get_or_create_sequence(sequence)
+                return PDBReference(
+                    pdb_id=pdb_id,
+                    method=reference[2],
+                    resolution=extract_float(reference[3]),
+                    sequence=existing_sequence
+                )
+            else:
+                return self.session.query(PDBReference).filter(PDBReference.pdb_id == pdb_id).first()
+        except Exception as e:
+            self.logger.error(f"Error retrieving or creating PDB reference for {pdb_id}: {e}")
+            raise
 
     def _handle_go_reference(self, protein, reference):
-        """
-        Handles GO term references, creating associations between proteins and GO terms.
-        Args:
-            protein (Protein): The protein object.
-            reference (list): GO reference data.
-        """
-        go_term = self._get_or_create_go_term(reference)
-        association = self._get_or_create_association(protein.entry_name, go_term.go_id)
-        if association is None:
-            self.logger.info(f"Association between {protein.entry_name} and GO Term {go_term.go_id} already exists.")
+        try:
+            go_term = self._get_or_create_go_term(reference)
+            association = self._get_or_create_association(protein.entry_name, go_term.go_id)
+            if association is None:
+                self.logger.info(
+                    f"Association between {protein.entry_name} and GO Term {go_term.go_id} already exists.")
+        except Exception as e:
+            self.logger.error(f"Failed to handle GO reference for {protein.entry_name}: {e}")
+            raise
 
     def _get_or_create_go_term(self, reference):
         """
@@ -333,13 +360,17 @@ class UniProtExtractor(ExtractorBase):
         Returns:
             GOTerm: The retrieved or newly created GOTerm object.
         """
-        go_id, category, description = reference[1], reference[2].split(':')[0], reference[2].split(':')[1]
-        go_term = self.session.query(GOTerm).filter_by(go_id=go_id).first()
-        if not go_term:
-            go_term = GOTerm(go_id=go_id, category=category, description=description,
-                             evidences=reference[3].split(':')[0])
-            self.session.add(go_term)
-        return go_term
+        try:
+            go_id, category, description = reference[1], reference[2].split(':')[0], reference[2].split(':')[1]
+            go_term = self.session.query(GOTerm).filter_by(go_id=go_id).first()
+            if not go_term:
+                go_term = GOTerm(go_id=go_id, category=category, description=description,
+                                 evidences=reference[3].split(':')[0])
+                self.session.add(go_term)
+            return go_term
+        except Exception as e:
+            self.logger.error(f"Error retrieving or creating GO term {go_id}: {e}")
+            raise
 
     def _get_or_create_association(self, entry_name, go_id):
         """
@@ -352,12 +383,15 @@ class UniProtExtractor(ExtractorBase):
         Returns:
             ProteinGOTermAssociation: The newly created or existing association object.
         """
-        exists_query = exists().where(
-            ProteinGOTermAssociation.protein_entry_name == entry_name).where(
-            ProteinGOTermAssociation.go_id == go_id)
-        association_exists = self.session.query(exists_query).scalar()
-        if not association_exists:
-            association = ProteinGOTermAssociation(protein_entry_name=entry_name, go_id=go_id)
-            self.session.add(association)
-            return association
-
+        try:
+            exists_query = exists().where(
+                ProteinGOTermAssociation.protein_entry_name == entry_name).where(
+                ProteinGOTermAssociation.go_id == go_id)
+            association_exists = self.session.query(exists_query).scalar()
+            if not association_exists:
+                association = ProteinGOTermAssociation(protein_entry_name=entry_name, go_id=go_id)
+                self.session.add(association)
+                return association
+        except Exception as e:
+            self.logger.error(f"Failed to retrieve or create association for {entry_name} and GO term {go_id}: {e}")
+            raise
