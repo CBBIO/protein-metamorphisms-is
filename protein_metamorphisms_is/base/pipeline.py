@@ -10,7 +10,7 @@ from protein_metamorphisms_is.helpers.logger.logger import setup_logger
 from protein_metamorphisms_is.sql.base.database_manager import DatabaseManager
 
 
-class ExtractorBase(ABC):
+class PipelineBase(ABC):
     """
     An abstract base class for operating bioinformatics data.
 
@@ -38,9 +38,11 @@ class ExtractorBase(ABC):
         self.logger = setup_logger(self.__class__.__name__)
         self.logger.info(f"Initializing {self.__class__.__name__}")
 
-        self.redis_conn = Redis(host='localhost', port=6379, db=0)  # Asegúrate de configurar según tu entorno de Redis
+        self.redis_conn = Redis(host='localhost', port=6379, db=0)
         self.process_queue = Queue(connection=self.redis_conn)
         self.data_queue = multiprocessing.Queue()
+
+        self.queues = {}
 
         if session_required:
             self.session_init()
@@ -56,6 +58,10 @@ class ExtractorBase(ABC):
         self.engine = db_manager.get_engine()
         self.session = db_manager.get_session()
 
+    @abstractmethod
+    def set_tasks(self):
+        pass
+
     def start(self):
         """
         Start the data extraction process.
@@ -63,12 +69,12 @@ class ExtractorBase(ABC):
         This abstract method should be implemented by all subclasses to define
         the specific data extraction logic for each bioinformatics data source.
         """
-        self.set_targets()
-        self.start_db_process()
-        self.fetch()
-        self.data_queue.put(None)  # Señal de terminación para el proceso de base de datos
-        self.db_process.join()  # Esperar a que el proceso de base de datos finalice
-
+        self.set_tasks()
+        # self.set_targets()
+        # self.start_db_process()
+        # self.fetch()
+        # self.data_queue.put(None)  # Señal de terminación para el proceso de base de datos
+        # self.db_process.join()  # Esperar a que el proceso de base de datos finalice
 
     def start_db_process(self):
         """Inicia el proceso que maneja la inserción en la base de datos."""
@@ -90,14 +96,14 @@ class ExtractorBase(ABC):
         self.session.close()
         self.logger.info("Database session closed and process ending.")
 
-    @abstractmethod
-    def set_targets(self):
-        pass
-
-    @abstractmethod
-    def fetch(self):
-        pass
-
-    @abstractmethod
-    def store_entry(self, data):
-        pass
+    # @abstractmethod
+    # def set_targets(self):
+    #     pass
+    #
+    # @abstractmethod
+    # def fetch(self):
+    #     pass
+    #
+    # @abstractmethod
+    # def store_entry(self, data):
+    #     pass

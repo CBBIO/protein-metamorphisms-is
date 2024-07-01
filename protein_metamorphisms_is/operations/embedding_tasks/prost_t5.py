@@ -30,4 +30,4 @@ def embedding_task(session, sequences, model_name, embedding_type_id):
             )
             session.add(embedding_entry)
 
-    session.commit()
+            session.commit()
