@@ -4,13 +4,14 @@ import time
 from abc import ABC, abstractmethod
 
 from redis import Redis
-from rq import Queue
+from rq import Queue, Worker
 
+from protein_metamorphisms_is.base.task import BaseTaskInitializer
 from protein_metamorphisms_is.helpers.logger.logger import setup_logger
 from protein_metamorphisms_is.sql.base.database_manager import DatabaseManager
 
 
-class ExtractorBase(ABC):
+class ExtractorBase(BaseTaskInitializer):
     """
     An abstract base class for operating bioinformatics data.
 
@@ -34,27 +35,22 @@ class ExtractorBase(ABC):
 
         Sets up the configuration and logger. Initializes the database session if required.
         """
-        self.conf = conf
-        self.logger = setup_logger(self.__class__.__name__)
-        self.logger.info(f"Initializing {self.__class__.__name__}")
-
+        super().__init__(conf, session_required=True)
         self.redis_conn = Redis(host='localhost', port=6379, db=0)  # Asegúrate de configurar según tu entorno de Redis
-        self.process_queue = Queue(connection=self.redis_conn)
+        self.process_queue = Queue('uniprot_extractor',connection=self.redis_conn)
         self.data_queue = multiprocessing.Queue()
 
-        if session_required:
-            self.session_init()
+    def start_worker(self):
+        print('h')
+        self.logger.info("Starting RQ worker for UniProt data extraction")
 
-    def session_init(self):
-        """
-        Initialize the database session using DatabaseManager.
+        # Inicializar el trabajador en un proceso separado
+        def worker_function():
+            worker = Worker([self.process_queue], connection=self.redis_conn)
+            worker.work()
 
-        Sets up the database connection and session using the DatabaseManager class.
-        """
-        self.logger.info("Initializing database session using DatabaseManager")
-        db_manager = DatabaseManager(self.conf)
-        self.engine = db_manager.get_engine()
-        self.session = db_manager.get_session()
+        self.worker_process = multiprocessing.Process(target=worker_function)
+        self.worker_process.start()
 
     def start(self):
         """
@@ -63,12 +59,12 @@ class ExtractorBase(ABC):
         This abstract method should be implemented by all subclasses to define
         the specific data extraction logic for each bioinformatics data source.
         """
-        self.set_targets()
+        self.start_worker()
         self.start_db_process()
+        self.queue_in()
         self.fetch()
         self.data_queue.put(None)  # Señal de terminación para el proceso de base de datos
         self.db_process.join()  # Esperar a que el proceso de base de datos finalice
-
 
     def start_db_process(self):
         """Inicia el proceso que maneja la inserción en la base de datos."""
@@ -90,14 +86,18 @@ class ExtractorBase(ABC):
         self.session.close()
         self.logger.info("Database session closed and process ending.")
 
-    @abstractmethod
-    def set_targets(self):
-        pass
+    # @abstractmethod
+    # def queue_in(self):
+    #     pass
+    #
+    # @abstractmethod
+    # def extract(self):
+    #     pass
+    #
+    # @abstractmethod
+    # def insert_db(self, data):
+    #     pass
 
-    @abstractmethod
-    def fetch(self):
-        pass
 
-    @abstractmethod
-    def store_entry(self, data):
+    def queue_in(self):
         pass

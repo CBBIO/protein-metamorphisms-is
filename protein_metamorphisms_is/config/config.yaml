@@ -9,15 +9,16 @@ DB_HOST: localhost
 DB_PORT: 5432
 DB_NAME: BioData
 
-## Information System/
-# Uniprot Extraction
-
+### Information System/
+# Load Accessions
 load_accesion_csv: ../data/uniprot_ids.csv
 load_accesion_column: ID
 tag: 'GOA'
 
 search_criteria: '(taxonomy_id:212035) AND (structure_3d:true)'
 limit: 100
+# Uniprot Extraction
+
 
 # PDB Extraction
 resolution_threshold: 20

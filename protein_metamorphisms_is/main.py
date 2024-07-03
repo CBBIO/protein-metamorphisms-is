@@ -1,4 +1,5 @@
 from protein_metamorphisms_is.helpers.config.yaml import read_yaml_config
+from protein_metamorphisms_is.information_system.accessions import AccessionManager
 from protein_metamorphisms_is.information_system.pdb import PDBExtractor
 from protein_metamorphisms_is.information_system.uniprot import UniProtExtractor
 from protein_metamorphisms_is.operations.cdhit import CDHit
@@ -16,6 +17,8 @@ from protein_metamorphisms_is.operations.structural_alignment import StructuralA
 
 def main(config_path="config/config.yaml"):
     conf = read_yaml_config(config_path)
+
+    # AccessionManager(conf).load_accessions_from_csv()
     UniProtExtractor(conf).start()
     # GoMetrics(conf).start()
     # PDBExtractor(conf).start()
