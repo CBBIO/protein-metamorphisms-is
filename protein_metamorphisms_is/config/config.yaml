@@ -1,5 +1,5 @@
 #System
-max_workers: 25
+max_workers: 10
 binaries_path: '../binaries'
 
 # DB CONFIGURATION
@@ -11,9 +11,11 @@ DB_NAME: BioData
 
 ### Information System/
 # Load Accessions
-load_accesion_csv: ../data/uniprot_ids.csv
+load_accesion_csv: ../data/goa_ids.csv
 load_accesion_column: ID
 tag: 'GOA'
+
+max_attempts: 5
 
 search_criteria: '(taxonomy_id:212035) AND (structure_3d:true)'
 limit: 100
@@ -23,8 +25,7 @@ limit: 100
 # PDB Extraction
 resolution_threshold: 20
 server: "https://files.wwpdb.org/"
-pdb_path: "/home/frapercan/data/pdb"
-pdb_chains_path: "/home/frapercan/data/chains"
+data_dir: "/home/bioxaxi/data"
 file_format: "mmCif"
 allow_multiple_chain_models: False # NMR
 
@@ -32,8 +33,8 @@ allow_multiple_chain_models: False # NMR
 constants: "config/constants.yaml"
 
 # Sequence Clustering
-fasta_path: "/home/frapercan/data/complete.fasta"
-cdhit_out_path: "/home/frapercan/data/out"
+fasta_path: "/home/BioXaxi/data/complete.fasta"
+cdhit_out_path: "/home/BioXaxi/data/out"
 sequence_identity_threshold: 0.95
 alignment_coverage: 0.95
 memory_usage: 25000

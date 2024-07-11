@@ -23,7 +23,7 @@ class AccessionManager(BaseTaskInitializer):
             data = pd.read_csv(csv_path)
             accessions = data[accession_column].dropna().unique()
             self.logger.info(f"Loaded {len(accessions)} unique accession codes from CSV.")
-            self._process_new_accessions(accessions, csv_tag)
+            self._process_new_accessions(accessions[:50], csv_tag)
         except Exception as e:
             self.logger.error(f"Failed to load or process CSV: {traceback.format_exc()}")
 
@@ -44,7 +44,7 @@ class AccessionManager(BaseTaskInitializer):
             response.raise_for_status()
             accessions = response.text.strip().split("\n")
             self.logger.info(f"Retrieved {len(accessions)} accessions from UniProt API.")
-            self._process_new_accessions(accessions, tag)
+            self._process_new_accessions(accessions[:50], tag)
         except requests.RequestException as e:
             self.logger.error(f"Failed to fetch data from UniProt: {e}")
 
@@ -64,3 +64,12 @@ class AccessionManager(BaseTaskInitializer):
         self.session.bulk_save_objects(new_accessions)
         self.session.commit()
         self.logger.info(f"Added {len(new_accessions)} new accessions to the database.")
+
+    def enqueue(self):
+        pass
+
+    def store_entry(self, record):
+        pass
+
+    def process(self,_):
+        pass

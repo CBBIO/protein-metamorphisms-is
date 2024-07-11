@@ -1,15 +1,17 @@
 import os
+import pickle
 import traceback
 from concurrent.futures import ThreadPoolExecutor
 
 from Bio import PDB
 from Bio.Data.PDBData import protein_letters_3to1
 from Bio.PDB import Select, MMCIFParser, MMCIFIO
+from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql.operators import or_
 
 from protein_metamorphisms_is.information_system.base.extractor import ExtractorBase
-from protein_metamorphisms_is.sql.model import PDBReference, PDBChains, Sequence
+from protein_metamorphisms_is.sql.model import PDBReference, PDBChains, Sequence, Structure, Model
 
 
 class ChainSelect(Select):
@@ -75,45 +77,25 @@ class PDBExtractor(ExtractorBase):
         Sets up the configuration and logger. Initializes the database session if required.
         """
         super().__init__(conf, session_required=True)
+        self.reference_attribute = 'PDB_ID'
+        self.data_dir = self.conf.get("data_dir", "/data")
+        self.pdb_dir = os.path.join(self.data_dir, 'pdb')
+        self.models_dir = os.path.join(self.data_dir, 'models')
+        self.setup_directories()  # Ensure directories are set up on initialization
 
-    def set_targets(self):
+    def setup_directories(self):
         """
-        Sets the targets for extraction, which are the PDB IDs.
+        Verifies that necessary directories exist (pdb and models) and creates them if they do not.
+        Stores directory paths in class attributes for easy access.
         """
-        self.logger.info("Loading PDB IDs from the database")
-        self.pdb_references = self.load_pdb_ids()
-        self.logger.info(f"Loaded {len(self.pdb_references)} PDB IDs")
+        for path in [self.pdb_dir, self.models_dir]:
+            if not os.path.exists(path):
+                os.makedirs(path)
+                self.logger.info(f"Created directory: {path}")
+            else:
+                self.logger.info(f"Directory already exists: {path}")
 
-    def fetch(self):
-        """
-        Fetches the data by downloading PDB structures in parallel.
-        """
-        max_workers = self.conf.get("max_workers", 5)
-        self.logger.info(f"Downloading PDB structures with {max_workers} workers")
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            executor.map(self.download_and_process_pdb_structure, self.pdb_references)
-
-    def store_entry(self, data):
-        """
-        Stores a single entry of processed data into the database.
-
-        Args:
-            data (tuple): A tuple containing (pdb_file_path, pdb_reference_id).
-        """
-        pdb_file_path, pdb_reference_id = data
-        local_session = sessionmaker(bind=self.engine)()
-        self.populate_pdb_chains(pdb_file_path, pdb_reference_id, local_session)
-
-    def load_pdb_ids(self):
-        """
-        Load PDB IDs from the database that meet the specified resolution threshold.
-
-        This method queries the database for PDB entries with resolution values
-        below a certain threshold, indicating higher quality structures.
-
-        Returns:
-            list: A list of PDBReference objects meeting the resolution criteria.
-        """
+    def enqueue(self):
         resolution_threshold = self.conf.get("resolution_threshold")
         pdb_references = self.session.query(PDBReference).filter(
             or_(
@@ -121,80 +103,154 @@ class PDBExtractor(ExtractorBase):
                 PDBReference.method == "NMR"
             )
         ).all()
-        return pdb_references
+        for pdb_reference in pdb_references:
+            self.logger.debug(f"Publishing task for accession code: {pdb_reference.pdb_id}")
+            self.publish_task({self.reference_attribute: pdb_reference.pdb_id})
 
-    def download_and_process_pdb_structure(self, pdb_reference):
-        """
-        Downloads and processes a PDB structure using the Biopython library.
+    def process(self, pdb_id):
+        pdbl = PDB.PDBList(server=self.conf.get("server", "ftp.wwpdb.org"), pdb=self.pdb_dir)
+        result = {
+            "pdb_id": pdb_id,
+            "models": [],
+            "chains": []
+        }
 
-        This method is responsible for downloading PDB files from the specified PDB repository,
-        then processing these files to extract relevant data. It primarily focuses on retrieving
-        chain information and sequences from the PDB structure. The process involves two main steps:
-        downloading the PDB file and then populating the database with chain details extracted from
-        the file.
-
-        Args:
-            pdb_reference (PDBReference): A PDBReference object that contains the PDB ID and other
-                                          related metadata necessary for downloading and processing the file.
-        """
-        pdb_id = pdb_reference.pdb_id
-        pdbl = PDB.PDBList(server=self.conf.get("server", "ftp.wwpdb.org"), pdb=self.conf.get("pdb_path", "pdb_files"))
         try:
             file_path = pdbl.retrieve_pdb_file(pdb_id, file_format=self.conf.get("file_format", "mmCif"),
-                                               pdir=self.conf.get("pdb_path", "pdb_files"))
-            self.logger.info(f"Downloaded PDB {pdb_id}")
-            self.data_queue.put((file_path, pdb_reference.pdb_id))
+                                               pdir=self.pdb_dir)
+            self.logger.info(f"Downloaded PDB {pdb_id} to {file_path}")
+            parser = MMCIFParser()
+            structure = parser.get_structure(pdb_id, file_path)
+            io = MMCIFIO()
+
+            # Iterar sobre cada modelo en la estructura
+            for model in structure:
+                model_file_path = os.path.join(self.models_dir, f"{pdb_id}_model_{model.id}.cif")
+                io.set_structure(model)
+                io.save(model_file_path)
+                self.logger.info(f"Saved model {model.id} of PDB {pdb_id} to {model_file_path}")
+
+                model_data = {
+                    "model_id": model.id,
+                    "file_path": model_file_path,
+                    "chains": []
+                }
+
+                # Iterar sobre cada cadena en el modelo
+                for chain in model:
+                    chain_id = chain.get_id()
+                    sequence = ""
+                    for residue in chain:
+                        if residue.id[0] == ' ' and residue.resname in protein_letters_3to1:
+                            sequence += protein_letters_3to1[residue.resname]
+
+                    chain_file_path = os.path.join(self.pdb_dir, f"{pdb_id}_{chain_id}_model_{model.id}.cif")
+                    if not os.path.isfile(chain_file_path):
+                        io.set_structure(structure)
+                        io.save(chain_file_path, select=ChainSelect(chain_id, model.id))
+                        self.logger.info(f"Saved chain {chain_id} of model {model.id} to {chain_file_path}")
+
+                    model_data['chains'].append({
+                        "chain_id": chain_id,
+                        "sequence": sequence,
+                        "model_id": model.id,
+                        "file_path": chain_file_path
+                    })
+
+                result['models'].append(model_data)
+
         except Exception as e:
             self.logger.error(f"Error downloading and processing PDB {pdb_id}: {e}\n{traceback.format_exc()}")
+            return e
 
-    def populate_pdb_chains(self, pdb_file_path, pdb_reference_id, local_session):
-        """
-        Processes a PDB file, extracting and storing chain information in the database.
+        return result
 
-        This method uses the MMCIFParser to parse the PDB file specified by 'pdb_file_path'.
-        It then extracts details such as chain identifiers, models, and sequences from the file.
-        Each chain's information, along with its associated sequence and reference to the PDB file,
-        is stored in the database. Additionally, this method generates individual CIF files for
-        each chain in the structure, which are saved to a specified directory.
+    def store_entry(self, record):
+        try:
+            # Obtén o crea la estructura principal
+            pdb_structure = self.get_or_create_structure(record['pdb_id'])
 
-        Args:
-            pdb_file_path (str): Path to the PDB file to be processed.
-            pdb_reference_id (int): The unique database identifier for the PDB reference.
-            local_session (Session): An active SQLAlchemy session for executing database operations.
-        """
-        parser = MMCIFParser()
-        structure = parser.get_structure(pdb_reference_id, pdb_file_path)
-        pdb_reference_id_result = local_session.query(PDBReference.id).filter(
-            PDBReference.pdb_id == pdb_reference_id).first()
+            for model_data in record['models']:
+                # Crea o obtiene el modelo asociado a la estructura
+                model = self.get_or_create_model(model_data, pdb_structure.id)
 
-        if pdb_reference_id_result is not None:
-            (pdb_reference_id_value,) = pdb_reference_id_result
+                for chain_data in model_data['chains']:
+                    # Crea o obtiene la estructura para la cadena específica
+                    chain_structure = self.get_or_create_structure(record['pdb_id'], chain_data['chain_id'])
+                    pdb_reference = self.get_pdb_reference(record['pdb_id'])
+
+                    # Actualiza el pdb_reference con el structure_id
+                    if pdb_reference:
+                        pdb_reference.structure_id = pdb_structure.id  # O el ID de la estructura específica de la cadena
+                        self.session.add(pdb_reference)
+
+                    # Crea o obtiene la cadena asociada
+                    self.get_or_create_chain(chain_data, pdb_reference.id, chain_structure.id)
+
+            self.session.commit()
+        except Exception as e:
+            self.session.rollback()
+            self.logger.error(f"Failed to store data in the database: {e}\n{traceback.format_exc()}")
+        finally:
+            self.session.close()
+
+    def get_or_create_structure(self, pdb_id, chain_id=None):
+        # Si se proporciona chain_id, considerar tanto pdb_id como chain_id para definir una estructura única
+        if chain_id:
+            file_path = f"{pdb_id}_{chain_id}.cif"
         else:
-            pdb_reference_id_value = None
+            file_path = f"{pdb_id}.cif"
 
-        for model in structure:
-            for chain in model:
-                chain_id = chain.get_id()
-                model_id = model.get_id()
-                sequence = ""
-                for residue in chain:
-                    if residue.id[0] == ' ' and residue.resname in protein_letters_3to1:
-                        sequence += protein_letters_3to1[residue.resname]
-                existing_sequence = local_session.query(Sequence).filter_by(sequence=sequence).first()
-                if not existing_sequence:
-                    existing_sequence = Sequence(sequence=sequence)
-                    local_session.add(existing_sequence)
-                pdb_chain = PDBChains(chains=chain_id, sequence=existing_sequence,
-                                      pdb_reference_id=pdb_reference_id_value,
-                                      model=model_id)
-                local_session.add(pdb_chain)
+        existing_structure = self.session.query(Structure).filter_by(file_path=file_path).first()
+        if not existing_structure:
+            existing_structure = Structure(file_path=file_path)
+            self.session.add(existing_structure)
+            self.session.flush()  # Assure that 'id' is available after the object is added.
 
-                chain_path = self.conf.get("pdb_chains_path", "pdb_chain_files")
-                chain_file_path = f"{chain_path}/{pdb_reference_id}_{chain_id}_{model.get_id()}.cif"
+        return existing_structure
 
-                if not os.path.isfile(chain_file_path):
-                    io = MMCIFIO()
-                    io.set_structure(structure)
-                    io.save(chain_file_path, select=ChainSelect(chain_id, model_id))
-        local_session.commit()
-        local_session.close()
+    def get_or_create_model(self, model_data, structure_id):
+        model_id_str = str(model_data['model_id'])  # Asegurar que model_id sea tratado como string
+        existing_model = self.session.query(Model).filter_by(
+            model_id=model_id_str, structure_id=structure_id
+        ).first()
+        if not existing_model:
+            existing_model = Model(
+                model_id=model_id_str,
+                structure_id=structure_id,
+                file_path=model_data['file_path']
+            )
+            self.session.add(existing_model)
+            self.session.flush()  # Asegura que el 'id' está disponible después de añadir el objeto
+        return existing_model
+
+    def get_pdb_reference(self, pdb_id):
+        try:
+            pdb_reference = self.session.query(PDBReference).filter_by(pdb_id=pdb_id).one()
+            return pdb_reference
+        except NoResultFound:
+            return None
+
+    def get_or_create_chain(self, chain_data, pdb_reference_id, structure_id):
+        sequence_id = self.get_or_create_sequence(chain_data['sequence'])
+        existing_chain = self.session.query(PDBChains).filter_by(
+            chains=chain_data['chain_id'], pdb_reference_id=pdb_reference_id, structure_id=structure_id
+        ).first()
+        if not existing_chain:
+            new_chain = PDBChains(
+                chains=chain_data['chain_id'],
+                sequence_id=sequence_id,
+                pdb_reference_id=pdb_reference_id,
+                structure_id=structure_id
+            )
+            self.session.add(new_chain)
+            self.session.flush()
+        return existing_chain
+
+    def get_or_create_sequence(self, sequence):
+        existing_sequence = self.session.query(Sequence).filter_by(sequence=sequence).first()
+        if not existing_sequence:
+            existing_sequence = Sequence(sequence=sequence)
+            self.session.add(existing_sequence)
+            self.session.flush()
+        return existing_sequence.id

@@ -1,15 +1,9 @@
 import traceback
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from http.client import HTTPException
 
-import pandas as pd
-import requests
 from Bio import ExPASy, SwissProt
-from rq import Queue
-from sqlalchemy import func, exists
-from urllib.parse import quote
+from sqlalchemy import exists
 
-from protein_metamorphisms_is.helpers.logger.logger import setup_logger
 from protein_metamorphisms_is.helpers.parser.parser import extract_float, process_chain_string
 from protein_metamorphisms_is.information_system.base.extractor import ExtractorBase
 from protein_metamorphisms_is.sql.model import Accession, ProteinGOTermAssociation, GOTerm, PDBReference, Sequence, \
@@ -31,44 +25,38 @@ class UniProtExtractor(ExtractorBase):
         """
         super().__init__(conf, session_required=True)
         self.logger.info("UniProtExtractor initialized with configuration.")
+        self.reference_attribute = 'Accession'
 
-    def set_targets(self):
-        """
-        Determines the data extraction targets from either a CSV file or a live API based on provided configuration.
-        """
-        csv_path = self.conf.get("load_accesion_csv")
-        accession_column = self.conf.get("load_accesion_column")
-        search_criteria = self.conf.get("search_criteria")
-        limit = self.conf.get("limit")
-        csv_tag = self.conf.get("csv_tag")
-
-        if csv_path:
-            self._load_access_from_csv(csv_path, accession_column, csv_tag)
-        else:
-            self.logger.warning("CSV path not provided; attempting to fetch accessions using API.")
-            if search_criteria:
-                self._fetch_accessions_from_api(search_criteria, limit)
-            else:
-                self.logger.error("No valid search criteria provided. Data extraction cannot proceed.")
-
-    def fetch(self):
-        """
-        Initiates the download of UniProt entries using Redis queues to manage the download tasks.
-        """
-        self.logger.info("Starting the download of UniProt entries.")
-
+    def enqueue(self):
         accessions = self.session.query(Accession).all()
-        self.logger.info(f"Total proteins to download: {len(accessions)}")
-
-        max_workers = self.conf.get("max_workers", 10)  # Default to 10 if not specified in config
-
         for accession in accessions:
-            job = self.process_queue.enqueue(download_record, accession.accession_code)
+            self.logger.debug(f"Publishing task for {self.reference_attribute} code: {accession.accession_code}")
+            self.publish_task({self.reference_attribute: accession.accession_code})
 
-
-
-
-
+    def process(self, accession_code):
+        """
+        Download detailed protein information from UniProt using ExPASy and SwissProt.
+        ExPASy is a Bioinformatics Resource Portal which provides access to scientific databases and software tools,
+        while SwissProt is a manually annotated and reviewed protein sequence database part of UniProt.
+        Args:
+            accession_code (str): The accession code of the protein record to download.
+        Returns:
+            record: A SwissProt record object containing detailed protein information.
+        Raises:
+            ValueError: If no SwissProt record is found for the accession code.
+        """
+        try:
+            handle = ExPASy.get_sprot_raw(accession_code)
+            record = SwissProt.read(handle)
+            return record
+        except ValueError:
+            error_message = f"No SwissProt record found for accession code {accession_code}"
+            self.logger.error(error_message)
+            raise ValueError(error_message)
+        except Exception as e:
+            error_message = f"Error downloading the entry {accession_code}: {e}"
+            self.logger.error(error_message)
+            raise Exception(error_message)
 
     def store_entry(self, data):
         """
@@ -91,7 +79,8 @@ class UniProtExtractor(ExtractorBase):
             self.logger.error(f"HTTP error occurred while processing {data.entry_name}: {e}")
             self.session.rollback()
         except Exception as e:
-            self.logger.error(f"An unexpected error occurred while processing {data.entry_name}: {e}")
+            self.logger.error(
+                f"An unexpected error occurred while processing {data.entry_name}: {e}\n{traceback.format_exc()}")
             self.session.rollback()
 
     def get_or_create_protein(self, data):
@@ -102,11 +91,19 @@ class UniProtExtractor(ExtractorBase):
         Returns:
             Protein: The retrieved or newly created protein object.
         """
-        protein = self.session.query(Protein).filter_by(entry_name=data.entry_name).first()
-        if not protein:
-            protein = Protein(entry_name=data.entry_name)
-            self.session.add(protein)
-        return protein
+        try:
+            protein = self.session.query(Protein).filter_by(entry_name=data.entry_name).first()
+            if not protein:
+                protein = Protein(entry_name=data.entry_name)
+                self.session.add(protein)
+                self.logger.debug(f"Created new protein record for entry_name {data.entry_name}.")
+            else:
+                self.logger.debug(f"Retrieved existing protein record for entry_name {data.entry_name}.")
+            return protein
+        except Exception as e:
+            self.logger.error(
+                f"Failed to retrieve or create protein for entry_name {data.entry_name}: {e}\n{traceback.format_exc()}")
+            raise e
 
     def update_protein_details(self, protein, data):
         """
@@ -116,26 +113,32 @@ class UniProtExtractor(ExtractorBase):
             protein (Protein): The protein object to update.
             data (SwissProt.Record): Data used to update the protein object.
         """
-        protein.sequence = self.get_or_create_sequence(data.sequence)
-        protein.data_class = data.data_class
-        protein.molecule_type = data.molecule_type
-        protein.sequence_length = data.sequence_length
-        protein.created_date = data.created[0]
-        protein.sequence_update_date = data.sequence_update[0]
-        protein.annotation_update_date = data.annotation_update[0]
-        protein.description = data.description
-        protein.gene_name = str(data.gene_name)
-        protein.organism = data.organism
-        protein.organelle = data.organelle
-        protein.organism_classification = ",".join(data.organism_classification)
-        protein.taxonomy_id = ",".join(data.taxonomy_id)
-        protein.host_organism = ",".join(data.host_organism)
-        protein.host_taxonomy_id = ",".join(data.host_taxonomy_id)
-        protein.comments = "; ".join(data.comments)
-        protein.keywords = data.keywords
-        protein.protein_existence = data.protein_existence
-        protein.seqinfo = data.seqinfo
-        self.session.add(protein)
+        try:
+            protein.sequence = self.get_or_create_sequence(data.sequence)
+            protein.data_class = data.data_class
+            protein.molecule_type = data.molecule_type
+            protein.sequence_length = data.sequence_length
+            protein.created_date = data.created[0]
+            protein.sequence_update_date = data.sequence_update[0]
+            protein.annotation_update_date = data.annotation_update[0]
+            protein.description = data.description
+            protein.gene_name = str(data.gene_name)
+            protein.organism = data.organism
+            protein.organelle = data.organelle
+            protein.organism_classification = ",".join(data.organism_classification)
+            protein.taxonomy_id = ",".join(data.taxonomy_id)
+            protein.host_organism = ",".join(data.host_organism)
+            protein.host_taxonomy_id = ",".join(data.host_taxonomy_id)
+            protein.comments = "; ".join(data.comments)
+            protein.keywords = data.keywords
+            protein.protein_existence = data.protein_existence
+            protein.seqinfo = data.seqinfo
+            self.session.add(protein)
+            self.logger.debug(f"Updated protein details for entry_name {data.entry_name}.")
+        except Exception as e:
+            self.logger.error(
+                f"Failed to update protein details for entry_name {data.entry_name}: {e}\n{traceback.format_exc()}")
+            raise e
 
     def get_or_create_sequence(self, sequence):
         """
@@ -150,10 +153,13 @@ class UniProtExtractor(ExtractorBase):
             if not existing_sequence:
                 existing_sequence = Sequence(sequence=sequence)
                 self.session.add(existing_sequence)
+                self.logger.debug(f"Created new sequence record.")
+            else:
+                self.logger.debug(f"Retrieved existing sequence record.")
             return existing_sequence
         except Exception as e:
-            self.logger.error(f"Failed to retrieve or create sequence: {e}")
-            raise
+            self.logger.error(f"Failed to retrieve or create sequence: {e}\n{traceback.format_exc()}")
+            raise e
 
     def handle_accessions(self, protein, accessions):
         """
@@ -167,9 +173,11 @@ class UniProtExtractor(ExtractorBase):
                 accession = self.get_or_create_accession(accession_code)
                 accession.protein_entry_name = protein.entry_name
                 self.session.add(accession)
+                self.logger.debug(f"Linked accession code {accession_code} to protein {protein.entry_name}.")
         except Exception as e:
-            self.logger.error(f"Error handling accession {accession_code} from {accessions}: {e}")
-            raise
+            self.logger.error(
+                f"Error handling accession {accession_code} from {accessions}: {e}\n{traceback.format_exc()}")
+            raise e
 
     def get_or_create_accession(self, accession_code):
         """
@@ -184,12 +192,14 @@ class UniProtExtractor(ExtractorBase):
             exists_query = exists().where(Accession.accession_code == accession_code)
             accession_exists = self.session.query(exists_query).scalar()
             if accession_exists:
+                self.logger.debug(f"Accession {accession_code} already exists in the database.")
                 return self.session.query(Accession).filter(Accession.accession_code == accession_code).first()
             else:
+                self.logger.debug(f"Creating new accession record for {accession_code}.")
                 return Accession(accession_code=accession_code, primary=False)
         except Exception as e:
-            self.logger.error(f"Failed to retrieve or create accession {accession_code}: {e}")
-            raise
+            self.logger.error(f"Failed to retrieve or create accession {accession_code}: {e}\n{traceback.format_exc()}")
+            raise e
 
     def handle_cross_references(self, protein, cross_references):
         """
@@ -205,8 +215,9 @@ class UniProtExtractor(ExtractorBase):
                 elif reference[0] == "GO":
                     self.handle_go_reference(protein, reference)
         except Exception as e:
-            self.logger.error(f"Failed to handle cross references for {protein.entry_name}: {e}")
-            raise
+            self.logger.error(
+                f"Failed to handle cross references for {protein.entry_name}: {e}\n{traceback.format_exc()}")
+            raise e
 
     def handle_pdb_reference(self, protein, reference):
         """
@@ -225,9 +236,10 @@ class UniProtExtractor(ExtractorBase):
                         pdb_ref = self.get_or_create_pdb_reference(reference, sequence)
                         pdb_ref.protein = protein
                         self.session.add(pdb_ref)
+                        self.logger.debug(f"Linked PDB reference {reference[1]} to protein {protein.entry_name}.")
         except Exception as e:
-            self.logger.error(f"Error handling PDB reference {reference}: {e}")
-            raise
+            self.logger.error(f"Error handling PDB reference {reference}: {e}\n{traceback.format_exc()}")
+            raise e
 
     def get_or_create_pdb_reference(self, reference, sequence):
         """
@@ -245,6 +257,7 @@ class UniProtExtractor(ExtractorBase):
             pdb_ref_exists = self.session.query(exists().where(PDBReference.pdb_id == pdb_id)).scalar()
             if not pdb_ref_exists:
                 existing_sequence = self.get_or_create_sequence(sequence)
+                self.logger.debug(f"Creating new PDB reference record for {pdb_id}.")
                 return PDBReference(
                     pdb_id=pdb_id,
                     method=reference[2],
@@ -252,24 +265,29 @@ class UniProtExtractor(ExtractorBase):
                     sequence=existing_sequence
                 )
             else:
+                self.logger.debug(f"Retrieved existing PDB reference record for {pdb_id}.")
                 return self.session.query(PDBReference).filter(PDBReference.pdb_id == pdb_id).first()
         except Exception as e:
-            self.logger.error(f"Error retrieving or creating PDB reference for {pdb_id}: {e}")
-            raise
+            self.logger.error(f"Error retrieving or creating PDB reference for {pdb_id}: {e}\n{traceback.format_exc()}")
+            raise e
 
     def handle_go_reference(self, protein, reference):
         try:
             evidence = reference[3].split(":")[0]
             if evidence not in self.conf['allowed_evidences']:
+                self.logger.debug(
+                    f"Skipping GO reference {reference[1]} for {protein.entry_name} due to disallowed evidence type.")
                 return
             go_term = self.get_or_create_go_term(reference)
             association = self.get_or_create_association(protein.entry_name, go_term.go_id)
             if association is None:
                 self.logger.info(
                     f"Association between {protein.entry_name} and GO Term {go_term.go_id} already exists.")
+            else:
+                self.logger.debug(f"Created new association between {protein.entry_name} and GO Term {go_term.go_id}.")
         except Exception as e:
-            self.logger.error(f"Failed to handle GO reference for {protein.entry_name}: {e}")
-            raise
+            self.logger.error(f"Failed to handle GO reference for {protein.entry_name}: {e}\n{traceback.format_exc()}")
+            raise e
 
     def get_or_create_go_term(self, reference):
         """
@@ -285,13 +303,16 @@ class UniProtExtractor(ExtractorBase):
             go_term = self.session.query(GOTerm).filter_by(go_id=go_id).first()
 
             if not go_term:
+                self.logger.debug(f"Creating new GO term record for {go_id}.")
                 go_term = GOTerm(go_id=go_id, category=category, description=description,
                                  evidences=reference[3].split(':')[0])
                 self.session.add(go_term)
+            else:
+                self.logger.debug(f"Retrieved existing GO term record for {go_id}.")
             return go_term
         except Exception as e:
-            self.logger.error(f"Error retrieving or creating GO term {go_id}: {e}")
-            raise
+            self.logger.error(f"Error retrieving or creating GO term {go_id}: {e}\n{traceback.format_exc()}")
+            raise e
 
     def get_or_create_association(self, entry_name, go_id):
         """
@@ -310,29 +331,13 @@ class UniProtExtractor(ExtractorBase):
                 ProteinGOTermAssociation.go_id == go_id)
             association_exists = self.session.query(exists_query).scalar()
             if not association_exists:
+                self.logger.debug(f"Creating new association for {entry_name} and GO term {go_id}.")
                 association = ProteinGOTermAssociation(protein_entry_name=entry_name, go_id=go_id)
                 self.session.add(association)
                 return association
+            else:
+                self.logger.debug(f"Association between {entry_name} and GO term {go_id} already exists.")
         except Exception as e:
-            self.logger.error(f"Failed to retrieve or create association for {entry_name} and GO term {go_id}: {e}")
-            raise
-
-
-def download_record(accession_code):
-    """
-    Download detailed protein information from UniProt using ExPASy and SwissProt.
-    ExPASy is a Bioinformatics Resource Portal which provides access to scientific databases and software tools,
-    while SwissProt is a manually annotated and reviewed protein sequence database part of UniProt.
-    Args:
-        accession_code (str): The accession code of the protein record to download.
-    Returns:
-        record: A SwissProt record object containing detailed protein information.
-    Raises:
-        Exception: Raises an exception with a message indicating what went wrong during the download.
-    """
-    try:
-        handle = ExPASy.get_sprot_raw(accession_code)
-        record = SwissProt.read(handle)
-        return record
-    except Exception as e:
-        raise Exception(f"Error downloading the entry {accession_code}: {e}")
+            self.logger.error(
+                f"Failed to retrieve or create association for {entry_name} and GO term {go_id}: {e}\n{traceback.format_exc()}")
+            raise e

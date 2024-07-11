@@ -9,101 +9,6 @@ from sqlalchemy.orm import relationship, declarative_base, mapped_column
 Base = declarative_base()
 
 
-class Sequence(Base):
-    __tablename__ = 'sequences'
-    id = Column(Integer, primary_key=True)
-    sequence = Column(String, nullable=False)
-    sequence_hash = Column(String, index=True, unique=True)
-
-    go_predictions = relationship("SequenceGOPrediction", back_populates="sequence")
-
-    # Adding a default value to automatically compute the hash when a sequence is added
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.sequence_hash = func.md5(self.sequence)
-
-
-Index('idx_sequence_hash', Sequence.sequence_hash)
-
-
-class Protein(Base):
-    """
-    Represents a protein, encapsulating its properties and relationships within a database.
-
-    This class models a protein entity, encompassing various attributes that describe its
-    characteristics and relationships to other entities. It serves as a comprehensive record
-    for proteins, covering aspects from basic sequence data to more complex annotations and references.
-
-    Attributes:
-        entry_name (str): Unique entry name for the protein, serving as the primary key.
-        data_class (str): Categorization of the protein's data (e.g., experimental, predicted).
-        molecule_type (str): Type of the protein molecule (e.g., enzyme, antibody).
-        sequence_length (int): The length of the amino acid sequence of the protein.
-        sequence (str): Full amino acid sequence of the protein.
-        accessions (relationship): A link to the 'Accession' class, detailing access codes associated with this protein.
-        created_date (Date): The date when the protein record was first created.
-        sequence_update_date (Date): The date when the protein's sequence was last updated.
-        annotation_update_date (Date): The date when the protein's annotation was last updated.
-        description (str): A general description or overview of the protein.
-        gene_name (str): The name of the gene that encodes this protein.
-        organism (str): The organism from which the protein is derived.
-        organelle (str): The specific organelle where the protein is localized, if applicable.
-        organism_classification (str): Taxonomic classification of the organism (e.g., species, genus).
-        taxonomy_id (str): A unique identifier for the organism in taxonomic databases.
-        host_organism (str): The host organism for the protein, relevant in cases of viral or symbiotic proteins.
-        host_taxonomy_id (str): Taxonomy identifier for the host organism, if applicable.
-        comments (str): Additional remarks or notes about the protein.
-        pdb_references (relationship): A link to the 'PDBReference' class, providing references to structural data in the PDB.
-        go_terms (relationship): A connection to the 'GOTerm' class, indicating Gene Ontology terms associated with the protein.
-        keywords (str): Descriptive keywords related to the protein, aiding in categorization and search.
-        protein_existence (int): A numerical code indicating the evidence level for the protein's existence.
-        seqinfo (str): Supplementary information about the protein's sequence.
-        disappeared (Boolean): Flag indicating whether the protein is obsolete or no longer relevant.
-        created_at (DateTime): Timestamp of when the record was initially created.
-        updated_at (DateTime): Timestamp of the most recent update to the record.
-
-    This class is integral to managing and querying detailed protein data, supporting a wide range of bioinformatics
-    and data analysis tasks.
-    """
-    __tablename__ = "proteins"
-    entry_name = Column(String, primary_key=True, unique=True, nullable=False)
-    data_class = Column(String)
-    molecule_type = Column(String)
-    sequence_id = Column(Integer, ForeignKey('sequences.id'))
-    sequence = relationship("Sequence", uselist=False)  # Single sequence per PDB reference
-    accessions = relationship(
-        "Accession", back_populates="protein"
-    )
-    created_date = Column(Date)
-    sequence_update_date = Column(Date)
-    annotation_update_date = Column(Date)
-    description = Column(String)
-    gene_name = Column(String)
-    organism = Column(String)
-    organelle = Column(String)
-    organism_classification = Column(String)
-    taxonomy_id = Column(String)
-    host_organism = Column(String)
-    host_taxonomy_id = Column(String)
-    comments = Column(String)
-
-    pdb_references = relationship("PDBReference", back_populates="protein")
-
-    go_term_associations = relationship(
-        "ProteinGOTermAssociation",
-        back_populates="protein",
-    )
-
-    go_per_protein_semantic_distances = relationship("GOPerProteinSemanticDistance", back_populates="protein")
-
-    keywords = Column(String)
-    protein_existence = Column(Integer)
-    seqinfo = Column(String)
-    disappeared = Column(Boolean)
-    created_at = Column(DateTime, default=func.now())
-    updated_at = Column(DateTime, onupdate=func.now())
-
-
 class Accession(Base):
     """
     Represents a unique access code for a protein in a database, often used in bioinformatics repositories.
@@ -143,6 +48,132 @@ class Accession(Base):
     updated_at = Column(DateTime, onupdate=func.now())
 
 
+class Protein(Base):
+    """
+    Represents a protein, encapsulating its properties and relationships within a database.
+
+    This class models a protein entity, encompassing various attributes that describe its
+    characteristics and relationships to other entities. It serves as a comprehensive record
+    for proteins, covering aspects from basic sequence data to more complex annotations and references.
+
+    Attributes:
+        entry_name (str): Unique entry name for the protein, serving as the primary key.
+        data_class (str): Categorization of the protein's data (e.g., experimental, predicted).
+        molecule_type (str): Type of the protein molecule (e.g., enzyme, antibody).
+        sequence_id (int): Identifier for the associated sequence in the 'Sequence' table.
+        sequence (relationship): A link to the 'Sequence' class, indicating the associated sequence.
+        accessions (relationship): A link to the 'Accession' class, detailing access codes associated with this protein.
+        created_date (Date): The date when the protein record was first created.
+        sequence_update_date (Date): The date when the protein's sequence was last updated.
+        annotation_update_date (Date): The date when the protein's annotation was last updated.
+        description (str): A general description or overview of the protein.
+        gene_name (str): The name of the gene that encodes this protein.
+        organism (str): The organism from which the protein is derived.
+        organelle (str): The specific organelle where the protein is localized, if applicable.
+        organism_classification (str): Taxonomic classification of the organism (e.g., species, genus).
+        taxonomy_id (str): A unique identifier for the organism in taxonomic databases.
+        host_organism (str): The host organism for the protein, relevant in cases of viral or symbiotic proteins.
+        host_taxonomy_id (str): Taxonomy identifier for the host organism, if applicable.
+        comments (str): Additional remarks or notes about the protein.
+        pdb_references (relationship): A link to the 'PDBReference' class, providing references to structural data in the PDB.
+        go_term_associations (relationship): A connection to the 'ProteinGOTermAssociation' class, indicating Gene Ontology terms associated with the protein.
+        go_per_protein_semantic_distances (relationship): A connection to the 'GOPerProteinSemanticDistance' class, indicating semantic distances for GO terms per protein.
+        keywords (str): Descriptive keywords related to the protein, aiding in categorization and search.
+        protein_existence (int): A numerical code indicating the evidence level for the protein's existence.
+        seqinfo (str): Supplementary information about the protein's sequence.
+        disappeared (Boolean): Flag indicating whether the protein is obsolete or no longer relevant.
+        created_at (DateTime): Timestamp of when the record was initially created.
+        updated_at (DateTime): Timestamp of the most recent update to the record.
+        structure_id (int): Identifier for the associated structure file in the 'Structure' table.
+        structure (relationship): A link to the 'Structure' class, indicating the associated structure file.
+    """
+    __tablename__ = "proteins"
+    entry_name = Column(String, primary_key=True, unique=True, nullable=False)
+    data_class = Column(String)
+    molecule_type = Column(String)
+    sequence_id = Column(Integer, ForeignKey('sequences.id'))
+    sequence = relationship("Sequence", uselist=False)  # Single sequence per PDB reference
+    accessions = relationship("Accession", back_populates="protein")
+    created_date = Column(Date)
+    sequence_update_date = Column(Date)
+    annotation_update_date = Column(Date)
+    description = Column(String)
+    gene_name = Column(String)
+    organism = Column(String)
+    organelle = Column(String)
+    organism_classification = Column(String)
+    taxonomy_id = Column(String)
+    host_organism = Column(String)
+    host_taxonomy_id = Column(String)
+    comments = Column(String)
+    pdb_references = relationship("PDBReference", back_populates="protein")
+    go_term_associations = relationship("ProteinGOTermAssociation", back_populates="protein")
+    go_per_protein_semantic_distances = relationship("GOPerProteinSemanticDistance", back_populates="protein")
+    keywords = Column(String)
+    protein_existence = Column(Integer)
+    seqinfo = Column(String)
+    disappeared = Column(Boolean)
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, onupdate=func.now())
+    structure_id = Column(Integer, ForeignKey('structures.id'), nullable=True)
+    structure = relationship("Structure")
+
+
+class Sequence(Base):
+    __tablename__ = 'sequences'
+    id = Column(Integer, primary_key=True)
+    sequence = Column(String, nullable=False)
+    sequence_hash = Column(String, index=True, unique=True)
+
+    go_predictions = relationship("SequenceGOPrediction", back_populates="sequence")
+
+    # Adding a default value to automatically compute the hash when a sequence is added
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.sequence_hash = func.md5(self.sequence)
+
+
+Index('idx_sequence_hash', Sequence.sequence_hash)
+
+
+
+class Structure(Base):
+    """
+    Represents a structure file (.cif) and its associated metadata.
+
+    Attributes:
+        id (int): Unique identifier for the structure.
+        file_path (str): Relative path to the structure file (.cif).
+        created_at (DateTime): Timestamp of when the record was initially created.
+        updated_at (DateTime): Timestamp of the most recent update to the record.
+    """
+    __tablename__ = 'structures'
+    id = Column(Integer, primary_key=True)
+    file_path = Column(String, nullable=False)
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, onupdate=func.now())
+    models = relationship("Model", back_populates="structure")  # Relación con Model
+
+
+
+class Model(Base):
+    """
+    Represents different models within a structure, specifically for NMR structures that may include multiple models. Each model
+    is identified by a model_id that is typically assigned during the experimental crystallographic process.
+
+    Attributes:
+        id (int): Unique identifier for each model within a structure.
+        model_id (str): Identifier for the model as assigned in crystallography.
+        structure_id (int): Foreign key to the structure this model belongs to.
+        structure (relationship): A relationship back to the 'Structure' class.
+    """
+    __tablename__ = 'models'
+    id = Column(Integer, primary_key=True)
+    model_id = Column(String, nullable=False)
+    file_path = Column(String, nullable=False)
+    structure_id = Column(Integer, ForeignKey('structures.id'), nullable=False)
+    structure = relationship("Structure", back_populates="models")
+
 class PDBReference(Base):
     """
     Represents a reference to a structure in the Protein Data Bank (PDB).
@@ -180,6 +211,8 @@ class PDBReference(Base):
     sequence = relationship("Sequence", uselist=False)  # Single sequence per protein
     resolution = Column(Float)
     pdb_chains = relationship("PDBChains", back_populates="pdb_reference")
+    structure_id = Column(Integer, ForeignKey('structures.id'), nullable=True)
+    structure = relationship("Structure")
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, onupdate=func.now())
 
@@ -216,12 +249,11 @@ class PDBChains(Base):
     id = Column(Integer, primary_key=True)
     chains = Column(String)
     sequence_id = Column(Integer, ForeignKey('sequences.id'))
-    sequence = relationship("Sequence", uselist=False)  # Single sequence per protein
+    sequence = relationship("Sequence", uselist=False)
     pdb_reference_id = Column(Integer, ForeignKey('pdb_references.id'))
-    model = Column(Integer)
-
+    structure_id = Column(Integer, ForeignKey('structures.id'), nullable=False)  # Añadido para vincular con Structure
+    structure = relationship("Structure")
     pdb_reference = relationship("PDBReference", back_populates="pdb_chains")
-    # Añade esta línea para definir la relación con SubclusterEntry
 
 
 class SequenceEmbedding(Base):
@@ -231,7 +263,6 @@ class SequenceEmbedding(Base):
     embedding_type_id = Column(Integer, ForeignKey('embedding_types.id'))
     embedding = mapped_column(Vector())
     shape = Column(ARRAY(Integer))  # Almacena las dimensiones del embedding como un array de enteros
-    created_at = Column(DateTime, default=func.now())
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, onupdate=func.now())
 
@@ -273,7 +304,7 @@ class Subcluster(Base):
 
     embedding_type_id = Column(Integer, ForeignKey('embedding_types.id'), nullable=False)
 
-    embedding_type = relationship("EmbeddingType",back_populates="subclusters")
+    embedding_type = relationship("EmbeddingType", back_populates="subclusters")
 
     # Relación de vuelta a Cluster
     cluster = relationship("Cluster", back_populates="subclusters")
