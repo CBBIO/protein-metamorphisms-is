@@ -9,6 +9,11 @@ DB_HOST: localhost
 DB_PORT: 5432
 DB_NAME: BioData
 
+rabbitmq_host: localhost
+rabbitmq_user: guest
+rabbitmq_password: guest
+
+
 ### Information System/
 # Load Accessions
 load_accesion_csv: ../data/goa_ids.csv
@@ -56,7 +61,7 @@ structural_alignment:
 # Embedding
 embedding:
   types:
-#    - 1 # ESM
+    - 1 # ESM
     - 2 # Prost
 
 # GO Metrics

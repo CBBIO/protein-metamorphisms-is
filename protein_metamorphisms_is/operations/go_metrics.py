@@ -1,49 +1,35 @@
-from protein_metamorphisms_is.operations.base.operator import OperatorBase
+from protein_metamorphisms_is.base.queue import QueueTaskInitializer
 from protein_metamorphisms_is.sql.model import ProteinGOTermAssociation, GOTerm, GOTermRelationship
 from goatools import obo_parser
 from goatools.semantic import TermCounts, resnik_sim, min_branch_length, get_info_content
 from goatools.anno.gaf_reader import GafReader
 
-
-class GoMetrics(OperatorBase):
+class GoMetrics(QueueTaskInitializer):
     def __init__(self, conf):
         super().__init__(conf)
         self.go = obo_parser.GODag(conf['obo'])
         self.annotations = self.load_annotations_from_gaf(conf['go_annotation_file'])
         self.logger.info("GoMetrics instance created")
+        self.reference_attribute = "go_terms_per_protein"
 
     def load_annotations_from_gaf(self, gaf_path):
-        gaf = GafReader(gaf_path).read_gaf()
-        return gaf
+        return GafReader(gaf_path).read_gaf()
 
-    def start(self):
-        try:
-            self.logger.info("Starting GO Metrics calculation")
-            go_terms_per_protein = self.load_go_terms_per_protein()
-            self.calculate_metrics(go_terms_per_protein)
-
-            self.logger.info("GO Metrics calculation process completed successfully")
-
-        except Exception as e:
-            self.logger.error(f"Error during GO Metrics calculation process: {e}")
-            raise
+    def enqueue(self):
+        go_terms_per_protein = self.load_go_terms_per_protein()
+        for protein, terms_per_category in go_terms_per_protein.items():
+            self.publish_task({self.reference_attribute: {'protein': protein, 'terms_per_category': terms_per_category}})
 
     def load_go_terms_per_protein(self):
         session = self.session
         go_terms_per_protein = {}
         try:
-            # Realizar una consulta que incluya la información de categoría de los términos GO
-            # Asumiendo que tienes un modelo GOTerm que incluye un campo 'category'
             associations = session.query(ProteinGOTermAssociation, GOTerm).join(GOTerm,
                                                                                 ProteinGOTermAssociation.go_id == GOTerm.go_id).all()
 
             for association, go_term in associations:
                 if association.protein_entry_name not in go_terms_per_protein:
-                    go_terms_per_protein[association.protein_entry_name] = {"P": [],
-                                                                            "C": [],
-                                                                            "F": []}
-
-                # Categoriza el término GO basado en su categoría
+                    go_terms_per_protein[association.protein_entry_name] = {"P": [], "C": [], "F": []}
                 category = go_term.category
                 if category in go_terms_per_protein[association.protein_entry_name]:
                     go_terms_per_protein[association.protein_entry_name][category].append(go_term.go_id)
@@ -55,60 +41,64 @@ class GoMetrics(OperatorBase):
             raise
         finally:
             session.close()
-
         return go_terms_per_protein
 
-    def calculate_metrics(self, go_terms_per_protein):
+    def process(self, data):
         term_counts = TermCounts(self.go, self.annotations)
-        missing_go_terms = set()  # Para registrar los términos GO faltantes
+        protein = data['protein']
+        terms_per_category = data['terms_per_category']
+        metrics = []
 
-        for protein, terms_per_category in go_terms_per_protein.items():
-            for category, terms in terms_per_category.items():
-                for i, go_term_1 in enumerate(terms):
-                    for go_term_2 in terms[i + 1:]:
-                        if go_term_1 != go_term_2:
-                            # Asegurar orden alfabético para la consistencia
-                            go_term_1_id, go_term_2_id = sorted([go_term_1, go_term_2])
+        for category, terms in terms_per_category.items():
+            self.logger.debug(f'Processing category {category} for protein {protein} with terms {terms}')
+            metrics.extend(self.calculate_pairwise_metrics(terms, term_counts))
 
-                            # Verificar si la relación ya existe en la base de datos
-                            exists = self.session.query(GOTermRelationship).filter(
-                                ((GOTermRelationship.go_term_1_id == go_term_1_id) & (
-                                        GOTermRelationship.go_term_2_id == go_term_2_id)) |
-                                ((GOTermRelationship.go_term_1_id == go_term_2_id) & (
-                                        GOTermRelationship.go_term_2_id == go_term_1_id))
-                            ).first()
+        return metrics
 
-                            if exists:
-                                continue
+    def calculate_pairwise_metrics(self, terms, term_counts):
+        metrics = []
+        for i, go_term_1 in enumerate(terms):
+            for go_term_2 in terms[i + 1:]:
+                if go_term_1 != go_term_2:
+                    go_term_1_id, go_term_2_id = sorted([go_term_1, go_term_2])
+                    if not self.relationship_exists(go_term_1_id, go_term_2_id):
+                        try:
+                            ic1 = get_info_content(go_term_1_id, term_counts)
+                            ic2 = get_info_content(go_term_2_id, term_counts)
+                            resnik = resnik_sim(go_term_1_id, go_term_2_id, self.go, term_counts)
+                            mbl = min_branch_length(go_term_1_id, go_term_2_id, self.go, branch_dist=None)
+                            metrics.append({
+                                'go_term_1_id': go_term_1_id,
+                                'go_term_2_id': go_term_2_id,
+                                'information_content_1': ic1,
+                                'information_content_2': ic2,
+                                'resnik_distance': resnik,
+                                'minimum_branch_length': mbl
+                            })
+                        except KeyError as e:
+                            self.logger.error(f"Missing GO terms: {str(e)}")
+        return metrics
 
-                            try:
-                                ic1 = get_info_content(go_term_1_id, term_counts)
-                                ic2 = get_info_content(go_term_2_id, term_counts)
-                                resnik = resnik_sim(go_term_1_id, go_term_2_id, self.go, term_counts)
-                                mbl = min_branch_length(go_term_1_id, go_term_2_id, self.go, branch_dist=None)
-                            except KeyError as e:
-                                missing_go_terms.add(str(e))
-                                continue
+    def relationship_exists(self, go_term_1_id, go_term_2_id):
+        exists = self.session.query(GOTermRelationship).filter(
+            ((GOTermRelationship.go_term_1_id == go_term_1_id) & (GOTermRelationship.go_term_2_id == go_term_2_id)) |
+            ((GOTermRelationship.go_term_1_id == go_term_2_id) & (GOTermRelationship.go_term_2_id == go_term_1_id))
+        ).first()
+        return exists is not None
 
-                            self.save_go_term_relationship(go_term_1_id, go_term_2_id, ic1, ic2, resnik, mbl)
-
-        if missing_go_terms:
-            self.logger.error(f"Missing GO terms: {missing_go_terms}")
-
-    def save_go_term_relationship(self, go_term_1_id, go_term_2_id, information_content_1, information_content_2,
-                                  resnik_distance,
-                                  minimum_branch_length):
+    def store_entry(self, record):
         session = self.session
         try:
-            new_relationship = GOTermRelationship(
-                go_term_1_id=go_term_1_id,
-                go_term_2_id=go_term_2_id,
-                information_content_1=information_content_1,
-                information_content_2=information_content_2,
-                resnik_distance=resnik_distance,
-                minimum_branch_length=minimum_branch_length
-            )
-            session.add(new_relationship)
+            for entry in record:
+                new_relationship = GOTermRelationship(
+                    go_term_1_id=entry['go_term_1_id'],
+                    go_term_2_id=entry['go_term_2_id'],
+                    information_content_1=entry['information_content_1'],
+                    information_content_2=entry['information_content_2'],
+                    resnik_distance=entry['resnik_distance'],
+                    minimum_branch_length=entry['minimum_branch_length']
+                )
+                session.add(new_relationship)
             session.commit()
         except Exception as e:
             self.logger.error(f"Error saving GO term relationship: {e}")

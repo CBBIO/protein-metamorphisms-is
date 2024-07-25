@@ -4,13 +4,13 @@ from http.client import HTTPException
 from Bio import ExPASy, SwissProt
 from sqlalchemy import exists
 
+from protein_metamorphisms_is.base.queue import QueueTaskInitializer
 from protein_metamorphisms_is.helpers.parser.parser import extract_float, process_chain_string
-from protein_metamorphisms_is.information_system.base.extractor import ExtractorBase
 from protein_metamorphisms_is.sql.model import Accession, ProteinGOTermAssociation, GOTerm, PDBReference, Sequence, \
     Protein
 
 
-class UniProtExtractor(ExtractorBase):
+class UniProtExtractor(QueueTaskInitializer):
     """
     Handles the extraction and processing of data from UniProt. This includes retrieving protein sequences,
     annotations, and functional data. The class extends ExtractorBase to utilize base functionalities and ensures

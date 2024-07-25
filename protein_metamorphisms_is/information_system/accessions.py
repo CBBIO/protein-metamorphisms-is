@@ -4,8 +4,9 @@ from urllib.parse import quote
 import pandas as pd
 import requests
 
-from protein_metamorphisms_is.base.task import BaseTaskInitializer
+from protein_metamorphisms_is.base.base import BaseTaskInitializer
 from protein_metamorphisms_is.sql.model import Accession
+
 
 class AccessionManager(BaseTaskInitializer):
     def __init__(self, conf, session_required=True):
@@ -71,5 +72,8 @@ class AccessionManager(BaseTaskInitializer):
     def store_entry(self, record):
         pass
 
-    def process(self,_):
+    def process(self, _):
+        pass
+
+    def start(self):
         pass

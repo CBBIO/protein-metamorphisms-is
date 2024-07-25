@@ -22,6 +22,7 @@ obonet = "^1.0.0"
 scikit-learn = "^1.5.0"
 transformers = "^4.41.1"
 torch = "^2.3.0"
+tokenizer = "^3.4.3"
 
 
 

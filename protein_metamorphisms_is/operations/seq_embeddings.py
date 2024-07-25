@@ -1,22 +1,24 @@
 import importlib
-import multiprocessing
-from datetime import datetime, timedelta
-from multiprocessing import Pool
-
-from sqlalchemy.orm import aliased
-
-from protein_metamorphisms_is.operations.base.operator import OperatorBase
-from protein_metamorphisms_is.sql.model import PDBChains, Cluster, PDBReference, StructuralAlignmentQueue, \
-    StructuralAlignmentType, StructuralAlignmentResults, EmbeddingType, Sequence
+import traceback
+import json
+from protein_metamorphisms_is.base.gpu import GPUTaskInitializer
+from protein_metamorphisms_is.sql.model import SequenceEmbedding, EmbeddingType, Sequence
 
 
-class SequenceEmbeddingManager(OperatorBase):
+class SequenceEmbeddingManager(GPUTaskInitializer):
     def __init__(self, conf):
         super().__init__(conf)
-        self.logger.info("Sequence Embedding Manager instance created.")
+        self.reference_attribute = 'sequence'
+        self.model_instances = {}
+        self.tokenizer_instances = {}
+        self.fetch_models_info()
+        self.batch_size = self.conf['embedding'].get('batch_size', 40)  # Add batch size configuration
 
     def fetch_models_info(self):
+        self.session_init()
         embedding_types = self.session.query(EmbeddingType).all()
+        self.session.close()
+        del self.engine
         self.types = {}
         base_module_path = 'protein_metamorphisms_is.operations.embedding_tasks'
 
@@ -24,18 +26,85 @@ class SequenceEmbeddingManager(OperatorBase):
             if type_obj.id in self.conf['embedding']['types']:
                 module_name = f"{base_module_path}.{type_obj.task_name}"
                 module = importlib.import_module(module_name)
-                self.types[type_obj.id] = {'module': module, 'model_name': type_obj.model_name, 'id': type_obj.id}
+                self.types[type_obj.id] = {
+                    'module': module,
+                    'model_name': type_obj.model_name,
+                    'id': type_obj.id,
+                    'task_name': type_obj.task_name
+                }
 
-    def start(self):
+                # Initialize model and tokenizer
+                model = module.load_model(type_obj.model_name)
+                tokenizer = module.load_tokenizer(type_obj.model_name)
+                self.model_instances[type_obj.id] = model
+                self.tokenizer_instances[type_obj.id] = tokenizer
+
+    def enqueue(self):
         try:
-            self.logger.info("Starting embedding process.")
+            self.logger.info("Starting embedding enqueue process.")
+            self.session_init()
             sequences = self.session.query(Sequence).all()
-            self.fetch_models_info()
+            sequence_batches = [sequences[i:i + self.batch_size] for i in range(0, len(sequences), self.batch_size)]
 
-            for type in self.types.values():
-                module, model_name, embedding_type_id = type['module'], type['model_name'], type['id']
-                module.embedding_task(self.session, sequences, model_name, embedding_type_id)
+            for batch in sequence_batches:
+                model_batches = {}
+                for sequence in batch:
+                    for type in self.types.values():
+                        task_data = {
+                            'sequence': sequence.sequence,
+                            'sequence_id': sequence.id,
+                            'model_name': type['model_name'],
+                            'embedding_type_id': type['id']
+                        }
+                        if type['id'] not in model_batches:
+                            model_batches[type['id']] = []
+                        model_batches[type['id']].append(task_data)
+
+                for model_type, batch_data in model_batches.items():
+                    self.publish_task(batch_data, model_type)
+                    self.logger.info(f"Published batch with {len(batch_data)} sequences to model type {model_type}.")
+
+            self.session.close()
 
         except Exception as e:
-            self.logger.error(f"Error during embedding process: {e}")
+            self.logger.error(f"Error during enqueue process: {e}")
             raise
+
+    def process(self, task_data):
+        try:
+            results = []
+
+            for data in task_data:
+                embedding_type_id = data['embedding_type_id']
+                model = self.model_instances[embedding_type_id]
+                tokenizer = self.tokenizer_instances[embedding_type_id]
+                module = self.types[embedding_type_id]['module']
+
+                sequence = data['sequence']
+                embedding_records = module.embedding_task([sequence], model, tokenizer)
+
+                for record in embedding_records:
+                    record['sequence_id'] = data['sequence_id']
+                    record['embedding_type_id'] = embedding_type_id
+                    results.append(record)
+            return results
+        except Exception as e:
+            self.logger.error(f"Error during embedding process: {e}\n{traceback.format_exc()}")
+            raise
+
+    def store_entry(self, records):
+
+        session = self.session
+        try:
+            for record in records:
+                embedding_entry = SequenceEmbedding(
+                    sequence_id=record['sequence_id'],
+                    embedding_type_id=record['embedding_type_id'],
+                    embedding=record['embedding'],
+                    shape=record['shape']
+                )
+                session.add(embedding_entry)
+            session.commit()
+        except Exception as e:
+            session.rollback()
+            raise RuntimeError(f"Error storing entry: {e}")
