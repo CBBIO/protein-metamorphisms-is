@@ -10,7 +10,6 @@ def load_model(model_name):
 def load_tokenizer(model_name):
     return T5Tokenizer.from_pretrained(model_name, do_lower_case=False)
 
-@retry(Exception, tries=3, delay=2, backoff=2)
 def embedding_task(sequences, model, tokenizer):
     if not torch.cuda.is_available():
         raise Exception("CUDA is not available. This script requires a GPU with CUDA.")

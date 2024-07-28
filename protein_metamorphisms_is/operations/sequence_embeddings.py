@@ -2,7 +2,7 @@ import importlib
 import traceback
 import json
 from protein_metamorphisms_is.base.gpu import GPUTaskInitializer
-from protein_metamorphisms_is.sql.model import SequenceEmbedding, EmbeddingType, Sequence
+from protein_metamorphisms_is.sql.model import SequenceEmbedding, Sequence, SequenceEmbeddingType
 
 
 class SequenceEmbeddingManager(GPUTaskInitializer):
@@ -11,20 +11,20 @@ class SequenceEmbeddingManager(GPUTaskInitializer):
         self.reference_attribute = 'sequence'
         self.model_instances = {}
         self.tokenizer_instances = {}
+        self.base_module_path = 'protein_metamorphisms_is.operations.sequence_embedding_tasks'
         self.fetch_models_info()
         self.batch_size = self.conf['embedding'].get('batch_size', 40)  # Add batch size configuration
 
     def fetch_models_info(self):
         self.session_init()
-        embedding_types = self.session.query(EmbeddingType).all()
+        embedding_types = self.session.query(SequenceEmbeddingType).all()
         self.session.close()
         del self.engine
         self.types = {}
-        base_module_path = 'protein_metamorphisms_is.operations.embedding_tasks'
 
         for type_obj in embedding_types:
             if type_obj.id in self.conf['embedding']['types']:
-                module_name = f"{base_module_path}.{type_obj.task_name}"
+                module_name = f"{self.base_module_path}.{type_obj.task_name}"
                 module = importlib.import_module(module_name)
                 self.types[type_obj.id] = {
                     'module': module,
@@ -32,12 +32,6 @@ class SequenceEmbeddingManager(GPUTaskInitializer):
                     'id': type_obj.id,
                     'task_name': type_obj.task_name
                 }
-
-                # Initialize model and tokenizer
-                model = module.load_model(type_obj.model_name)
-                tokenizer = module.load_tokenizer(type_obj.model_name)
-                self.model_instances[type_obj.id] = model
-                self.tokenizer_instances[type_obj.id] = tokenizer
 
     def enqueue(self):
         try:
@@ -50,21 +44,34 @@ class SequenceEmbeddingManager(GPUTaskInitializer):
                 model_batches = {}
                 for sequence in batch:
                     for type in self.types.values():
-                        task_data = {
-                            'sequence': sequence.sequence,
-                            'sequence_id': sequence.id,
-                            'model_name': type['model_name'],
-                            'embedding_type_id': type['id']
-                        }
-                        if type['id'] not in model_batches:
-                            model_batches[type['id']] = []
-                        model_batches[type['id']].append(task_data)
+                        # Verificar si el embedding ya existe para evitar recálculos
+                        existing_embedding = self.session.query(SequenceEmbedding).filter_by(
+                            sequence_id=sequence.id, embedding_type_id=type['id']).first()
+
+                        if not existing_embedding:
+                            task_data = {
+                                'sequence': sequence.sequence,
+                                'sequence_id': sequence.id,
+                                'model_name': type['model_name'],
+                                'embedding_type_id': type['id']
+                            }
+
+                            if type['id'] not in model_batches:
+                                model_batches[type['id']] = []
+                            model_batches[type['id']].append(task_data)
 
                 for model_type, batch_data in model_batches.items():
-                    self.publish_task(batch_data, model_type)
-                    self.logger.info(f"Published batch with {len(batch_data)} sequences to model type {model_type}.")
+                    if batch_data:  # Solo publicar si hay datos nuevos para procesar
+                        self.publish_task(batch_data, model_type)
+                        self.logger.info(
+                            f"Published batch with {len(batch_data)} sequences to model type {model_type}.")
 
             self.session.close()
+
+        except Exception as e:
+            self.logger.error(f"Error during enqueue process: {e}")
+            raise
+
 
         except Exception as e:
             self.logger.error(f"Error during enqueue process: {e}")

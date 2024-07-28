@@ -31,7 +31,9 @@ class UniProtExtractor(QueueTaskInitializer):
         accessions = self.session.query(Accession).all()
         for accession in accessions:
             self.logger.debug(f"Publishing task for {self.reference_attribute} code: {accession.accession_code}")
-            self.publish_task({self.reference_attribute: accession.accession_code})
+            self.publish_task(accession.accession_code)
+
+    # Existing method in uniprot.py
 
     def process(self, accession_code):
         """
@@ -39,12 +41,15 @@ class UniProtExtractor(QueueTaskInitializer):
         ExPASy is a Bioinformatics Resource Portal which provides access to scientific databases and software tools,
         while SwissProt is a manually annotated and reviewed protein sequence database part of UniProt.
         Args:
-            accession_code (str): The accession code of the protein record to download.
+            accession_dict (dict): The dictionary containing the accession code of the protein record to download.
         Returns:
-            record: A SwissProt record object containing detailed protein information.
+            record: A dictionary containing detailed protein information.
         Raises:
             ValueError: If no SwissProt record is found for the accession code.
         """
+        if not accession_code:
+            raise ValueError("No accession code provided in the input dictionary.")
+
         try:
             handle = ExPASy.get_sprot_raw(accession_code)
             record = SwissProt.read(handle)

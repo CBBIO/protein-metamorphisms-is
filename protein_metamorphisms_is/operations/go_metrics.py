@@ -4,6 +4,7 @@ from goatools import obo_parser
 from goatools.semantic import TermCounts, resnik_sim, min_branch_length, get_info_content
 from goatools.anno.gaf_reader import GafReader
 
+
 class GoMetrics(QueueTaskInitializer):
     def __init__(self, conf):
         super().__init__(conf)
@@ -18,7 +19,7 @@ class GoMetrics(QueueTaskInitializer):
     def enqueue(self):
         go_terms_per_protein = self.load_go_terms_per_protein()
         for protein, terms_per_category in go_terms_per_protein.items():
-            self.publish_task({self.reference_attribute: {'protein': protein, 'terms_per_category': terms_per_category}})
+            self.publish_task({'protein': protein, 'terms_per_category': terms_per_category})
 
     def load_go_terms_per_protein(self):
         session = self.session

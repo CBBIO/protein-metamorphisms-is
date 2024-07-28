@@ -5,7 +5,9 @@ import yaml
 from protein_metamorphisms_is.helpers.logger.logger import setup_logger
 from protein_metamorphisms_is.sql.base.database_manager import DatabaseManager
 from protein_metamorphisms_is.sql.constants import handle_structural_complexity_levels, \
-    handle_structural_alignment_types, handle_embedding_types, handle_prediction_methods
+    handle_structural_alignment_types, handle_prediction_methods, \
+    handle_sequence_embedding_types, handle_structure_embedding_types
+
 
 class BaseTaskInitializer(ABC):
     def __init__(self, conf, session_required=True):
@@ -21,8 +23,10 @@ class BaseTaskInitializer(ABC):
             constants = yaml.safe_load(open(conf['constants']))
             handle_structural_complexity_levels(self.session, constants)
             handle_structural_alignment_types(self.session, constants)
-            handle_embedding_types(self.session, constants)
-            handle_prediction_methods(self.session,constants)
+            handle_sequence_embedding_types(self.session, constants)
+            handle_structure_embedding_types(self.session, constants)
+            handle_prediction_methods(self.session, constants)
+
 
     def session_init(self):
         """

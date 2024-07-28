@@ -1,12 +1,14 @@
 import ast
 import multiprocessing
 import json
+import pickle
 import threading
 import time
 import traceback
 from abc import abstractmethod
 
 import pika
+import requests
 from pika import PlainCredentials
 from retry import retry
 
@@ -14,14 +16,32 @@ from protein_metamorphisms_is.base.base import BaseTaskInitializer
 from protein_metamorphisms_is.helpers.logger.logger import setup_logger
 from protein_metamorphisms_is.sql.base.database_manager import DatabaseManager
 
+
 class QueueTaskInitializer(BaseTaskInitializer):
     def __init__(self, conf, session_required=True):
         super().__init__(conf, session_required)
         self.processes = []
         self.threads = []
         self.stop_event = multiprocessing.Event()
-        self.connection = None
-        self.channel = None
+        self.connection_params = pika.ConnectionParameters(
+            host=self.conf['rabbitmq_host'],
+            credentials=PlainCredentials(self.conf['rabbitmq_user'], self.conf['rabbitmq_password'])
+        )
+
+    def setup_rabbitmq(self):
+        try:
+            credentials = PlainCredentials(self.conf['rabbitmq_user'], self.conf['rabbitmq_password'])
+            connection = pika.BlockingConnection(
+                pika.ConnectionParameters(host=self.conf['rabbitmq_host'], credentials=credentials))
+            channel = connection.channel()
+
+            # Declarar las colas necesarias
+            channel.queue_declare(queue=self.extractor_queue, durable=True)
+            channel.queue_declare(queue=self.inserter_queue, durable=True)
+            return connection, channel
+        except Exception as e:
+            self.logger.error(f"Error setting up RabbitMQ: {e}")
+            raise
 
     @property
     def extractor_queue(self):
@@ -31,35 +51,13 @@ class QueueTaskInitializer(BaseTaskInitializer):
     def inserter_queue(self):
         return f'{self.__class__.__name__.lower()}_inserter'
 
-    def setup_rabbitmq(self):
-        try:
-            credentials = PlainCredentials(self.conf['rabbitmq_user'], self.conf['rabbitmq_password'])
-            self.connection = pika.BlockingConnection(
-                pika.ConnectionParameters(host=self.conf['rabbitmq_host'], credentials=credentials))
-            self.channel = self.connection.channel()
-            self.channel.queue_declare(queue=self.extractor_queue)
-            self.channel.queue_declare(queue=self.inserter_queue)
-        except Exception as e:
-            self.logger.error(f"Error setting up RabbitMQ: {e}")
-            self.close_rabbitmq()
-            raise
-
     def start(self):
         try:
             self.setup_rabbitmq()
             self.enqueue()
             self.start_workers()
         finally:
-            self.close_rabbitmq()
-
-    def close_rabbitmq(self):
-        try:
-            if self.channel and self.channel.is_open:
-                self.channel.close()
-            if self.connection and self.connection.is_open:
-                self.connection.close()
-        except Exception as e:
-            self.logger.error(f"Error closing RabbitMQ connection: {e}")
+            self.stop_event.set()
 
     def start_workers(self):
         try:
@@ -72,9 +70,9 @@ class QueueTaskInitializer(BaseTaskInitializer):
             p.start()
             self.processes.append(p)
 
-            # monitor_thread = threading.Thread(target=self.monitor_queues)
-            # monitor_thread.start()
-            # self.threads.append(monitor_thread)
+            monitor_thread = threading.Thread(target=self.monitor_queues)
+            monitor_thread.start()
+            self.threads.append(monitor_thread)
 
             for p in self.processes:
                 p.join()
@@ -86,27 +84,25 @@ class QueueTaskInitializer(BaseTaskInitializer):
                 t.join()
 
     def run_processor_worker(self, stop_event):
-        with self._create_rabbitmq_connection() as channel:
+        with self.create_rabbitmq_connection() as connection:
+            channel = connection.channel()
             channel.basic_qos(prefetch_count=1)
             channel.basic_consume(queue=self.extractor_queue, on_message_callback=self.callback)
             self.logger.info(f"Starting message consumption in processor worker for queue {self.extractor_queue}.")
-            self._consume_messages(channel, stop_event)
+            self.consume_messages(channel, stop_event)
 
     def run_db_inserter_worker(self, stop_event):
-        with self._create_rabbitmq_connection() as channel:
+        with self.create_rabbitmq_connection() as connection:
+            channel = connection.channel()
             channel.basic_qos(prefetch_count=1)
             channel.basic_consume(queue=self.inserter_queue, on_message_callback=self.db_inserter_callback)
             self.logger.info(f"Starting message consumption in DB inserter worker for queue {self.inserter_queue}.")
-            self._consume_messages(channel, stop_event)
+            self.consume_messages(channel, stop_event)
 
-    def _create_rabbitmq_connection(self):
-        credentials = PlainCredentials(self.conf['rabbitmq_user'], self.conf['rabbitmq_password'])
-        connection = pika.BlockingConnection(
-            pika.ConnectionParameters(host=self.conf['rabbitmq_host'], credentials=credentials))
-        channel = connection.channel()
-        return channel
+    def create_rabbitmq_connection(self):
+        return pika.BlockingConnection(self.connection_params)
 
-    def _consume_messages(self, channel, stop_event):
+    def consume_messages(self, channel, stop_event):
         while not stop_event.is_set():
             try:
                 channel.connection.process_data_events(time_limit=1)
@@ -122,32 +118,58 @@ class QueueTaskInitializer(BaseTaskInitializer):
 
     def monitor_queues(self):
         while not self.stop_event.is_set():
-            queues = [self.extractor_queue, self.inserter_queue]
-            empty_queues = 0
-            for queue in queues:
-                queue_state = self.channel.queue_declare(queue=queue, passive=True)
-                if queue_state.method.message_count == 0:
-                    empty_queues += 1
+            with self.create_rabbitmq_connection() as connection:
+                channel = connection.channel()
+                queues = [self.extractor_queue, self.inserter_queue]
+                empty_queues = 0
+                empty_memory_queues = 0
+                for queue in queues:
+                    try:
+                        queue_state = channel.queue_declare(queue=queue, passive=True)
+                        if queue_state.method.message_count == 0:
+                            empty_queues += 1
+                    except pika.exceptions.ChannelClosedByBroker:
+                        self.logger.error(f"Queue {queue} does not exist.")
+                        self.stop_event.set()
+                        return
 
-            if empty_queues == len(queues):
-                self.stop_event.set()
-                break
-            time.sleep(5)
+                    messages_in_memory = self.check_messages_in_memory(queue)
+                    if messages_in_memory == 0:
+                        empty_memory_queues += 1
 
-        self.logger.info("Queues are empty, stopping all workers.")
-        self.stop_event.set()
+                if empty_queues == len(queues) and empty_memory_queues == len(queues):
+                    self.stop_event.set()
+                    break
+
+                time.sleep(1)  # Añadir un pequeño retardo para evitar un bucle ocupado
+
+        self.logger.info("Queues are empty and no messages in memory, stopping all workers.")
+
+    def check_messages_in_memory(self, queue_name):
+        host = self.conf['rabbitmq_host']
+        user = self.conf['rabbitmq_user']
+        password = self.conf['rabbitmq_password']
+        url = f'http://{host}:15672/api/queues/%2F/{queue_name}'
+        auth = requests.auth.HTTPBasicAuth(user, password)
+        response = requests.get(url, auth=auth)
+        if response.status_code == 200:
+            queue_info = response.json()
+            messages_in_memory = queue_info.get('messages_ram', 'No disponible')
+            return messages_in_memory
+        else:
+            return f"Error al acceder a la API de RabbitMQ: {response.status_code}"
 
     def publish_task(self, data):
-        if not isinstance(data, str):
-            data = json.dumps(data)
-        if not self.channel or not self.channel.is_open:
-            self.setup_rabbitmq()
-        self.channel.basic_publish(exchange='', routing_key=self.extractor_queue, body=data)
+        if not isinstance(data, bytes):  # Asegurar que los datos sean bytes antes de publicarlos
+            data = pickle.dumps(data)
+        with self.create_rabbitmq_connection() as connection:
+            channel = connection.channel()
+            channel.basic_publish(exchange='', routing_key=self.extractor_queue, body=data)
 
     def db_inserter_callback(self, ch, method, properties, body):
         self.logger.info("Message received in DB inserter worker")
         try:
-            record = json.loads(body)
+            record = pickle.loads(body)  # Deserializar usando pickle
             self.store_entry(record)
             ch.basic_ack(delivery_tag=method.delivery_tag)
         except Exception as e:
@@ -156,17 +178,16 @@ class QueueTaskInitializer(BaseTaskInitializer):
             ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
 
     def callback(self, ch, method, properties, body):
-        body_decoded = body.decode('utf-8')
-        data = json.loads(body_decoded)
-        reference = data
         try:
+            data = pickle.loads(body)  # Deserializar usando pickle
+            reference = data
             self.logger.info(f"Processing message for {self.reference_attribute}: {reference}")
             record = self.process(reference)
             if record:
-                record_json = json.dumps(record)
-                if not self.channel or not self.channel.is_open:
-                    self.setup_rabbitmq()
-                self.channel.basic_publish(exchange='', routing_key=self.inserter_queue, body=record_json)
+                record_bytes = pickle.dumps(record)  # Serializar usando pickle
+                with self.create_rabbitmq_connection() as connection:
+                    channel = connection.channel()
+                    channel.basic_publish(exchange='', routing_key=self.inserter_queue, body=record_bytes)
                 self.logger.debug(
                     f"Published record to inserter queue for {self.reference_attribute} code: {reference}")
             ch.basic_ack(delivery_tag=method.delivery_tag)
@@ -176,7 +197,7 @@ class QueueTaskInitializer(BaseTaskInitializer):
         except Exception as e:
             self.logger.error(
                 f"Failed to process message for {self.reference_attribute} code {reference}: {e}\n{traceback.format_exc()}")
-            ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
+            ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
 
     @abstractmethod
     def enqueue(self):

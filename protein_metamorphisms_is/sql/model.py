@@ -256,18 +256,33 @@ class PDBChains(Base):
     pdb_reference = relationship("PDBReference", back_populates="pdb_chains")
 
 
+
 class SequenceEmbedding(Base):
     __tablename__ = 'sequence_embeddings'
     id = Column(Integer, primary_key=True)
     sequence_id = Column(Integer, ForeignKey('sequences.id'), nullable=False)
-    embedding_type_id = Column(Integer, ForeignKey('embedding_types.id'))
+    embedding_type_id = Column(Integer, ForeignKey('sequence_embedding_types.id'))
     embedding = mapped_column(Vector())
     shape = Column(ARRAY(Integer))  # Almacena las dimensiones del embedding como un array de enteros
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, onupdate=func.now())
 
     sequence = relationship("Sequence")
-    embedding_type = relationship("EmbeddingType")
+    embedding_type = relationship("SequenceEmbeddingType")
+
+
+class StructureEmbedding(Base):
+    __tablename__ = 'structure_embeddings'
+    id = Column(Integer, primary_key=True)
+    model_id = Column(Integer, ForeignKey('models.id'), nullable=False)
+    structure_embedding_type_id = Column(Integer, ForeignKey('structure_embedding_types.id'))
+    embedding = mapped_column(Vector())
+    shape = Column(ARRAY(Integer))  # Almacena las dimensiones del embedding como un array de enteros
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, onupdate=func.now())
+
+    model = relationship("Model")
+    embedding_type = relationship("StructureEmbeddingType")
 
 
 class Cluster(Base):
@@ -302,9 +317,9 @@ class Subcluster(Base):
     description = Column(String)  # Una descripción opcional del subcluster
     created_at = Column(DateTime, default=datetime.now)
 
-    embedding_type_id = Column(Integer, ForeignKey('embedding_types.id'), nullable=False)
+    embedding_type_id = Column(Integer, ForeignKey('structure_embedding_types.id'), nullable=False)
 
-    embedding_type = relationship("EmbeddingType", back_populates="subclusters")
+    embedding_type = relationship("StructureEmbeddingType", back_populates="subclusters")  # Actualización aquí
 
     # Relación de vuelta a Cluster
     cluster = relationship("Cluster", back_populates="subclusters")
@@ -384,9 +399,9 @@ class StructuralAlignmentType(Base):
     task_name = Column(String)
 
 
-class EmbeddingType(Base):
+class SequenceEmbeddingType(Base):
     """
-    Represents a type of protein analysis embedding.
+    Represents a type of protein sequence analysis embedding.
 
     This class is designed to manage different embedding techniques used in protein sequence analysis, offering a structured way to categorize and store information about various embedding methods such as ESM and Prot-T5.
 
@@ -396,16 +411,38 @@ class EmbeddingType(Base):
         description (String): Detailed description of the embedding technique.
         task_name (String): Name of the specific task associated with this embedding type, if applicable.
     """
-    __tablename__ = 'embedding_types'
+    __tablename__ = 'sequence_embedding_types'
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False, unique=True)
     description = Column(String)
     task_name = Column(String)
     model_name = Column(String)
 
-    seq_embeddings = relationship("SequenceEmbedding", back_populates="embedding_type")  # Ajuste aquí
+    seq_embeddings = relationship("SequenceEmbedding", back_populates="embedding_type")
     sequence_predictions = relationship("SequenceGOPrediction", back_populates="embedding_type")
-    subclusters = relationship("Subcluster", back_populates="embedding_type")
+
+
+class StructureEmbeddingType(Base):
+    """
+    Represents a type of protein structure analysis embedding.
+
+    This class is designed to manage different embedding techniques used in protein structure analysis, offering a structured way to categorize and store information about various embedding methods such as 3D-CNN and GNN.
+
+    Attributes:
+        id (Integer): Unique identifier for each embedding type.
+        name (String): Unique name of the embedding type.
+        description (String): Detailed description of the embedding technique.
+        task_name (String): Name of the specific task associated with this embedding type, if applicable.
+    """
+    __tablename__ = 'structure_embedding_types'
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False, unique=True)
+    description = Column(String)
+    task_name = Column(String)
+    model_name = Column(String)
+
+    struct_embeddings = relationship("StructureEmbedding", back_populates="embedding_type")
+    subclusters = relationship("Subcluster", back_populates="embedding_type")  # Añadir esta línea
 
 
 class StructuralAlignmentQueue(Base):
@@ -532,13 +569,14 @@ class SequenceGOPrediction(Base):
     sequence_id = Column(Integer, ForeignKey('sequences.id'))
     ref_protein_entry_name = Column(String, ForeignKey('proteins.entry_name'))
     go_id = Column(String, ForeignKey('go_terms.go_id'), nullable=False)
-    embedding_type_id = Column(Integer, ForeignKey('embedding_types.id'), nullable=False)
+    embedding_type_id = Column(Integer, ForeignKey('sequence_embedding_types.id'), nullable=False)
     prediction_method_id = Column(Integer, ForeignKey('prediction_methods.id'))  # Vinculación con PredictionMethod
     k = Column(Integer)
 
     sequence = relationship("Sequence", back_populates="go_predictions")
     go_term = relationship("GOTerm", back_populates="sequence_predictions")
-    embedding_type = relationship("EmbeddingType", back_populates="sequence_predictions")
+    embedding_type = relationship("SequenceEmbeddingType")  # Actualización aquí
+    prediction_method = relationship("PredictionMethod")
 
 
 class PredictionMethod(Base):
@@ -552,9 +590,10 @@ class GOPerProteinSemanticDistance(Base):
     __tablename__ = 'go_per_protein_semantic_distances'
     id = Column(Integer, primary_key=True)
     protein_entry_name = Column(String, ForeignKey('proteins.entry_name'))
-    embedding_type_id = Column(Integer, ForeignKey('embedding_types.id'))
+    embedding_type_id = Column(Integer, ForeignKey('sequence_embedding_types.id'))
     prediction_method_id = Column(Integer, ForeignKey('prediction_methods.id'))  # Vinculación con PredictionMethod
     group_distance = Column(Float, nullable=False)
 
     protein = relationship("Protein", back_populates="go_per_protein_semantic_distances")
-    embedding_type = relationship("EmbeddingType")
+    embedding_type = relationship("SequenceEmbeddingType")  # Actualización aquí
+    prediction_method = relationship("PredictionMethod")

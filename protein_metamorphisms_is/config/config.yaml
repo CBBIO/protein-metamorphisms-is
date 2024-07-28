@@ -1,5 +1,5 @@
 #System
-max_workers: 10
+max_workers: 12
 binaries_path: '../binaries'
 
 # DB CONFIGURATION
@@ -30,7 +30,7 @@ limit: 100
 # PDB Extraction
 resolution_threshold: 20
 server: "https://files.wwpdb.org/"
-data_dir: "/home/bioxaxi/data"
+data_directory: "/home/bioxaxi/data"
 file_format: "mmCif"
 allow_multiple_chain_models: False # NMR
 

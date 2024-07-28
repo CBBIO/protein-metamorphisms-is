@@ -1,17 +1,19 @@
-import ast
 import os
-import pickle
 import traceback
-from concurrent.futures import ThreadPoolExecutor
+import warnings
 
-from Bio import PDB
+from Bio import PDB, SearchIO
 from Bio.Data.PDBData import protein_letters_3to1
 from Bio.PDB import Select, MMCIFParser, MMCIFIO
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.sql.operators import or_
 
 from protein_metamorphisms_is.base.queue import QueueTaskInitializer
-from protein_metamorphisms_is.sql.model import PDBReference, PDBChains, Sequence, Structure, Model
+from protein_metamorphisms_is.sql.model import PDBReference, Sequence, Structure, Model, PDBChains
+import warnings
+warnings.filterwarnings("ignore")
+
+
 
 
 class ChainSelect(Select):
@@ -30,13 +32,13 @@ class PDBExtractor(QueueTaskInitializer):
     def __init__(self, conf):
         super().__init__(conf)
         self.reference_attribute = 'PDB_ID'
-        self.data_dir = self.conf.get("data_dir", "/data")
-        self.pdb_dir = os.path.join(self.data_dir, 'pdb')
-        self.models_dir = os.path.join(self.data_dir, 'models')
+        self.data_directory = self.conf.get("data_directory", "/data")
+        self.pdb_directory = os.path.join(self.data_directory, 'pdb')
+        self.models_directory = os.path.join(self.data_directory, 'models')
         self.setup_directories()
 
     def setup_directories(self):
-        for path in [self.pdb_dir, self.models_dir]:
+        for path in [self.pdb_directory, self.models_directory]:
             if not os.path.exists(path):
                 os.makedirs(path)
                 self.logger.info(f"Created directory: {path}")
@@ -53,10 +55,11 @@ class PDBExtractor(QueueTaskInitializer):
         ).all()
         for pdb_reference in pdb_references:
             self.logger.debug(f"Publishing task for accession code: {pdb_reference.pdb_id}")
-            self.publish_task({self.reference_attribute: pdb_reference.pdb_id})
+            print('pu')
+            self.publish_task(pdb_reference.pdb_id)
 
     def process(self, pdb_id):
-        pdbl = PDB.PDBList(server=self.conf.get("server", "ftp.wwpdb.org"), pdb=self.pdb_dir)
+        pdb_list = PDB.PDBList(server=self.conf.get("server", "ftp.wwpdb.org"), pdb=self.pdb_directory)
         result = {
             "pdb_id": pdb_id,
             "models": [],
@@ -64,19 +67,18 @@ class PDBExtractor(QueueTaskInitializer):
         }
 
         try:
-            file_path = pdbl.retrieve_pdb_file(pdb_id, file_format=self.conf.get("file_format", "mmCif"),
-                                               pdir=self.pdb_dir)
+            file_path = pdb_list.retrieve_pdb_file(pdb_id, file_format=self.conf.get("file_format", "mmCif"),
+                                                   pdir=self.pdb_directory)
             self.logger.info(f"Downloaded PDB {pdb_id} to {file_path}")
             parser = MMCIFParser()
             structure = parser.get_structure(pdb_id, file_path)
             io = MMCIFIO()
 
             for model in structure:
-                model_file_path = os.path.join(self.models_dir, f"{pdb_id}_model_{model.id}.cif")
+                model_file_path = os.path.join(self.models_directory, f"{pdb_id}_model_{model.id}.cif")
                 io.set_structure(model)
                 io.save(model_file_path)
                 self.logger.info(f"Saved model {model.id} of PDB {pdb_id} to {model_file_path}")
-
                 model_data = {
                     "model_id": model.id,
                     "file_path": model_file_path,
@@ -90,12 +92,11 @@ class PDBExtractor(QueueTaskInitializer):
                         if residue.id[0] == ' ' and residue.resname in protein_letters_3to1:
                             sequence += protein_letters_3to1[residue.resname]
 
-                    chain_file_path = os.path.join(self.pdb_dir, f"{pdb_id}_{chain_id}_model_{model.id}.cif")
+                    chain_file_path = os.path.join(self.models_directory, f"{pdb_id}_chain_{chain_id}_model_{model.id}.cif")
                     if not os.path.isfile(chain_file_path):
-                        io.set_structure(structure)
+                        io.set_structure(model)
                         io.save(chain_file_path, select=ChainSelect(chain_id, model.id))
                         self.logger.info(f"Saved chain {chain_id} of model {model.id} to {chain_file_path}")
-
                     model_data['chains'].append({
                         "chain_id": chain_id,
                         "sequence": sequence,
@@ -112,6 +113,7 @@ class PDBExtractor(QueueTaskInitializer):
         return result
 
     def store_entry(self, record):
+        print(record)
         try:
             pdb_structure = self.get_or_create_structure(record['pdb_id'])
 
@@ -120,6 +122,7 @@ class PDBExtractor(QueueTaskInitializer):
 
                 for chain_data in model_data['chains']:
                     chain_structure = self.get_or_create_structure(record['pdb_id'], chain_data['chain_id'])
+                    model = self.get_or_create_model(chain_data, chain_structure.id)
                     pdb_reference = self.get_pdb_reference(record['pdb_id'])
 
                     if pdb_reference:
@@ -136,11 +139,12 @@ class PDBExtractor(QueueTaskInitializer):
             self.session.close()
 
     def get_or_create_structure(self, pdb_id, chain_id=None):
-        file_path = f"{pdb_id}_{chain_id}.cif" if chain_id else f"{pdb_id}.cif"
+        file_name = f"{pdb_id}_chain_{chain_id}.cif" if chain_id else f"{pdb_id}.cif"
 
-        existing_structure = self.session.query(Structure).filter_by(file_path=file_path).first()
+        existing_structure = self.session.query(Structure).filter_by(
+            file_path=file_name).first()  # Guarda solo el nombre del archivo
         if not existing_structure:
-            existing_structure = Structure(file_path=file_path)
+            existing_structure = Structure(file_path=file_name)  # Guarda solo el nombre del archivo
             self.session.add(existing_structure)
             self.session.flush()
 
@@ -148,6 +152,8 @@ class PDBExtractor(QueueTaskInitializer):
 
     def get_or_create_model(self, model_data, structure_id):
         model_id_str = str(model_data['model_id'])
+        file_name = os.path.basename(model_data['file_path'])
+
         existing_model = self.session.query(Model).filter_by(
             model_id=model_id_str, structure_id=structure_id
         ).first()
@@ -155,7 +161,7 @@ class PDBExtractor(QueueTaskInitializer):
             existing_model = Model(
                 model_id=model_id_str,
                 structure_id=structure_id,
-                file_path=model_data['file_path']
+                file_path=file_name  # Guarda solo el nombre del archivo
             )
             self.session.add(existing_model)
             self.session.flush()
@@ -191,4 +197,3 @@ class PDBExtractor(QueueTaskInitializer):
             self.session.add(existing_sequence)
             self.session.flush()
         return existing_sequence.id
-
