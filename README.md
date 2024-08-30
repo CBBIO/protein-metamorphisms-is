@@ -19,8 +19,22 @@ Furthermore, we are developing predictors that may indicate multifunctionality o
 
 ## prerequisites
 
-- python 3.10 or higher
-- Access to a postgresql with pgVector extension installed.
+- Python 3.11.6
+- RabbitMQ
+- PostgreSQL with pgVector extension installed.
+
+
+---
+
+## Setup Instructions
+
+### 1. Install Docker
+Ensure Docker is installed on your system. If it’s not, you can download it from [here](https://docs.docker.com/get-docker/).
+
+### 2. Set Up PostgreSQL with pgvector
+
+Run the following command to start a PostgreSQL container with the pgvector extension:
+
 ```bash
 docker run -d --name pgvectorsql \
     -e POSTGRES_USER=usuario \
@@ -29,60 +43,140 @@ docker run -d --name pgvectorsql \
     -p 5432:5432 \
     pgvector/pgvector:pg16
 ```
-- RabbitMQ
-```bash
 
+Once the container is running, connect to the database and enable the `vector` extension:
+
+```sql
+CREATE EXTENSION IF NOT EXISTS vector;
+```
+
+### 3. Set Up RabbitMQ
+
+Start a RabbitMQ container using the command below:
+
+```bash
 docker run -d --name rabbitmq \
     -p 15672:15672 \
     -p 5672:5672 \
     rabbitmq:management
 ```
 
+### 4. Install Poetry
 
-## installation
+Poetry is used for managing dependencies. Install it by following the official instructions [here](https://python-poetry.org/docs/#installation).
 
-clone the repository:
+### 5. Clone the Repository
 
-```sh
+Clone the repository and navigate into its directory:
+
+```bash
 git clone https://github.com/CBBIO/protein-metamorphisms-is.git
 cd protein-metamorphisms-is
 ```
 
-install the dependencies:
+### 6. Install Dependencies
 
-```sh
+Use Poetry to install the project dependencies:
+
+```bash
 poetry install
 ```
 
-configure the database and rabbitmq by editing the `config/config.yaml` file:
+### Improved Documentation for Configuration Parameters and Constants
 
-```yaml
+#### **Configuration Parameters (`config.yaml`)**
 
-max_workers: 10
-binaries_path: '../binaries'
+The `config.yaml` file defines various settings used across the application, including system parameters, database configuration, and task-specific settings.
 
-db_username: user
-db_password: password
-db_host: localhost
-db_port: 5432
-db_name: biodata
+- **System Configuration**:
+  - `max_workers`: Specifies the maximum number of worker threads that the system can use. This controls the concurrency level for processing tasks.
+  - `binaries_path`: Defines the relative path where binary files required by the application are stored.
 
-rabbitmq_host: localhost
-rabbitmq_user: guest
-rabbitmq_password: guest
-...
-```
+- **Database Configuration**:
+  - `DB_USERNAME`: The username used to connect to the PostgreSQL database.
+  - `DB_PASSWORD`: The password associated with the PostgreSQL user.
+  - `DB_HOST`: The hostname of the PostgreSQL server (e.g., `localhost`).
+  - `DB_PORT`: The port on which the PostgreSQL server is running (default: `5432`).
+  - `DB_NAME`: The name of the PostgreSQL database where data is stored.
 
-## Get started 
+- **RabbitMQ Configuration**:
+  - `rabbitmq_host`: The hostname of the RabbitMQ server.
+  - `rabbitmq_user`: The username used to authenticate with RabbitMQ.
+  - `rabbitmq_password`: The password associated with the RabbitMQ user.
 
-the main file to start the system is `main.py`. you can run it as follows:
+- **Information System**:
+  - `load_accesion_csv`: Path to the CSV file containing accession codes to be loaded into the system.
+  - `load_accesion_column`: The column name in the CSV file that contains the accession IDs.
+  - `tag`: A tag to be associated with the accession data for identification purposes.
+  - `max_attempts`: Maximum number of attempts the system should make to process a given task before failing.
+  - `search_criteria`: Criteria used to search for relevant data, typically in the format of a query string.
+  - `limit`: The maximum number of results to return from a search query.
 
-```sh
-python main.py
-```
+- **PDB Extraction**:
+  - `resolution_threshold`: Maximum resolution (in Ångströms) for selecting PDB structures.
+  - `server`: URL of the PDB server to download structure files.
+  - `data_directory`: Path where PDB data files are stored.
+  - `file_format`: Format of the PDB files (e.g., `mmCif`).
+  - `allow_multiple_chain_models`: Boolean flag indicating whether to allow multiple chain models, typically set to `False` for NMR data.
 
-## configuration files
+- **Operations**:
+  - `constants`: Path to the `constants.yaml` file containing various constant definitions used across the system.
 
-- `config/config.yaml`: main configuration file containing system parameters, database configuration, and specific settings for each task.
-- `config/constants.yaml`: defines constants for structural alignment types, levels of structural complexity, embedding types, and prediction methods.
+- **Sequence Clustering**:
+  - `fasta_path`: Path where the FASTA file containing sequences is saved.
+  - `cdhit_out_path`: Path where CD-HIT output files are stored.
+  - `sequence_identity_threshold`: Threshold for sequence identity used by CD-HIT to determine clusters.
+  - `alignment_coverage`: Minimum alignment coverage required for sequences to be considered similar.
+  - `memory_usage`: Maximum amount of memory (in MB) that CD-HIT is allowed to use.
+  - `most_representative_search`: Boolean flag to enable or disable searching for the most representative sequence in each cluster.
+
+- **Structural Alignment**:
+  - `structural_alignment`: Contains settings for structural alignment tasks.
+    - `types`: List of integers representing the types of alignments to perform.
+    - `retry_timeout`: Time (in seconds) to wait before retrying a failed task.
+    - `retry_count`: Maximum number of retry attempts for a failed task.
+    - `batch_size`: Number of structures to process in a single batch.
+    - `task_timeout`: Time (in seconds) to allow for the completion of a task before it times out.
+
+- **Embedding**:
+  - `embedding`: Contains settings for generating embeddings from sequences.
+    - `types`: List of integers representing the types of embeddings to generate (e.g., ESM, Prost).
+    - `batch_size`: Number of sequences to process in a single batch.
+
+- **GO Metrics**:
+  - `obo`: Path to the GO ontology file in OBO format.
+  - `go_annotation_file`: Path to the file containing GO annotations.
+  - `allowed_evidences`: List of evidence codes allowed when processing GO annotations.
+  - `k`: Number of nearest neighbors to consider when predicting GO terms.
+
+---
+
+#### **Constants (`constants.yaml`)**
+
+The `constants.yaml` file defines constant values used throughout the system, including types of structural alignments, complexity levels, embedding types, and prediction methods.
+
+- **Structural Alignment Types**:
+  - `name`: The name of the alignment method (e.g., "CE-align", "US-align").
+  - `description`: A detailed explanation of the alignment method and its applications.
+  - `task_name`: The internal name used by the system to reference the alignment task.
+
+- **Structural Complexity Levels**:
+  - `name`: The name representing the level of structural complexity (e.g., "Protein Chains", "Secondary Structures").
+  - `description`: A description of what each complexity level represents in terms of protein structure.
+
+- **Sequence Embedding Types**:
+  - `name`: The name of the embedding model (e.g., "ESM", "Prost-T5").
+  - `description`: A brief overview of the embedding model and its intended use.
+  - `task_name`: The internal name used to reference the embedding task.
+  - `model_name`: The specific model identifier used for generating embeddings.
+
+- **Structure Embedding Types**:
+  - `name`: The name of the structural embedding type (e.g., "3di").
+  - `description`: A description of how the embedding type captures 3D structural information.
+  - `task_name`: The internal name used for the embedding task.
+  - `model_name`: The specific model identifier used for generating structural embeddings.
+
+- **Prediction Methods**:
+  - `name`: The name of the prediction method (e.g., "Cosine Similarity").
+  - `description`: A description of how the prediction method works, particularly how it measures similarity between embeddings.
 
