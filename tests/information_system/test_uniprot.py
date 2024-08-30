@@ -1,13 +1,11 @@
 import unittest
-from concurrent.futures import Future
 from http.client import HTTPException
 from unittest.mock import patch, MagicMock, call
 
 import pandas as pd
 import requests
-from sqlalchemy import exists
 
-from protein_metamorphisms_is.information_system.uniprot import UniProtExtractor
+from protein_metamorphisms_is.operation.extraction.uniprot import UniProtExtractor
 from protein_metamorphisms_is.sql.model import Accession, Protein, Sequence, PDBReference, GOTerm, \
     ProteinGOTermAssociation
 

@@ -1,6 +1,6 @@
 from unittest.mock import patch, MagicMock
 
-from protein_metamorphisms_is.operations.structural_alignment_tasks.combinatorial_extension import align_task
+from protein_metamorphisms_is.operation.structural_alignment_tasks.combinatorial_extension import align_task
 
 
 class AlignmentEntry:

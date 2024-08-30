@@ -5,7 +5,7 @@ from multiprocessing import Pool
 
 from sqlalchemy.orm import aliased
 
-from protein_metamorphisms_is.operations.base.operator import OperatorBase
+from protein_metamorphisms_is.operation.base.operator import OperatorBase
 from protein_metamorphisms_is.sql.model import PDBChains, Cluster, PDBReference, StructuralAlignmentQueue, \
     StructuralAlignmentType, StructuralAlignmentResults
 

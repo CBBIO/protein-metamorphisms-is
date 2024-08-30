@@ -24,6 +24,7 @@ transformers = "^4.41.1"
 torch = "^2.3.0"
 tokenizer = "^3.4.3"
 mini3di = "^0.1.1"
+matplotlib = "^3.9.0"
 
 
 

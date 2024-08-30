@@ -1,5 +1,5 @@
 #System
-max_workers: 12
+max_workers: 8
 binaries_path: '../binaries'
 
 # DB CONFIGURATION
@@ -22,7 +22,7 @@ tag: 'GOA'
 
 max_attempts: 5
 
-search_criteria: '(taxonomy_id:212035) AND (structure_3d:true)'
+search_criteria: '(structure_3d:true)'
 limit: 100
 # Uniprot Extraction
 
@@ -38,9 +38,9 @@ allow_multiple_chain_models: False # NMR
 constants: "config/constants.yaml"
 
 # Sequence Clustering
-fasta_path: "/home/BioXaxi/data/complete.fasta"
-cdhit_out_path: "/home/BioXaxi/data/out"
-sequence_identity_threshold: 0.95
+fasta_path: "/home/bioxaxi/data/complete.fasta"
+cdhit_out_path: "/home/bioxaxi/data/out"
+sequence_identity_threshold: 0.65
 alignment_coverage: 0.95
 memory_usage: 25000
 most_representative_search: 1
@@ -63,7 +63,7 @@ embedding:
   types:
     - 1 # ESM
     - 2 # Prost
-
+  batch_size: 40
 # GO Metrics
 obo: '../data/go-basic.obo'
 go_annotation_file: '../data/cgd.gaf'

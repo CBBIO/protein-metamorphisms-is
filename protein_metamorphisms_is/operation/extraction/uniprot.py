@@ -4,7 +4,7 @@ from http.client import HTTPException
 from Bio import ExPASy, SwissProt
 from sqlalchemy import exists
 
-from protein_metamorphisms_is.base.queue import QueueTaskInitializer
+from protein_metamorphisms_is.tasks.queue import QueueTaskInitializer
 from protein_metamorphisms_is.helpers.parser.parser import extract_float, process_chain_string
 from protein_metamorphisms_is.sql.model import Accession, ProteinGOTermAssociation, GOTerm, PDBReference, Sequence, \
     Protein
@@ -233,20 +233,15 @@ class UniProtExtractor(QueueTaskInitializer):
         """
         try:
             if reference[0] == "PDB":
-                segments = reference[4].split(", ")
-                for segment in segments:
-                    chain_name, start, end = process_chain_string(segment)
-                    if start is not None and end is not None:
-                        sequence = protein.sequence.sequence[start - 1:end]  # Adjust indices for Python (0-based index)
-                        pdb_ref = self.get_or_create_pdb_reference(reference, sequence)
-                        pdb_ref.protein = protein
-                        self.session.add(pdb_ref)
-                        self.logger.debug(f"Linked PDB reference {reference[1]} to protein {protein.entry_name}.")
+                pdb_ref = self.get_or_create_pdb_reference(reference)
+                pdb_ref.protein = protein
+                self.session.add(pdb_ref)
+                self.logger.debug(f"Linked PDB reference {reference[1]} to protein {protein.entry_name}.")
         except Exception as e:
             self.logger.error(f"Error handling PDB reference {reference}: {e}\n{traceback.format_exc()}")
             raise e
 
-    def get_or_create_pdb_reference(self, reference, sequence):
+    def get_or_create_pdb_reference(self, reference):
         """
         Retrieves or creates a PDB reference in the database based on the provided PDB ID.
         If the PDB reference does not exist, it creates a new one using the associated sequence.
@@ -261,13 +256,11 @@ class UniProtExtractor(QueueTaskInitializer):
             self.logger.info(f"Retrieving PDB reference {pdb_id} from database")
             pdb_ref_exists = self.session.query(exists().where(PDBReference.pdb_id == pdb_id)).scalar()
             if not pdb_ref_exists:
-                existing_sequence = self.get_or_create_sequence(sequence)
                 self.logger.debug(f"Creating new PDB reference record for {pdb_id}.")
                 return PDBReference(
                     pdb_id=pdb_id,
                     method=reference[2],
                     resolution=extract_float(reference[3]),
-                    sequence=existing_sequence
                 )
             else:
                 self.logger.debug(f"Retrieved existing PDB reference record for {pdb_id}.")

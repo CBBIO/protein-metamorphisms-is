@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import patch, MagicMock
-from protein_metamorphisms_is.operations.structural_alignment_tasks.universal import align_task
+from protein_metamorphisms_is.operation.structural_alignment_tasks.universal import align_task
 
 @patch('subprocess.Popen')
 def test_align_task_success(mock_popen):

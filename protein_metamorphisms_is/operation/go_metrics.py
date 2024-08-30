@@ -1,4 +1,4 @@
-from protein_metamorphisms_is.base.queue import QueueTaskInitializer
+from protein_metamorphisms_is.tasks.queue import QueueTaskInitializer
 from protein_metamorphisms_is.sql.model import ProteinGOTermAssociation, GOTerm, GOTermRelationship
 from goatools import obo_parser
 from goatools.semantic import TermCounts, resnik_sim, min_branch_length, get_info_content

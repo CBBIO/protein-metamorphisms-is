@@ -1,7 +1,7 @@
 import importlib
 import traceback
 import json
-from protein_metamorphisms_is.base.gpu import GPUTaskInitializer
+from protein_metamorphisms_is.tasks.gpu import GPUTaskInitializer
 from protein_metamorphisms_is.sql.model import SequenceEmbedding, Sequence, SequenceEmbeddingType
 
 
@@ -11,7 +11,7 @@ class SequenceEmbeddingManager(GPUTaskInitializer):
         self.reference_attribute = 'sequence'
         self.model_instances = {}
         self.tokenizer_instances = {}
-        self.base_module_path = 'protein_metamorphisms_is.operations.sequence_embedding_tasks'
+        self.base_module_path = 'protein_metamorphisms_is.operation.embedding.proccess.sequence'
         self.fetch_models_info()
         self.batch_size = self.conf['embedding'].get('batch_size', 40)  # Add batch size configuration
 
@@ -25,6 +25,7 @@ class SequenceEmbeddingManager(GPUTaskInitializer):
         for type_obj in embedding_types:
             if type_obj.id in self.conf['embedding']['types']:
                 module_name = f"{self.base_module_path}.{type_obj.task_name}"
+                print(module_name)
                 module = importlib.import_module(module_name)
                 self.types[type_obj.id] = {
                     'module': module,

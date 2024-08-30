@@ -1,18 +1,12 @@
 from protein_metamorphisms_is.helpers.config.yaml import read_yaml_config
-from protein_metamorphisms_is.information_system.accessions import AccessionManager
-from protein_metamorphisms_is.information_system.pdb import PDBExtractor
-from protein_metamorphisms_is.information_system.uniprot import UniProtExtractor
-# from protein_metamorphisms_is.operations.cdhit import CDHit
-# from protein_metamorphisms_is.operations.go_prediction import GoPrediction
-# from protein_metamorphisms_is.operations.protein_go_prediction_metrics import GoPredictionMetricsPerProtein
-
-# from protein_metamorphisms_is.operations.optics import OpticsClustering
-
-from protein_metamorphisms_is.operations.go_metrics import GoMetrics
-from protein_metamorphisms_is.operations.sequence_embeddings import SequenceEmbeddingManager
-
-# from protein_metamorphisms_is.operations.structural_alignment import StructuralAlignmentManager
-from protein_metamorphisms_is.operations.structure_embeddings import StructureEmbeddingManager
+from protein_metamorphisms_is.operation.clustering.sequence_clustering import SequenceClustering
+from protein_metamorphisms_is.operation.clustering.sequence_structural_embeddings_subclustering import \
+    SequenceStructuralEmbeddingsSubClustering
+from protein_metamorphisms_is.operation.embedding.sequence_embedding import SequenceEmbeddingManager
+from protein_metamorphisms_is.operation.embedding.structure_embedding import StructureEmbeddingManager
+from protein_metamorphisms_is.operation.extraction.accessions import AccessionManager
+from protein_metamorphisms_is.operation.extraction.pdb import PDBExtractor
+from protein_metamorphisms_is.operation.extraction.uniprot import UniProtExtractor
 
 
 def main(config_path="config/config.yaml"):
@@ -20,13 +14,16 @@ def main(config_path="config/config.yaml"):
 
     AccessionManager(conf).fetch_accessions_from_api()
     UniProtExtractor(conf).start()
-    GoMetrics(conf).start()
     PDBExtractor(conf).start()
     SequenceEmbeddingManager(conf).start()
-    # StructureEmbeddingManager(conf).start()
-    # CDHit(conf).start()
+    StructureEmbeddingManager(conf).start()
+    SequenceClustering(conf).start()
+    SequenceStructuralEmbeddingsSubClustering(conf).start()
+
+
+
+    # GoMetrics(conf).start()db_inserter_callback
     # OpticsClustering(conf).start()
-    # StructuralAlignmentManager(conf).start()
     # GoPrediction(conf).start()
     # GoPredictionMetricsPerProtein(conf).start()
 

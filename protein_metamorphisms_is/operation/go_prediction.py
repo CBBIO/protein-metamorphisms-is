@@ -2,7 +2,7 @@ from sqlalchemy import text
 
 from sqlalchemy.orm import Session
 
-from protein_metamorphisms_is.operations.base.operator import OperatorBase
+from protein_metamorphisms_is.operation.base.operator import OperatorBase
 from protein_metamorphisms_is.sql.model import SequenceEmbedding, ProteinGOTermAssociation, SequenceGOPrediction, PredictionMethod
 
 

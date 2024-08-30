@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import patch, MagicMock
-from protein_metamorphisms_is.operations.structural_alignment_tasks.fatcat import align_task
+from protein_metamorphisms_is.operation.structural_alignment_tasks.fatcat import align_task
 
 # Prueba de caso de éxito
 @patch('protein_metamorphisms_is.operations.structural_alignment_tasks.fatcat.os.path.join')

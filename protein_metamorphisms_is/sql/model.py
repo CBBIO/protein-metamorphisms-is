@@ -92,7 +92,7 @@ class Protein(Base):
     data_class = Column(String)
     molecule_type = Column(String)
     sequence_id = Column(Integer, ForeignKey('sequences.id'))
-    sequence = relationship("Sequence", uselist=False)  # Single sequence per PDB reference
+    sequence = relationship("Sequence", uselist=False)
     accessions = relationship("Accession", back_populates="protein")
     created_date = Column(Date)
     sequence_update_date = Column(Date)
@@ -169,7 +169,7 @@ class Model(Base):
     """
     __tablename__ = 'models'
     id = Column(Integer, primary_key=True)
-    model_id = Column(String, nullable=False)
+    model_id = Column(Integer, nullable=False)
     file_path = Column(String, nullable=False)
     structure_id = Column(Integer, ForeignKey('structures.id'), nullable=False)
     structure = relationship("Structure", back_populates="models")
@@ -207,8 +207,8 @@ class PDBReference(Base):
     protein_entry_name = Column(String, ForeignKey("proteins.entry_name"))
     protein = relationship("Protein", back_populates="pdb_references")
     method = Column(String)
-    sequence_id = Column(Integer, ForeignKey('sequences.id'))
-    sequence = relationship("Sequence", uselist=False)  # Single sequence per protein
+    # sequence_id = Column(Integer, ForeignKey('sequences.id'))
+    # sequence = relationship("Sequence", uselist=False)  # Single sequence per protein
     resolution = Column(Float)
     pdb_chains = relationship("PDBChains", back_populates="pdb_reference")
     structure_id = Column(Integer, ForeignKey('structures.id'), nullable=True)
@@ -275,14 +275,12 @@ class StructureEmbedding(Base):
     __tablename__ = 'structure_embeddings'
     id = Column(Integer, primary_key=True)
     model_id = Column(Integer, ForeignKey('models.id'), nullable=False)
-    structure_embedding_type_id = Column(Integer, ForeignKey('structure_embedding_types.id'))
-    embedding = mapped_column(Vector())
-    shape = Column(ARRAY(Integer))  # Almacena las dimensiones del embedding como un array de enteros
+    embedding = Column(String)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, onupdate=func.now())
 
     model = relationship("Model")
-    embedding_type = relationship("StructureEmbeddingType")
+    subcluster_entries = relationship("SubclusterEntry", back_populates="structure_embedding")
 
 
 class Cluster(Base):
@@ -293,6 +291,7 @@ class Cluster(Base):
     entries = relationship("ClusterEntry", back_populates="cluster")
     # Relación con Subcluster
     subclusters = relationship("Subcluster", back_populates="cluster")
+
 
 
 class ClusterEntry(Base):
@@ -310,37 +309,8 @@ class ClusterEntry(Base):
     sequence = relationship("Sequence")
 
 
-class Subcluster(Base):
-    __tablename__ = 'subclusters'
-    id = Column(Integer, primary_key=True)
-    cluster_id = Column(Integer, ForeignKey('clusters.id'))
-    description = Column(String)  # Una descripción opcional del subcluster
-    created_at = Column(DateTime, default=datetime.now)
-
-    embedding_type_id = Column(Integer, ForeignKey('structure_embedding_types.id'), nullable=False)
-
-    embedding_type = relationship("StructureEmbeddingType", back_populates="subclusters")  # Actualización aquí
-
-    # Relación de vuelta a Cluster
-    cluster = relationship("Cluster", back_populates="subclusters")
-
-    # Relación con SubclusterEntry
-    entries = relationship("SubclusterEntry", back_populates="subcluster")
 
 
-class SubclusterEntry(Base):
-    __tablename__ = 'subcluster_entries'
-    id = Column(Integer, primary_key=True)
-    subcluster_id = Column(Integer, ForeignKey('subclusters.id'))
-    sequence_id = Column(Integer, ForeignKey('sequences.id'), nullable=False)
-    is_representative = Column(Boolean)
-    sequence_length = Column(Integer)
-    identity = Column(Float)
-    created_at = Column(DateTime, default=datetime.now)
-
-    # Relaciones con Subcluster y PDBChains
-    subcluster = relationship("Subcluster", back_populates="entries")
-    sequence = relationship("Sequence")
 
 
 class StructuralComplexityLevel(Base):
@@ -441,8 +411,6 @@ class StructureEmbeddingType(Base):
     task_name = Column(String)
     model_name = Column(String)
 
-    struct_embeddings = relationship("StructureEmbedding", back_populates="embedding_type")
-    subclusters = relationship("Subcluster", back_populates="embedding_type")  # Añadir esta línea
 
 
 class StructuralAlignmentQueue(Base):
@@ -597,3 +565,27 @@ class GOPerProteinSemanticDistance(Base):
     protein = relationship("Protein", back_populates="go_per_protein_semantic_distances")
     embedding_type = relationship("SequenceEmbeddingType")  # Actualización aquí
     prediction_method = relationship("PredictionMethod")
+
+
+class Subcluster(Base):
+    __tablename__ = 'subclusters'
+    id = Column(Integer, primary_key=True)
+    cluster_id = Column(Integer, ForeignKey('clusters.id'))
+    description = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.now)
+
+    # Relaciones
+    cluster = relationship("Cluster", back_populates="subclusters")
+    entries = relationship("SubclusterEntry", back_populates="subcluster")
+
+class SubclusterEntry(Base):
+    __tablename__ = 'subcluster_entries'
+    id = Column(Integer, primary_key=True)
+    subcluster_id = Column(Integer, ForeignKey('subclusters.id'))
+    structure_embedding_id = Column(Integer, ForeignKey('structure_embeddings.id'))
+    is_representative = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.now)
+
+    # Relaciones
+    subcluster = relationship("Subcluster", back_populates="entries")
+    structure_embedding = relationship("StructureEmbedding", back_populates="subcluster_entries")
