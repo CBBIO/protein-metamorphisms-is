@@ -180,3 +180,21 @@ The `constants.yaml` file defines constant values used throughout the system, in
   - `name`: The name of the prediction method (e.g., "Cosine Similarity").
   - `description`: A description of how the prediction method works, particularly how it measures similarity between embeddings.
 
+Para documentar que utilizas el archivo `main.py` para encadenar procesos, puedes añadir una sección en el README que explique cómo se utiliza este archivo y su propósito dentro del flujo de trabajo. Aquí tienes un ejemplo de cómo podrías integrar esta información:
+
+---
+
+
+## **Get started:**
+
+To execute the full process chain, simply run:
+
+```bash
+python main.py
+```
+
+This command will trigger the complete workflow, starting from the initial data preprocessing stages and continuing through to the final analysis and output generation.
+
+## **Customizing the Workflow:**
+
+You can customize the sequence of tasks executed by modifying `main.py` or adjusting the relevant parameters in the `config.yaml` file. This allows you to tailor the process flow to meet specific research needs or to experiment with different methodologies.
