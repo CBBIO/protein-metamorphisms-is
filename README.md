@@ -17,82 +17,27 @@ Additionally, we utilize sequence embeddings based on ProstT5, ProtT5, ESM model
 
 Furthermore, we are developing predictors that may indicate multifunctionality or metamorphism, through the filtering of the datasets resulting from these operations. This integrated approach not only expands our understanding of the structural and functional plasticity of proteins but also significantly contributes to bioinformatics and structural biology, providing insights into the adaptability and evolution of proteins over time.
 
-## project structure
-
-the project is structured as follows:
-
-```markdown
-protein-metamorphisms-is/
-│
-├── __init__.py
-│
-├── base/
-│   ├── base.py
-│   ├── gpu.py
-│   └── queue.py
-│
-├── config/
-│   ├── config.yaml
-│   └── constants.yaml
-│
-├── helpers/
-│   ├── __init__.py
-│   ├── config/
-│   │   ├── __init__.py
-│   │   └── yaml.py
-│   ├── logger/
-│   │   ├── __init__.py
-│   │   └── logger.py
-│   └── parser/
-│       ├── __init__.py
-│       └── parser.py
-│
-├── information_system/
-│   ├── __init__.py
-│   ├── accessions.py
-│   ├── pdb.py
-│   └── uniprot.py
-│
-├── main.py
-│
-├── operations/
-│   ├── __init__.py
-│   ├── base/
-│   │   ├── __init__.py
-│   │   └── operator.py
-│   ├── cdhit.py
-│   ├── cuda.py
-│   ├── embedding_tasks/
-│   │   ├── __init__.py
-│   │   └── esm.py
-│   │   └── prost_t5.py
-│   ├── go_metrics.py
-│   ├── go_prediction.py
-│   ├── optics.py
-│   ├── protein_go_prediction_metrics.py
-│   ├── seq_embeddings.py
-│   ├── structural_alignment.py
-│   ├── structural_alignment_tasks/
-│   │   ├── __init__.py
-│   │   ├── combinatorial_extension.py
-│   │   ├── fatcat.py
-│   │   └── universal.py
-│   └── structure_embeddings.py
-│
-├── sql/
-│   ├── __init__.py
-│   ├── base/
-│   │   ├── database_manager.py
-│   ├── constants.py
-│   └── model.py
-```
-
 ## prerequisites
 
 - python 3.10 or higher
-- necessary python libraries (see `requirements.txt`)
-- access to a postgresql database
-- rabbitmq for queue management
+- Access to a postgresql with pgVector extension installed.
+```bash
+docker run -d --name pgvectorsql \
+    -e POSTGRES_USER=usuario \
+    -e POSTGRES_PASSWORD=clave \
+    -e POSTGRES_DB=BioData \
+    -p 5432:5432 \
+    pgvector/pgvector:pg16
+```
+- RabbitMQ
+```bash
+
+docker run -d --name rabbitmq \
+    -p 15672:15672 \
+    -p 5672:5672 \
+    rabbitmq:management
+```
+
 
 ## installation
 
@@ -128,7 +73,7 @@ rabbitmq_password: guest
 ...
 ```
 
-## usage
+## Get started 
 
 the main file to start the system is `main.py`. you can run it as follows:
 
@@ -136,38 +81,8 @@ the main file to start the system is `main.py`. you can run it as follows:
 python main.py
 ```
 
-this file initializes various components based on the configuration and starts different processes for data extraction and processing.
-
-## configuration structure
+## configuration files
 
 - `config/config.yaml`: main configuration file containing system parameters, database configuration, and specific settings for each task.
 - `config/constants.yaml`: defines constants for structural alignment types, levels of structural complexity, embedding types, and prediction methods.
 
-## main components
-
-### base
-
-- `base.py`: abstract base class for initializing tasks, including configuration loading, session initialization, and abstract methods for starting, processing, and storing data.
-- `gpu.py`: class for initializing gpu-based tasks using rabbitmq for queuing and multiprocessing for parallel processing.
-- `queue.py`: base class for queue-based tasks using rabbitmq, including setup, worker initialization, and message processing.
-
-### helpers
-
-- `logger/logger.py`: logger configuration for recording events and debug messages.
-
-### information_system
-
-- `accessions.py`: management of protein accessions.
-- `pdb.py`: extraction of pdb data.
-- `uniprot.py`: extraction of uniprot data.
-
-### operations
-
-- `cdhit.py`: management of sequence clustering using cd-hit.
-- `cuda.py`: tasks related to cuda.
-- `embedding_tasks/esm.py`: embedding tasks using esm.
-- `embedding_tasks/prost_t5.py`: embedding tasks using prot-t5.
-- `go_metrics.py`: calculation of go metrics.
-- `go_prediction.py`: prediction of go terms.
-- `seq_embeddings.py`: management of sequence embeddings.
-- `structural_alignment.py`: management of structural alignments.
