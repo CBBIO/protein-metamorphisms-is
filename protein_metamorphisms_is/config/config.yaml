@@ -28,11 +28,13 @@ limit: 100
 
 
 # PDB Extraction
-resolution_threshold: 20
+resolution_threshold: 5
 server: "https://files.wwpdb.org/"
 data_directory: "/home/bioxaxi/data"
 file_format: "mmCif"
 allow_multiple_chain_models: False # NMR
+
+models_path:
 
 ## Operations
 constants: "config/constants.yaml"
@@ -40,7 +42,7 @@ constants: "config/constants.yaml"
 # Sequence Clustering
 fasta_path: "/home/bioxaxi/data/complete.fasta"
 cdhit_out_path: "/home/bioxaxi/data/out"
-sequence_identity_threshold: 0.65
+sequence_identity_threshold: 0.98
 alignment_coverage: 0.95
 memory_usage: 25000
 most_representative_search: 1
@@ -62,7 +64,7 @@ structural_alignment:
 embedding:
   types:
     - 1 # ESM
-    - 2 # Prost
+#    - 2 # Prost
   batch_size: 40
 # GO Metrics
 obo: '../data/go-basic.obo'

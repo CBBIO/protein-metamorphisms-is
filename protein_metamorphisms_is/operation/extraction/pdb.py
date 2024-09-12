@@ -165,44 +165,60 @@ class PDBExtractor(QueueTaskInitializer):
             "chains": []
         }
 
+        # Lista de aminoácidos a conservar
+        amino_acids = [
+            'ALA', 'ARG', 'ASN', 'ASP', 'CYS',
+            'GLU', 'GLY', 'HIS', 'ILE', 'LEU',
+            'LYS', 'MET', 'PHE', 'PRO', 'SER',
+            'THR', 'TRP', 'TYR', 'VAL'
+        ]
+
         try:
             file_path = pdb_list.retrieve_pdb_file(pdb_id, file_format=self.conf.get("file_format", "mmCif"),
                                                    pdir=self.pdb_directory)
             self.logger.info(f"Downloaded PDB {pdb_id} to {file_path}")
 
             structure = gemmi.read_structure(file_path)
+            structure.remove_ligands_and_waters()
+            structure.remove_hydrogens()
+            structure.remove_empty_chains()
 
             for model in structure:
                 for chain in model:
-                    chain_file_path = os.path.join(self.models_directory,
-                                                   f"{pdb_id}_chain_{chain.name}_model_{model.name}.cif")
+                    # Crear una nueva estructura limpia
+                    clean_structure = gemmi.Structure()
+                    clean_model = gemmi.Model(model.name)
+                    clean_chain = gemmi.Chain(chain.name)
 
-                    new_structure = gemmi.Structure()
-                    new_model = gemmi.Model(model.name)
-                    new_model.add_chain(chain)
-                    new_structure.add_model(new_model)
-
-                    document = new_structure.make_mmcif_document()
-
-                    document.write_file(chain_file_path)
-                    sequence = []
+                    # Iterar sobre los residuos y filtrar los que sean aminoácidos
                     for residue in chain:
-                        sequence.append(gemmi.find_tabulated_residue(residue.name).one_letter_code)
+                        if residue.name in amino_acids:
+                            clean_chain.add_residue(residue)
 
-                    sequence = "".join(sequence)
+                    # Si la cadena tiene residuos después de filtrar, guárdala
+                    if len(clean_chain) > 0:
+                        clean_model.add_chain(clean_chain)
+                        clean_structure.add_model(clean_model)
 
-                    data['chains'].append({
-                        "chain_id": chain.name,
-                        "sequence": sequence,
-                        "model_id": model.name,
-                        "file_path": chain_file_path
-                    })
+                        clean_file_path = os.path.join(self.models_directory,
+                                                       f"{pdb_id}_clean_chain_{chain.name}_model_{model.name}.cif")
+                        clean_structure.make_mmcif_document().write_file(clean_file_path)
 
-                    self.logger.info(f"Saved chain {chain.name} of model {model.name} to {chain_file_path}")
+                        data['chains'].append({
+                            "chain_id": chain.name,
+                            "sequence": ''.join(
+                                [gemmi.find_tabulated_residue(residue.name).one_letter_code for residue in
+                                 clean_chain]),
+                            "model_id": model.name,
+                            "file_path": clean_file_path
+                        })
+
+                        self.logger.info(f"Saved cleaned chain {chain.name} of model {model.name} to {clean_file_path}")
 
         except Exception as e:
-            self.logger.error(f"Error downloading and processing PDB {pdb_id}: {e}\n{traceback.format_exc()}")
+            self.logger.error(f"Error processing PDB {pdb_id}: {e}\n{traceback.format_exc()}")
             return e
+
         return data
 
     def store_entry(self, record):
@@ -230,6 +246,7 @@ class PDBExtractor(QueueTaskInitializer):
 
         except Exception as e:
             self.session.rollback()
+            print(record)
             self.logger.error(f"Failed to store data in the database: {e}\n{traceback.format_exc()}")
 
     def get_or_create_structure(self, pdb_id, chain_id=None):

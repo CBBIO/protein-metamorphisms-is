@@ -4,9 +4,11 @@ from protein_metamorphisms_is.operation.clustering.sequence_structural_embedding
     SequenceStructuralEmbeddingsSubClustering
 from protein_metamorphisms_is.operation.embedding.sequence_embedding import SequenceEmbeddingManager
 from protein_metamorphisms_is.operation.embedding.structure_embedding import StructureEmbeddingManager
+
 from protein_metamorphisms_is.operation.extraction.accessions import AccessionManager
 from protein_metamorphisms_is.operation.extraction.pdb import PDBExtractor
 from protein_metamorphisms_is.operation.extraction.uniprot import UniProtExtractor
+from protein_metamorphisms_is.operation.structural_alignment.structural_alignment import StructuralAlignmentManager
 
 
 def main(config_path="config/config.yaml"):
@@ -19,6 +21,7 @@ def main(config_path="config/config.yaml"):
     StructureEmbeddingManager(conf).start()
     SequenceClustering(conf).start()
     SequenceStructuralEmbeddingsSubClustering(conf).start()
+    StructuralAlignmentManager(conf).start()
 
 
 

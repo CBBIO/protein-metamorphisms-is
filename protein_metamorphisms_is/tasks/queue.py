@@ -69,7 +69,7 @@ class QueueTaskInitializer(BaseTaskInitializer):
     that are distributed and processed via RabbitMQ queues.
 
     It offers the necessary infrastructure to configure RabbitMQ, coordinate
-    worker processes, and ensure that tasks are handled efficiently and reliably.
+    worker processes, and ensure that task6s are handled efficiently and reliably.
 
     Attributes:
         processes (list): A list of multiprocessing.Process objects representing the worker processes.

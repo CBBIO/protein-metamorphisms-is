@@ -50,7 +50,7 @@ class StructureEmbeddingManager(QueueTaskInitializer):
             sequence = self.encoder.build_sequence(states)
         except Exception as e:
             # Logging the entire chain might be too verbose, so log specific details instead
-            self.log_chain_details(chain)
+            self.log_chain_details(chain,model_info)
             self.logger.error(f"Error processing the chain: {e}", exc_info=True)
             return None
 
@@ -60,9 +60,9 @@ class StructureEmbeddingManager(QueueTaskInitializer):
         }
         return embedding_result
 
-    def log_chain_details(self, chain):
+    def log_chain_details(self, chain,model_info):
         try:
-            # Print out some basic information about the chain
+            print(model_info)
             print(f"Chain ID: {chain.id}")
             print(f"Number of residues: {len(list(chain.get_residues()))}")
 

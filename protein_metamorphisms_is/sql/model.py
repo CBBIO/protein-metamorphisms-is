@@ -413,40 +413,15 @@ class StructureEmbeddingType(Base):
 
 
 
-class StructuralAlignmentQueue(Base):
-    """
-        Manages a queue of pending structural alignment tasks, overseeing their execution and monitoring.
-
-        Attributes:
-            id (Integer): Unique identifier for each queue entry.
-            cluster_entry_id (Integer, ForeignKey): Reference to the protein chain cluster being aligned.
-            alignment_type_id (Integer, ForeignKey): ID of the structural alignment type to be applied.
-            state (Integer): Current state of the task (e.g., pending, processing, completed, error).
-            retry_count (Integer): Number of retries attempted for the task.
-            error_message (String, optional): Error message if the task fails.
-            created_at (DateTime): Timestamp when the queue entry was created.
-            updated_at (DateTime): Timestamp when the queue entry was last updated.
-    """
-    __tablename__ = 'structural_alignment_queue'
-    id = Column(Integer, primary_key=True)
-    cluster_entry_id = Column(Integer, ForeignKey('clusters.id'), nullable=False)
-    alignment_type_id = Column(Integer, ForeignKey('structural_alignment_types.id'), nullable=False)
-    state = Column(Integer, default=0, nullable=False)
-    retry_count = Column(Integer, default=0, nullable=False)
-    error_message = Column(String, nullable=True)
-    created_at = Column(DateTime, default=func.now(), nullable=False)
-    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
-
-    alignment_type = relationship("StructuralAlignmentType")
-
-
 class StructuralAlignmentResults(Base):
     """
-    Stores results from structural alignment tasks, providing detailed metrics and scores.
+    Stores results from structural alignment tasks, with ordered pairs of SubclusterEntry.
 
     Attributes:
-        id (Integer): Unique identifier for each set of results.
-        cluster_entry_id (Integer, ForeignKey): Reference to the cluster of protein chains analyzed.
+        id (Integer): Unique identifier for each result set.
+        cluster_id (Integer, ForeignKey): Reference to the parent cluster.
+        subcluster_1_id (Integer, ForeignKey): Reference to the first SubclusterEntry in the ordered pair.
+        subcluster_2_id (Integer, ForeignKey): Reference to the second SubclusterEntry in the ordered pair.
         ce_rms (Float): Root mean square deviation calculated by CE method.
         tm_rms (Float): Root mean square deviation calculated by US-align.
         tm_seq_id (Float): Sequence identity calculated by US-align.
@@ -460,7 +435,11 @@ class StructuralAlignmentResults(Base):
     """
     __tablename__ = 'structural_alignment_results'
     id = Column(Integer, primary_key=True)
-    cluster_entry_id = Column(Integer, ForeignKey('clusters.id'))
+    cluster_id = Column(Integer, ForeignKey('clusters.id'))
+    subcluster_1_id = Column(Integer, ForeignKey('subcluster_entries.id'), nullable=False)
+    subcluster_2_id = Column(Integer, ForeignKey('subcluster_entries.id'), nullable=False)
+
+    # Alignment results
     ce_rms = Column(Float)
     tm_rms = Column(Float)
     tm_seq_id = Column(Float)
