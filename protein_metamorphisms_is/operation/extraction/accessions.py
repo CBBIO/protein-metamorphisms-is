@@ -112,7 +112,7 @@ class AccessionManager(BaseTaskInitializer):
 
             response = requests.get(url)
             response.raise_for_status()
-            accessions = response.text.strip().split("\n")[1000:2000]
+            accessions = response.text.strip().split("\n")[1500:1550]
             self.logger.info(f"Retrieved {len(accessions)} accessions from UniProt API.")
             self._process_new_accessions(accessions, tag)
         except requests.RequestException as e:

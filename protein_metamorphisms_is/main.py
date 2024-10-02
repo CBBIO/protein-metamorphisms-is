@@ -8,6 +8,7 @@ from protein_metamorphisms_is.operation.embedding.structure_embedding import Str
 from protein_metamorphisms_is.operation.extraction.accessions import AccessionManager
 from protein_metamorphisms_is.operation.extraction.pdb import PDBExtractor
 from protein_metamorphisms_is.operation.extraction.uniprot import UniProtExtractor
+from protein_metamorphisms_is.operation.go_metrics import GoMetrics
 from protein_metamorphisms_is.operation.structural_alignment.structural_alignment import StructuralAlignmentManager
 
 
@@ -25,9 +26,10 @@ def main(config_path="config/config.yaml"):
 
 
 
-    # GoMetrics(conf).start()db_inserter_callback
-    # OpticsClustering(conf).start()
+    GoMetrics(conf).start()
+
     # GoPrediction(conf).start()
+
     # GoPredictionMetricsPerProtein(conf).start()
 
 
