@@ -3,17 +3,15 @@ from sqlalchemy import text
 from sqlalchemy.orm import sessionmaker
 import obonet
 
-from protein_metamorphisms_is.operation.base.operator import OperatorBase
 from protein_metamorphisms_is.sql.model import (
     Protein,
-    ProteinGOTermAssociation,
-    SequenceGOPrediction,
+    ProteinGOTermAssociations,
+    SequenceGOAnotationTransfer,
     GOPerProteinSemanticDistance,
     PredictionMethod,
-    EmbeddingType, Sequence
 )
 
-class GoPredictionMetricsPerProtein(OperatorBase):
+class GoPredictionMetricsPerProtein():
     def __init__(self, conf):
         super().__init__(conf)
         self.logger.info("GoPredictionMetricsPerProtein instance created")
@@ -42,7 +40,7 @@ class GoPredictionMetricsPerProtein(OperatorBase):
 
     def process_protein_metrics(self):
         proteins = (self.session.query(Protein)
-                    .join(SequenceGOPrediction, Protein.sequence_id == SequenceGOPrediction.sequence_id)
+                    .join(SequenceGOAnotationTransfer, Protein.sequence_id == SequenceGOAnotationTransfer.sequence_id)
                     .distinct().all())
         prediction_methods = self.session.query(PredictionMethod).all()
         embedding_types = self.session.query(EmbeddingType).all()
@@ -52,7 +50,7 @@ class GoPredictionMetricsPerProtein(OperatorBase):
 
             for method in prediction_methods:
                 for embedding in embedding_types:
-                    predictions = {pred.go_term.go_id for pred in self.session.query(SequenceGOPrediction).filter_by(
+                    predictions = {pred.go_term.go_id for pred in self.session.query(SequenceGOAnotationTransfer).filter_by(
                         sequence_id=protein.sequence_id,
                         prediction_method_id=method.id,
                         embedding_type_id=embedding.id

@@ -1,4 +1,5 @@
-from protein_metamorphisms_is.sql.model import StructuralComplexityLevel, StructuralAlignmentType, SequenceEmbeddingType, StructureEmbeddingType, PredictionMethod
+from protein_metamorphisms_is.sql.model import ProteinGOTermAssociations, StructuralComplexityLevel, StructuralAlignmentType, SequenceEmbeddingType, StructureEmbeddingType, PredictionMethod
+
 
 
 def handle_structural_complexity_levels(session, constants):

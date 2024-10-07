@@ -76,7 +76,7 @@ class Protein(Base):
         host_taxonomy_id (str): Taxonomy identifier for the host organism, if applicable.
         comments (str): Additional remarks or notes about the protein.
         pdb_references (relationship): A link to the 'PDBReference' class, providing references to structural data in the PDB.
-        go_term_associations (relationship): A connection to the 'ProteinGOTermAssociation' class, indicating Gene Ontology terms associated with the protein.
+        go_term_associations (relationship): A connection to the 'ProteinGOTermAssociations' class, indicating Gene Ontology terms associated with the protein.
         go_per_protein_semantic_distances (relationship): A connection to the 'GOPerProteinSemanticDistance' class, indicating semantic distances for GO terms per protein.
         keywords (str): Descriptive keywords related to the protein, aiding in categorization and search.
         protein_existence (int): A numerical code indicating the evidence level for the protein's existence.
@@ -107,7 +107,7 @@ class Protein(Base):
     host_taxonomy_id = Column(String)
     comments = Column(String)
     pdb_references = relationship("PDBReference", back_populates="protein")
-    go_term_associations = relationship("ProteinGOTermAssociation", back_populates="protein")
+    go_term_associations = relationship("ProteinGOTermAssociations", back_populates="protein")
     go_per_protein_semantic_distances = relationship("GOPerProteinSemanticDistance", back_populates="protein")
     keywords = Column(String)
     protein_existence = Column(Integer)
@@ -125,8 +125,6 @@ class Sequence(Base):
     sequence = Column(String, nullable=False)
     sequence_hash = Column(String, index=True, unique=True)
 
-    go_predictions = relationship("SequenceGOPrediction", back_populates="sequence")
-
     # Adding a default value to automatically compute the hash when a sequence is added
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -134,7 +132,6 @@ class Sequence(Base):
 
 
 Index('idx_sequence_hash', Sequence.sequence_hash)
-
 
 
 class Structure(Base):
@@ -155,7 +152,6 @@ class Structure(Base):
     models = relationship("Model", back_populates="structure")  # Relación con Model
 
 
-
 class Model(Base):
     """
     Represents different models within a structure, specifically for NMR structures that may include multiple models. Each model
@@ -173,6 +169,7 @@ class Model(Base):
     file_path = Column(String, nullable=False)
     structure_id = Column(Integer, ForeignKey('structures.id'), nullable=False)
     structure = relationship("Structure", back_populates="models")
+
 
 class PDBReference(Base):
     """
@@ -256,7 +253,6 @@ class PDBChains(Base):
     pdb_reference = relationship("PDBReference", back_populates="pdb_chains")
 
 
-
 class SequenceEmbedding(Base):
     __tablename__ = 'sequence_embeddings'
     id = Column(Integer, primary_key=True)
@@ -269,6 +265,11 @@ class SequenceEmbedding(Base):
 
     sequence = relationship("Sequence")
     embedding_type = relationship("SequenceEmbeddingType")
+
+    # Relación con las predicciones de GO
+    go_predictions = relationship("SequenceEmbeddingGOAnnotationTransfer", back_populates="embedding")
+
+
 
 
 class StructureEmbedding(Base):
@@ -293,7 +294,6 @@ class Cluster(Base):
     subclusters = relationship("Subcluster", back_populates="cluster")
 
 
-
 class ClusterEntry(Base):
     __tablename__ = 'cluster_entries'
     id = Column(Integer, primary_key=True)
@@ -307,10 +307,6 @@ class ClusterEntry(Base):
     # Relaciones con Cluster y PDBChains
     cluster = relationship("Cluster", back_populates="entries")
     sequence = relationship("Sequence")
-
-
-
-
 
 
 class StructuralComplexityLevel(Base):
@@ -389,7 +385,6 @@ class SequenceEmbeddingType(Base):
     model_name = Column(String)
 
     seq_embeddings = relationship("SequenceEmbedding", back_populates="embedding_type")
-    sequence_predictions = relationship("SequenceGOPrediction", back_populates="embedding_type")
 
 
 class StructureEmbeddingType(Base):
@@ -410,7 +405,6 @@ class StructureEmbeddingType(Base):
     description = Column(String)
     task_name = Column(String)
     model_name = Column(String)
-
 
 
 class StructuralAlignmentResults(Base):
@@ -452,7 +446,7 @@ class StructuralAlignmentResults(Base):
     fc_align_len = Column(Float)
 
 
-class ProteinGOTermAssociation(Base):
+class ProteinGOTermAssociations(Base):
     __tablename__ = 'protein_go_term_association'
     protein_entry_name = Column(String, ForeignKey('proteins.entry_name'), primary_key=True)
     go_id = Column(String, ForeignKey('go_terms.go_id'), primary_key=True)
@@ -461,8 +455,7 @@ class ProteinGOTermAssociation(Base):
         back_populates="go_term_associations",
     )
     go_term = relationship(
-        "GOTerm",
-        back_populates="protein_associations",
+        "GOTerm"
     )
 
 
@@ -488,42 +481,68 @@ class GOTerm(Base):
     category = Column(String)
     description = Column(String)
     evidences = Column(String, nullable=True)
-
-    protein_associations = relationship(
-        "ProteinGOTermAssociation",
-        back_populates="go_term",
-    )
-    sequence_predictions = relationship("SequenceGOPrediction", back_populates="go_term")
+    sequence_predictions = relationship("SequenceEmbeddingGOAnnotationTransfer", back_populates="go_term")
 
 
-class GOTermRelationship(Base):
-    __tablename__ = 'go_term_relationships'
+class GOPairs(Base):
+    """
+    Represents pairs of Gene Ontology (GO) terms associated with a specific protein.
+
+    Attributes:
+        id (int): Unique identifier for the pair.
+        go_term_1_id (str): GO term ID for the first GO term in the pair.
+        go_term_2_id (str): GO term ID for the second GO term in the pair.
+    """
+    __tablename__ = 'go_pairs'
     id = Column(Integer, primary_key=True)
     go_term_1_id = Column(String, ForeignKey('go_terms.go_id'))
     go_term_2_id = Column(String, ForeignKey('go_terms.go_id'))
+
+    # Relaciones
+    go_term_1 = relationship("GOTerm", foreign_keys=[go_term_1_id])
+    go_term_2 = relationship("GOTerm", foreign_keys=[go_term_2_id])
+
+    results = relationship("GOResultsPairwise", back_populates="pair")
+
+
+class GOResultsPairwise(Base):
+    """
+    Represents the results of analysis on pairs of GO terms, storing distances and other metrics.
+
+    Attributes:
+        id (int): Unique identifier for the result.
+        pair_id (int): Reference to the associated `GOPairs` entry.
+        information_content_1 (float): Information content of the first GO term.
+        information_content_2 (float): Information content of the second GO term.
+        resnik_distance (float): Resnik distance between the two GO terms.
+        minimum_branch_length (float): Minimum branch length between the two GO terms.
+    """
+    __tablename__ = 'go_results_pairwise'
+    id = Column(Integer, primary_key=True)
+    pair_id = Column(Integer, ForeignKey('go_pairs.id'))
     information_content_1 = Column(Float)
     information_content_2 = Column(Float)
     resnik_distance = Column(Float)
     minimum_branch_length = Column(Float)
 
-    go_term_1 = relationship("GOTerm", foreign_keys=[go_term_1_id])
-    go_term_2 = relationship("GOTerm", foreign_keys=[go_term_2_id])
+    # Relación con los pares de GO
+    pair = relationship("GOPairs", back_populates="results")
 
 
-class SequenceGOPrediction(Base):
-    __tablename__ = 'sequence_go_predictions'
+class SequenceEmbeddingGOAnnotationTransfer(Base):
+    __tablename__ = 'sequence__embedding_go_annotation_transfer'
     id = Column(Integer, primary_key=True)
-    sequence_id = Column(Integer, ForeignKey('sequences.id'))
+    embedding_id = Column(Integer, ForeignKey('sequence_embeddings.id'))
     ref_protein_entry_name = Column(String, ForeignKey('proteins.entry_name'))
     go_id = Column(String, ForeignKey('go_terms.go_id'), nullable=False)
     embedding_type_id = Column(Integer, ForeignKey('sequence_embedding_types.id'), nullable=False)
-    prediction_method_id = Column(Integer, ForeignKey('prediction_methods.id'))  # Vinculación con PredictionMethod
+    prediction_method_id = Column(Integer, ForeignKey('prediction_methods.id'))
     k = Column(Integer)
 
-    sequence = relationship("Sequence", back_populates="go_predictions")
+    embedding = relationship("SequenceEmbedding", back_populates="go_predictions")
     go_term = relationship("GOTerm", back_populates="sequence_predictions")
-    embedding_type = relationship("SequenceEmbeddingType")  # Actualización aquí
     prediction_method = relationship("PredictionMethod")
+
 
 
 class PredictionMethod(Base):
@@ -542,7 +561,7 @@ class GOPerProteinSemanticDistance(Base):
     group_distance = Column(Float, nullable=False)
 
     protein = relationship("Protein", back_populates="go_per_protein_semantic_distances")
-    embedding_type = relationship("SequenceEmbeddingType")  # Actualización aquí
+    embedding_type = relationship("SequenceEmbeddingType")
     prediction_method = relationship("PredictionMethod")
 
 
@@ -556,6 +575,7 @@ class Subcluster(Base):
     # Relaciones
     cluster = relationship("Cluster", back_populates="subclusters")
     entries = relationship("SubclusterEntry", back_populates="subcluster")
+
 
 class SubclusterEntry(Base):
     __tablename__ = 'subcluster_entries'

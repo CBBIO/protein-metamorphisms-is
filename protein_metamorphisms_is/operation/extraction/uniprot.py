@@ -6,7 +6,7 @@ from sqlalchemy import exists
 
 from protein_metamorphisms_is.tasks.queue import QueueTaskInitializer
 from protein_metamorphisms_is.helpers.parser.parser import extract_float, process_chain_string
-from protein_metamorphisms_is.sql.model import Accession, ProteinGOTermAssociation, GOTerm, PDBReference, Sequence, \
+from protein_metamorphisms_is.sql.model import Accession, ProteinGOTermAssociations, GOTerm, PDBReference, Sequence, \
     Protein
 
 
@@ -191,7 +191,7 @@ class UniProtExtractor(QueueTaskInitializer):
             entry_name (str): The name of the protein entry.
             go_id (str): The GO term identifier.
         Returns:
-            ProteinGOTermAssociation: The newly created association, or None if it already exists.
+            ProteinGOTermAssociations: The newly created association, or None if it already exists.
         """
         try:
             exists_query = exists().where(Accession.accession_code == accession_code)
@@ -321,16 +321,16 @@ class UniProtExtractor(QueueTaskInitializer):
             entry_ptr (str): The name of the protein entry.
             go_id (str): The GO term identifier.
         Returns:
-            ProteinGOTermAssociation: The newly created or existing association object.
+            ProteinGOTermAssociations: The newly created or existing association object.
         """
         try:
             exists_query = exists().where(
-                ProteinGOTermAssociation.protein_entry_name == entry_name).where(
-                ProteinGOTermAssociation.go_id == go_id)
+                ProteinGOTermAssociations.protein_entry_name == entry_name).where(
+                ProteinGOTermAssociations.go_id == go_id)
             association_exists = self.session.query(exists_query).scalar()
             if not association_exists:
                 self.logger.debug(f"Creating new association for {entry_name} and GO term {go_id}.")
-                association = ProteinGOTermAssociation(protein_entry_name=entry_name, go_id=go_id)
+                association = ProteinGOTermAssociations(protein_entry_name=entry_name, go_id=go_id)
                 self.session.add(association)
                 return association
             else:
