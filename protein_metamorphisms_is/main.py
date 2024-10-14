@@ -18,18 +18,17 @@ def main(config_path="config/config.yaml"):
     conf = read_yaml_config(config_path)
     AccessionManager(conf).fetch_accessions_from_api()
     UniProtExtractor(conf).start()
-    # PDBExtractor(conf).start()
-    # SequenceEmbeddingManager(conf).start()
-    # StructureEmbeddingManager(conf).start()
+    PDBExtractor(conf).start()
+    SequenceEmbeddingManager(conf).start()
+    StructureEmbeddingManager(conf).start()
     SequenceClustering(conf).start()
-    # SequenceStructuralEmbeddingsSubClustering(conf).start()
-    # StructuralAlignmentManager(conf).start()
-    # #
-    #
-    #
+    SequenceStructuralEmbeddingsSubClustering(conf).start()
+    StructuralAlignmentManager(conf).start()
+
+    SequenceEmbeddingsGOAnnotationTransfer(conf).start()
+
     GoMultifunctionalityMetrics(conf).start()
 
-    # SequenceEmbeddingsGOAnnotationTransfer(conf).start()
 
     # GoPredictionMetricsPerProtein(conf).start()
 

@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, QueuePool
 from sqlalchemy.orm import sessionmaker
 
 from protein_metamorphisms_is.sql.model import Base
@@ -16,7 +16,14 @@ class DatabaseManager:
                         f"@{self.conf['DB_HOST']}:"
                         f"{self.conf['DB_PORT']}/"
                         f"{self.conf['DB_NAME']}")
-        engine = create_engine(DATABASE_URI, pool_size=0, max_overflow=0)
+        # Crear el motor con el pool configurado
+        engine = create_engine(
+            DATABASE_URI,
+            pool_size=0,          # Número máximo de conexiones en el pool
+            max_overflow=0,       # Conexiones adicionales permitidas en caso de saturación
+            poolclass=QueuePool,   # Clase de pool a utilizar
+            pool_pre_ping=True     # Verificar conexiones antes de reutilizarlas
+        )
         Base.metadata.create_all(engine)
 
         return engine

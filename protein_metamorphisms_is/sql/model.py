@@ -266,8 +266,6 @@ class SequenceEmbedding(Base):
     sequence = relationship("Sequence")
     embedding_type = relationship("SequenceEmbeddingType")
 
-    # Relación con las predicciones de GO
-    go_predictions = relationship("SequenceEmbeddingGOAnnotationTransfer", back_populates="embedding")
 
 
 
@@ -530,18 +528,21 @@ class GOResultsPairwise(Base):
 
 
 class SequenceEmbeddingGOAnnotationTransfer(Base):
-    __tablename__ = 'sequence__embedding_go_annotation_transfer'
+    __tablename__ = 'sequence_embedding_go_annotation_transfer'
     id = Column(Integer, primary_key=True)
-    embedding_id = Column(Integer, ForeignKey('sequence_embeddings.id'))
-    ref_protein_entry_name = Column(String, ForeignKey('proteins.entry_name'))
-    go_id = Column(String, ForeignKey('go_terms.go_id'), nullable=False)
-    embedding_type_id = Column(Integer, ForeignKey('sequence_embedding_types.id'), nullable=False)
-    prediction_method_id = Column(Integer, ForeignKey('prediction_methods.id'))
-    k = Column(Integer)
+    go_id = Column(String, ForeignKey('go_terms.go_id'), nullable=False)  # ID del término GO
+    distance = Column(Float)
+    source_cluster_id = Column(Integer, ForeignKey('clusters.id'), nullable=False)  # Clúster de donde proviene
+    target_cluster_id = Column(Integer, ForeignKey('clusters.id'), nullable=False)  # Clúster de referencia
 
-    embedding = relationship("SequenceEmbedding", back_populates="go_predictions")
-    go_term = relationship("GOTerm", back_populates="sequence_predictions")
-    prediction_method = relationship("PredictionMethod")
+
+
+
+    # Relaciones con términos GO
+    go_term = relationship("GOTerm")
+
+    def __repr__(self):
+        return f"<SequenceEmbeddingGOAnnotationTransfer(go_id={self.go_id}, source_cluster_id={self.source_cluster_id}, target_cluster_id={self.target_cluster_id})>"
 
 
 
@@ -588,3 +589,5 @@ class SubclusterEntry(Base):
     # Relaciones
     subcluster = relationship("Subcluster", back_populates="entries")
     structure_embedding = relationship("StructureEmbedding", back_populates="subcluster_entries")
+
+
