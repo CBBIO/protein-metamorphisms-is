@@ -71,7 +71,7 @@ Here is an example of how to subclass `SequenceClustering`:
 """
 
 from protein_metamorphisms_is.tasks.base import BaseTaskInitializer
-from protein_metamorphisms_is.sql.model import PDBChains, Cluster, ClusterEntry, Sequence
+from protein_metamorphisms_is.sql.model.model import Cluster, ClusterEntry, Sequence
 from pycdhit import cd_hit, read_clstr
 
 class SequenceClustering(BaseTaskInitializer):

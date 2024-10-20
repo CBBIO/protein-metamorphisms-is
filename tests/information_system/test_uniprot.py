@@ -6,7 +6,7 @@ import pandas as pd
 import requests
 
 from protein_metamorphisms_is.operation.extraction.uniprot import UniProtExtractor
-from protein_metamorphisms_is.sql.model import Accession, Protein, Sequence, PDBReference, GOTerm, \
+from protein_metamorphisms_is.sql.model.model import Accession, Protein, Sequence, PDBReference, GOTerm, \
     ProteinGOTermAssociation
 
 

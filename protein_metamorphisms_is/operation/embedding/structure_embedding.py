@@ -3,7 +3,7 @@ import os
 import mini3di
 from Bio.PDB import MMCIFParser, Chain
 from protein_metamorphisms_is.tasks.queue import QueueTaskInitializer
-from protein_metamorphisms_is.sql.model import StructureEmbedding, Model
+from protein_metamorphisms_is.sql.model.model import StructureEmbedding, Model
 
 class StructureEmbeddingManager(QueueTaskInitializer):
     def __init__(self, conf):

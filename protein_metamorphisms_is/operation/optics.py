@@ -2,7 +2,7 @@ from sklearn.cluster import OPTICS
 import numpy as np
 
 from protein_metamorphisms_is.operation.base.operator import OperatorBase
-from protein_metamorphisms_is.sql.model import Subcluster, SubclusterEntry, ClusterEntry, SequenceEmbedding, Sequence, EmbeddingType, Cluster
+from protein_metamorphisms_is.sql.model.model import Subcluster, SubclusterEntry, ClusterEntry, SequenceEmbedding, Sequence, EmbeddingType, Cluster
 
 class OpticsClustering(OperatorBase):
     def __init__(self, conf):

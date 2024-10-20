@@ -1,11 +1,10 @@
-from abc import ABC
 import traceback
 from urllib.parse import quote
 import pandas as pd
 import requests
 
+from protein_metamorphisms_is.sql.model.entities.protein.accesion import Accession
 from protein_metamorphisms_is.tasks.base import BaseTaskInitializer
-from protein_metamorphisms_is.sql.model import Accession
 
 
 class AccessionManager(BaseTaskInitializer):
@@ -85,7 +84,7 @@ class AccessionManager(BaseTaskInitializer):
             csv_tag = self.conf['tag']
 
             data = pd.read_csv(csv_path)
-            accessions = data[accession_column].dropna().unique()
+            accessions = data[accession_column].dropna().unique()[:50]
             self.logger.info(f"Loaded {len(accessions)} unique accession codes from CSV.")
             self._process_new_accessions(accessions, csv_tag)
         except Exception as e:
@@ -112,7 +111,7 @@ class AccessionManager(BaseTaskInitializer):
 
             response = requests.get(url)
             response.raise_for_status()
-            accessions = response.text.strip().split("\n")
+            accessions = response.text.strip().split("\n")[:200]
             self.logger.info(f"Retrieved {len(accessions)} accessions from UniProt API.")
             self._process_new_accessions(accessions, tag)
         except requests.RequestException as e:

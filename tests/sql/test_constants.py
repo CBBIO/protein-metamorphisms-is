@@ -1,6 +1,4 @@
-import pytest
 from unittest.mock import MagicMock
-from protein_metamorphisms_is.sql.model import StructuralComplexityLevel, StructuralAlignmentType
 from protein_metamorphisms_is.sql.constants import handle_structural_complexity_levels, handle_structural_alignment_types
 
 def test_handle_structural_complexity_levels():

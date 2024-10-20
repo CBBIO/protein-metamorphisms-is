@@ -1,11 +1,8 @@
 import networkx as nx
-from sqlalchemy import text
-from sqlalchemy.orm import sessionmaker
 import obonet
 
-from protein_metamorphisms_is.sql.model import (
+from protein_metamorphisms_is.sql.model.model import (
     Protein,
-    ProteinGOTermAssociations,
     SequenceGOAnotationTransfer,
     GOPerProteinSemanticDistance,
     PredictionMethod,

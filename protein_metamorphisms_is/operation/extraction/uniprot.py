@@ -4,10 +4,15 @@ from http.client import HTTPException
 from Bio import ExPASy, SwissProt
 from sqlalchemy import exists
 
+from protein_metamorphisms_is.sql.model.entities.go_annotation.go_annotation import ProteinGOTermAnnotation
+from protein_metamorphisms_is.sql.model.entities.go_annotation.go_term import GOTerm
+from protein_metamorphisms_is.sql.model.entities.protein.accesion import Accession
+from protein_metamorphisms_is.sql.model.entities.protein.protein import Protein
+from protein_metamorphisms_is.sql.model.entities.sequence.sequence import Sequence
+from protein_metamorphisms_is.sql.model.entities.structure.structure import Structure
 from protein_metamorphisms_is.tasks.queue import QueueTaskInitializer
-from protein_metamorphisms_is.helpers.parser.parser import extract_float, process_chain_string
-from protein_metamorphisms_is.sql.model import Accession, ProteinGOTermAssociations, GOTerm, PDBReference, Sequence, \
-    Protein
+from protein_metamorphisms_is.helpers.parser.parser import extract_float
+
 
 
 class UniProtExtractor(QueueTaskInitializer):
@@ -76,7 +81,6 @@ class UniProtExtractor(QueueTaskInitializer):
             self.logger.debug(f"Attempting to store or update protein data for entry_name {data.entry_name}.")
             protein = self.get_or_create_protein(data)
             self.update_protein_details(protein, data)
-            self.handle_accessions(protein, data.accessions)
             self.handle_cross_references(protein, data.cross_references)
             self.session.commit()
             self.logger.info(f"Successfully stored or updated data for protein {data.entry_name}.")
@@ -97,9 +101,9 @@ class UniProtExtractor(QueueTaskInitializer):
             Protein: The retrieved or newly created protein object.
         """
         try:
-            protein = self.session.query(Protein).filter_by(entry_name=data.entry_name).first()
+            protein = self.session.query(Protein).filter_by(id=data.entry_name).first()
             if not protein:
-                protein = Protein(entry_name=data.entry_name)
+                protein = Protein(id=data.entry_name)
                 self.session.add(protein)
                 self.logger.debug(f"Created new protein record for entry_name {data.entry_name}.")
             else:
@@ -111,38 +115,38 @@ class UniProtExtractor(QueueTaskInitializer):
             raise e
 
     def update_protein_details(self, protein, data):
-        """
-        Updates the protein details based on the provided SwissProt data. All related protein attributes like sequence,
-        molecule type, organism details, etc., are updated.
-        Args:
-            protein (Protein): The protein object to update.
-            data (SwissProt.Record): Data used to update the protein object.
-        """
         try:
-            protein.sequence = self.get_or_create_sequence(data.sequence)
+            new_sequence = self.get_or_create_sequence(data.sequence)
+
+            # Asigna la nueva secuencia si es diferente
+            if protein.sequence_id != new_sequence.id:
+                protein.sequence = new_sequence
+
+            # Actualiza todos los demás campos
             protein.data_class = data.data_class
             protein.molecule_type = data.molecule_type
             protein.sequence_length = data.sequence_length
-            protein.created_date = data.created[0]
-            protein.sequence_update_date = data.sequence_update[0]
-            protein.annotation_update_date = data.annotation_update[0]
+            protein.created_date = data.created[0] if data.created else None
+            protein.sequence_update_date = data.sequence_update[0] if data.sequence_update else None
+            protein.annotation_update_date = data.annotation_update[0] if data.annotation_update else None
             protein.description = data.description
             protein.gene_name = str(data.gene_name)
             protein.organism = data.organism
             protein.organelle = data.organelle
-            protein.organism_classification = ",".join(data.organism_classification)
-            protein.taxonomy_id = ",".join(data.taxonomy_id)
-            protein.host_organism = ",".join(data.host_organism)
-            protein.host_taxonomy_id = ",".join(data.host_taxonomy_id)
-            protein.comments = "; ".join(data.comments)
+            protein.organism_classification = ",".join(
+                data.organism_classification) if data.organism_classification else None
+            protein.taxonomy_id = ",".join(data.taxonomy_id) if data.taxonomy_id else None
+            protein.host_organism = ",".join(data.host_organism) if data.host_organism else None
+            protein.host_taxonomy_id = ",".join(data.host_taxonomy_id) if data.host_taxonomy_id else None
+            protein.comments = "; ".join(data.comments) if data.comments else None
             protein.keywords = data.keywords
             protein.protein_existence = data.protein_existence
             protein.seqinfo = data.seqinfo
+
+            # Asegúrate de agregar el objeto a la sesión para que se actualice
             self.session.add(protein)
-            self.logger.debug(f"Updated protein details for entry_name {data.entry_name}.")
         except Exception as e:
-            self.logger.error(
-                f"Failed to update protein details for entry_name {data.entry_name}: {e}\n{traceback.format_exc()}")
+            self.logger.error(f"Failed to update protein details: {e}")
             raise e
 
     def get_or_create_sequence(self, sequence):
@@ -166,45 +170,6 @@ class UniProtExtractor(QueueTaskInitializer):
             self.logger.error(f"Failed to retrieve or create sequence: {e}\n{traceback.format_exc()}")
             raise e
 
-    def handle_accessions(self, protein, accessions):
-        """
-        Processes and links accession codes to the specified protein, ensuring no duplicates in the database.
-        Args:
-            protein (Protein): The protein object to which the accession codes will be linked.
-            accessions (list): List of accession codes.
-        """
-        try:
-            for accession_code in accessions:
-                accession = self.get_or_create_accession(accession_code)
-                accession.protein_entry_name = protein.entry_name
-                self.session.add(accession)
-                self.logger.debug(f"Linked accession code {accession_code} to protein {protein.entry_name}.")
-        except Exception as e:
-            self.logger.error(
-                f"Error handling accession {accession_code} from {accessions}: {e}\n{traceback.format_exc()}")
-            raise e
-
-    def get_or_create_accession(self, accession_code):
-        """
-        Checks if an association between a protein and a GO term exists in the database and creates it if not.
-        Args:
-            entry_name (str): The name of the protein entry.
-            go_id (str): The GO term identifier.
-        Returns:
-            ProteinGOTermAssociations: The newly created association, or None if it already exists.
-        """
-        try:
-            exists_query = exists().where(Accession.accession_code == accession_code)
-            accession_exists = self.session.query(exists_query).scalar()
-            if accession_exists:
-                self.logger.debug(f"Accession {accession_code} already exists in the database.")
-                return self.session.query(Accession).filter(Accession.accession_code == accession_code).first()
-            else:
-                self.logger.debug(f"Creating new accession record for {accession_code}.")
-                return Accession(accession_code=accession_code, primary=False)
-        except Exception as e:
-            self.logger.error(f"Failed to retrieve or create accession {accession_code}: {e}\n{traceback.format_exc()}")
-            raise e
 
     def handle_cross_references(self, protein, cross_references):
         """
@@ -221,7 +186,7 @@ class UniProtExtractor(QueueTaskInitializer):
                     self.handle_go_reference(protein, reference)
         except Exception as e:
             self.logger.error(
-                f"Failed to handle cross references for {protein.entry_name}: {e}\n{traceback.format_exc()}")
+                f"Failed to handle cross references for {protein.id}: {e}\n{traceback.format_exc()}")
             raise e
 
     def handle_pdb_reference(self, protein, reference):
@@ -229,62 +194,72 @@ class UniProtExtractor(QueueTaskInitializer):
         Specific handler for PDB references, extracting relevant segment if specified and storing it.
         Args:
             protein (Protein): The protein object associated with the PDB reference.
-            reference (list): PDB reference data, including sequence positions and PDB ID.
+            reference (list): PDB reference data, including PDB ID, method, and resolution.
         """
         try:
             if reference[0] == "PDB":
-                pdb_ref = self.get_or_create_pdb_reference(reference)
-                pdb_ref.protein = protein
-                self.session.add(pdb_ref)
-                self.logger.debug(f"Linked PDB reference {reference[1]} to protein {protein.entry_name}.")
+                structure = self.get_or_create_structure(reference, protein.id)
+                self.session.add(structure)
+                self.logger.debug(f"Linked structure {reference[1]} to protein {protein.id}.")
         except Exception as e:
             self.logger.error(f"Error handling PDB reference {reference}: {e}\n{traceback.format_exc()}")
             raise e
-
-    def get_or_create_pdb_reference(self, reference):
+    def get_or_create_structure(self, reference, protein_id):
         """
-        Retrieves or creates a PDB reference in the database based on the provided PDB ID.
-        If the PDB reference does not exist, it creates a new one using the associated sequence.
+        Retrieves or creates a Structure entry in the database based on the provided PDB ID.
+        If the structure does not exist, it creates a new one using the associated reference data.
         Args:
             reference (list): PDB reference data including PDB ID, method, and resolution.
-            sequence (str): Amino acid sequence associated with the PDB entry.
+            protein_id (str): The ID of the associated protein.
         Returns:
-            PDBReference: The retrieved or newly created PDBReference object.
+            Structure: The retrieved or newly created Structure object.
         """
         try:
             pdb_id = reference[1]
-            self.logger.info(f"Retrieving PDB reference {pdb_id} from database")
-            pdb_ref_exists = self.session.query(exists().where(PDBReference.pdb_id == pdb_id)).scalar()
-            if not pdb_ref_exists:
-                self.logger.debug(f"Creating new PDB reference record for {pdb_id}.")
-                return PDBReference(
-                    pdb_id=pdb_id,
-                    method=reference[2],
-                    resolution=extract_float(reference[3]),
+            method = reference[2]
+            resolution = extract_float(reference[3])
+
+            self.logger.info(f"Retrieving structure {pdb_id} from the database.")
+            structure_exists = self.session.query(exists().where(Structure.id == pdb_id)).scalar()
+
+            if not structure_exists:
+                self.logger.debug(f"Creating new structure record for {pdb_id}.")
+                structure = Structure(
+                    id=pdb_id,
+                    protein_id=protein_id,
+                    method=method,
+                    resolution=resolution,
+                    file_path=f"structures/{pdb_id}.cif"  # Adjust the path as needed
                 )
+                return structure
             else:
-                self.logger.debug(f"Retrieved existing PDB reference record for {pdb_id}.")
-                return self.session.query(PDBReference).filter(PDBReference.pdb_id == pdb_id).first()
+                self.logger.debug(f"Retrieved existing structure record for {pdb_id}.")
+                return self.session.query(Structure).filter(Structure.id == pdb_id).first()
         except Exception as e:
-            self.logger.error(f"Error retrieving or creating PDB reference for {pdb_id}: {e}\n{traceback.format_exc()}")
+            self.logger.error(f"Error retrieving or creating structure for {pdb_id}: {e}\n{traceback.format_exc()}")
             raise e
 
     def handle_go_reference(self, protein, reference):
         try:
-            evidence = reference[3].split(":")[0]
+            evidence = reference[3].split(":")[0] if reference[
+                3] else "UNKNOWN"  # Usa un valor por defecto si falta evidence
             if evidence not in self.conf['allowed_evidences']:
                 self.logger.debug(
-                    f"Skipping GO reference {reference[1]} for {protein.entry_name} due to disallowed evidence type.")
+                    f"Skipping GO reference {reference[1]} for {protein.id} due to disallowed evidence type.")
                 return
+
+            # Crear o recuperar el término GO
             go_term = self.get_or_create_go_term(reference)
-            association = self.get_or_create_association(protein.entry_name, go_term.go_id)
+
+            # Verificar si la asociación ya existe
+            association = self.get_or_create_association(protein.id, go_term.go_id, evidence_code=evidence)
+
             if association is None:
-                self.logger.info(
-                    f"Association between {protein.entry_name} and GO Term {go_term.go_id} already exists.")
+                self.logger.info(f"Association between {protein.id} and GO Term {go_term.go_id} already exists.")
             else:
-                self.logger.debug(f"Created new association between {protein.entry_name} and GO Term {go_term.go_id}.")
+                self.logger.debug(f"Created new association between {protein.id} and GO Term {go_term.go_id}.")
         except Exception as e:
-            self.logger.error(f"Failed to handle GO reference for {protein.entry_name}: {e}\n{traceback.format_exc()}")
+            self.logger.error(f"Failed to handle GO reference for {protein.id}: {e}\n{traceback.format_exc()}")
             raise e
 
     def get_or_create_go_term(self, reference):
@@ -302,8 +277,7 @@ class UniProtExtractor(QueueTaskInitializer):
 
             if not go_term:
                 self.logger.debug(f"Creating new GO term record for {go_id}.")
-                go_term = GOTerm(go_id=go_id, category=category, description=description,
-                                 evidences=reference[3].split(':')[0])
+                go_term = GOTerm(go_id=go_id, category=category, description=description)
                 self.session.add(go_term)
             else:
                 self.logger.debug(f"Retrieved existing GO term record for {go_id}.")
@@ -312,30 +286,35 @@ class UniProtExtractor(QueueTaskInitializer):
             self.logger.error(f"Error retrieving or creating GO term {go_id}: {e}\n{traceback.format_exc()}")
             raise e
 
-    def get_or_create_association(self, entry_name, go_id):
+    def get_or_create_association(self, entry_name, go_id, evidence_code, is_transferred=False,
+                                  source_cluster_id=None, target_cluster_id=None, distance=None,
+                                  embedding_type_id=None):
         """
-        Retrieves or creates an association between a protein and a Gene Ontology (GO) term in the database.
-        It first checks if the association already exists to avoid duplication. If it does not exist, it creates
-        a new association and adds it to the database.
-        Args:
-            entry_ptr (str): The name of the protein entry.
-            go_id (str): The GO term identifier.
-        Returns:
-            ProteinGOTermAssociations: The newly created or existing association object.
+        Create or retrieve a GOAnnotation entry.
         """
         try:
+            # Verificar si la asociación ya existe
             exists_query = exists().where(
-                ProteinGOTermAssociations.protein_entry_name == entry_name).where(
-                ProteinGOTermAssociations.go_id == go_id)
+                ProteinGOTermAnnotation.protein_id == entry_name).where(
+                ProteinGOTermAnnotation.go_id == go_id)
+
             association_exists = self.session.query(exists_query).scalar()
+
             if not association_exists:
                 self.logger.debug(f"Creating new association for {entry_name} and GO term {go_id}.")
-                association = ProteinGOTermAssociations(protein_entry_name=entry_name, go_id=go_id)
+                # Crear la asociación con el evidence_code proporcionado
+                association = ProteinGOTermAnnotation(
+                    protein_id=entry_name,
+                    go_id=go_id,
+                    evidence_code=evidence_code  # Agregar evidence_code
+                )
                 self.session.add(association)
                 return association
             else:
                 self.logger.debug(f"Association between {entry_name} and GO term {go_id} already exists.")
+                return None
         except Exception as e:
             self.logger.error(
-                f"Failed to retrieve or create association for {entry_name} and GO term {go_id}: {e}\n{traceback.format_exc()}")
+                f"Failed to retrieve or create association for {entry_name} and GO term {go_id}: {e}")
             raise e
+

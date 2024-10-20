@@ -1,8 +1,7 @@
 import importlib
 import traceback
-import json
 from protein_metamorphisms_is.tasks.gpu import GPUTaskInitializer
-from protein_metamorphisms_is.sql.model import SequenceEmbedding, Sequence, SequenceEmbeddingType
+from protein_metamorphisms_is.sql.model.model import SequenceEmbedding, Sequence, SequenceEmbeddingType
 
 
 class SequenceEmbeddingManager(GPUTaskInitializer):

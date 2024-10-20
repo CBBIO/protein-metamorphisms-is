@@ -16,8 +16,8 @@ rabbitmq_password: guest
 
 ### Information System/
 # Load Accessions
-load_accesion_csv: ../data/goa_ids.csv
-load_accesion_column: ID
+load_accesion_csv: ../data/uniprot_full.csv
+load_accesion_column: id
 tag: 'GOA'
 
 max_attempts: 5

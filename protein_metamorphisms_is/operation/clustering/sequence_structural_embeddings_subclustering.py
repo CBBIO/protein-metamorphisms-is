@@ -1,9 +1,9 @@
-from sqlalchemy import func, or_, select
+from sqlalchemy import func
 from sqlalchemy.orm import aliased
 from protein_metamorphisms_is.tasks.base import BaseTaskInitializer
-from protein_metamorphisms_is.sql.model import (
+from protein_metamorphisms_is.sql.model.model import (
     Subcluster, SubclusterEntry, StructureEmbedding, Model, ClusterEntry,
-    Cluster, Sequence, PDBReference, PDBChains, Structure
+    Cluster, Sequence, PDBChains, Structure
 )
 from pycdhit import cd_hit, read_clstr
 import os

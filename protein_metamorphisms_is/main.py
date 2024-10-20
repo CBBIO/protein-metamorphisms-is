@@ -1,33 +1,39 @@
 from protein_metamorphisms_is.helpers.config.yaml import read_yaml_config
-from protein_metamorphisms_is.operation.clustering.sequence_clustering import SequenceClustering
-from protein_metamorphisms_is.operation.clustering.sequence_structural_embeddings_subclustering import \
-    SequenceStructuralEmbeddingsSubClustering
-from protein_metamorphisms_is.operation.embedding.sequence_embedding import SequenceEmbeddingManager
-from protein_metamorphisms_is.operation.embedding.structure_embedding import StructureEmbeddingManager
+
 from protein_metamorphisms_is.operation.extraction.accessions import AccessionManager
 from protein_metamorphisms_is.operation.extraction.pdb import PDBExtractor
 from protein_metamorphisms_is.operation.extraction.uniprot import UniProtExtractor
 
-from protein_metamorphisms_is.operation.functional.annotation_transfer.sequence_embeddings_go_annotation_transfer import SequenceEmbeddingsGOAnnotationTransfer
-from protein_metamorphisms_is.operation.functional.multifunctionality.go_multifunctionality_metrics import \
-    GoMultifunctionalityMetrics
-from protein_metamorphisms_is.operation.structural_alignment.structural_alignment import StructuralAlignmentManager
+
+# from protein_metamorphisms_is.operation.clustering.sequence_clustering import SequenceClustering
+# from protein_metamorphisms_is.operation.clustering.sequence_structural_embeddings_subclustering import \
+#     SequenceStructuralEmbeddingsSubClustering
+# from protein_metamorphisms_is.operation.embedding.sequence_embedding import SequenceEmbeddingManager
+# from protein_metamorphisms_is.operation.embedding.structure_embedding import StructureEmbeddingManager
+# from protein_metamorphisms_is.operation.extraction.pdb import PDBExtractor
+# from protein_metamorphisms_is.operation.extraction.uniprot import UniProtExtractor
+#
+# from protein_metamorphisms_is.operation.functional.annotation_transfer.sequence_embeddings_go_annotation_transfer import SequenceEmbeddingsGOAnnotationTransfer
+# from protein_metamorphisms_is.operation.functional.multifunctionality.go_multifunctionality_metrics import \
+#     GoMultifunctionalityMetrics
+# from protein_metamorphisms_is.operation.structural_alignment.structural_alignment import StructuralAlignmentManager
 
 
 def main(config_path="config/config.yaml"):
     conf = read_yaml_config(config_path)
-    AccessionManager(conf).fetch_accessions_from_api()
-    UniProtExtractor(conf).start()
+    # AccessionManager(conf).fetch_accessions_from_api()
+    # AccessionManager(conf).load_accessions_from_csv()
+    # UniProtExtractor(conf).start()
     PDBExtractor(conf).start()
-    SequenceEmbeddingManager(conf).start()
-    StructureEmbeddingManager(conf).start()
-    SequenceClustering(conf).start()
-    SequenceStructuralEmbeddingsSubClustering(conf).start()
-    StructuralAlignmentManager(conf).start()
-
-    SequenceEmbeddingsGOAnnotationTransfer(conf).start()
-
-    GoMultifunctionalityMetrics(conf).start()
+    # SequenceEmbeddingManager(conf).start()
+    # # # # StructureEmbeddingManager(conf).start()
+    # SequenceClustering(conf).start()
+    # # SequenceStructuralEmbeddingsSubClustering(conf).start()
+    # # StructuralAlignmentManager(conf).start()
+    # # #
+    # SequenceEmbeddingsGOAnnotationTransfer(conf).start()
+    # #
+    # GoMultifunctionalityMetrics(conf).start()
 
 
     # GoPredictionMetricsPerProtein(conf).start()

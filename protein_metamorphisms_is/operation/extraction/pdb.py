@@ -1,62 +1,19 @@
-"""
-PDB Extraction Tasks
-=====================
-
-The `PDBExtractor` class is responsible for managing the extraction, processing, and storage of protein structure data from the Protein Data Bank (PDB). It extends the `QueueTaskInitializer` class, leveraging RabbitMQ for task distribution and ensuring efficient handling of large-scale protein data.
-
-**Purpose**
-
-The `PDBExtractor` class manages the complete workflow of downloading, processing, and storing PDB data. This includes downloading PDB files, processing their models and chains, and saving the processed data into the system’s database for further analysis and research.
-
-**Customization**
-
-To create a custom PDB extraction task, subclass `PDBExtractor` and implement the `enqueue`, `process`, and `store_entry` methods. These methods define the logic for queuing tasks, processing them, and storing the results in the database.
-
-**Key Features**
-
-- **Directory Management**: Automatically creates directories for storing PDB files and processed models.
-- **Task Enqueuing**: Dynamically enqueues tasks based on specific criteria like resolution thresholds.
-- **Data Processing**: Downloads PDB files, processes each model and chain, and organizes results for storage.
-- **Database Integration**: Ensures processed data is stored and organized in the database.
-- **Error Handling**: Logs and handles errors during download and processing to ensure robustness.
-
-**Example Usage**
-
-Here is an example of how to subclass `PDBExtractor`:
-
-.. code-block:: python
-
-   from protein_metamorphisms_is.tasks.pdb import PDBExtractor
-
-   class MyPDBExtractor(PDBExtractor):
-       def enqueue(self):
-           # Implementation of enqueue logic
-           pass
-
-       def process(self, pdb_id):
-           # Implementation of process logic
-           pass
-
-       def store_entry(self, record):
-           # Implementation of store_entry logic
-           pass
-"""
-
-import gc
 import os
-import time
 import traceback
 import warnings
 
 import gemmi
-from Bio import PDB, SearchIO
-from Bio.Data.PDBData import protein_letters_3to1_extended
-from Bio.PDB import Select, MMCIFParser, MMCIFIO, FastMMCIFParser
+from Bio import PDB
+from Bio.PDB import Select
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.sql.operators import or_
+from sqlalchemy.sql import or_
 
+from protein_metamorphisms_is.sql.model.entities.protein.protein import Protein
+from protein_metamorphisms_is.sql.model.entities.sequence.sequence import Sequence
 from protein_metamorphisms_is.tasks.queue import QueueTaskInitializer
-from protein_metamorphisms_is.sql.model import PDBReference, Sequence, Structure, Model, PDBChains
+from protein_metamorphisms_is.sql.model.entities.structure.structure import Structure
+from protein_metamorphisms_is.sql.model.entities.structure.chain import Chain
+from protein_metamorphisms_is.sql.model.entities.structure.state import State
 
 warnings.filterwarnings("ignore")
 
@@ -91,7 +48,7 @@ class PDBExtractor(QueueTaskInitializer):
     system’s database.
 
     Attributes:
-        reference_attribute (str): The attribute used to reference PDB entries, typically 'PDB_ID'.
+        reference_attribute (str): The attribute used to reference PDB entries, typically 'id'.
         data_directory (str): The root directory where data files are stored. Defaults to '/data'.
         pdb_directory (str): Directory where raw PDB files are stored.
         models_directory (str): Directory where processed model files are saved.
@@ -108,7 +65,7 @@ class PDBExtractor(QueueTaskInitializer):
             conf (dict): Configuration dictionary containing settings like data directories.
         """
         super().__init__(conf)
-        self.reference_attribute = 'PDB_ID'
+        self.reference_attribute = 'id'  # Actualmente 'id' en la clase Structure
         self.data_directory = self.conf.get("data_directory", "/data")
         self.pdb_directory = os.path.join(self.data_directory, 'pdb')
         self.models_directory = os.path.join(self.data_directory, 'models')
@@ -122,29 +79,40 @@ class PDBExtractor(QueueTaskInitializer):
         if they do not already exist.
         """
         for path in [self.pdb_directory, self.models_directory]:
-            if not os.path.exists(path):
-                os.makedirs(path)
-                self.logger.info(f"Created directory: {path}")
-            else:
-                self.logger.info(f"Directory already exists: {path}")
+            try:
+                if not os.path.exists(path):
+                    os.makedirs(path)
+                    self.logger.info(f"Created directory: {path}")
+                else:
+                    self.logger.info(f"Directory already exists: {path}")
+            except OSError as e:
+                self.logger.error(f"Failed to create directory {path}: {e}")
+                raise
 
     def enqueue(self):
         """
-        Enqueue tasks for processing based on PDB references.
+        Enqueue tasks for processing based on Structure entries.
 
-        This method queries the database for PDB references that meet certain criteria,
+        This method queries the database for Structure entries that meet certain criteria,
         such as resolution threshold or method type, and enqueues them for processing.
         """
         resolution_threshold = self.conf.get("resolution_threshold")
-        pdb_references = self.session.query(PDBReference).filter(
-            or_(
-                PDBReference.resolution <= resolution_threshold,
-                PDBReference.method == "NMR"
-            )
-        ).all()
-        for pdb_reference in pdb_references:
-            self.logger.debug(f"Publishing task for accession code: {pdb_reference.pdb_id}")
-            self.publish_task(pdb_reference.pdb_id)
+        if resolution_threshold is None:
+            self.logger.error("Resolution threshold not defined in configuration.")
+            return
+
+        try:
+            structures = self.session.query(Structure).filter(
+                or_(
+                    Structure.resolution <= resolution_threshold,
+                    Structure.method == "NMR"
+                )
+            ).all()
+            for structure in structures:
+                self.logger.debug(f"Publishing task for PDB ID: {structure.id}")
+                self.publish_task(structure.id)
+        except Exception as e:
+            self.logger.error(f"Error enqueuing tasks: {e}\n{traceback.format_exc()}")
 
     def process(self, pdb_id):
         """
@@ -174,8 +142,11 @@ class PDBExtractor(QueueTaskInitializer):
         ]
 
         try:
-            file_path = pdb_list.retrieve_pdb_file(pdb_id, file_format=self.conf.get("file_format", "mmCif"),
-                                                   pdir=self.pdb_directory)
+            file_path = pdb_list.retrieve_pdb_file(
+                pdb_id,
+                file_format=self.conf.get("file_format", "mmCif"),
+                pdir=self.pdb_directory
+            )
             self.logger.info(f"Downloaded PDB {pdb_id} to {file_path}")
 
             structure = gemmi.read_structure(file_path)
@@ -200,16 +171,20 @@ class PDBExtractor(QueueTaskInitializer):
                         clean_model.add_chain(clean_chain)
                         clean_structure.add_model(clean_model)
 
-                        clean_file_path = os.path.join(self.models_directory,
-                                                       f"{pdb_id}_clean_chain_{chain.name}_model_{model.name}.cif")
+                        clean_file_path = os.path.join(
+                            self.models_directory,
+                            f"{pdb_id}_clean_chain_{chain.name}_model_{model.name}.cif"
+                        )
                         clean_structure.make_mmcif_document().write_file(clean_file_path)
+
+                        # Generar secuencia de una letra
+                        sequence = ''.join(
+                            [gemmi.find_tabulated_residue(residue.name).one_letter_code for residue in clean_chain]
+                        )
 
                         data['chains'].append({
                             "chain_id": chain.name,
-                            "sequence": ''.join(
-                                [gemmi.find_tabulated_residue(residue.name).one_letter_code for residue in
-                                 clean_chain]),
-                            "model_id": model.name,
+                            "sequence": sequence,
                             "file_path": clean_file_path
                         })
 
@@ -217,7 +192,7 @@ class PDBExtractor(QueueTaskInitializer):
 
         except Exception as e:
             self.logger.error(f"Error processing PDB {pdb_id}: {e}\n{traceback.format_exc()}")
-            return e
+            return {"error": str(e), "traceback": traceback.format_exc()}
 
         return data
 
@@ -225,31 +200,43 @@ class PDBExtractor(QueueTaskInitializer):
         """
         Store the processed PDB data into the database.
 
-        This method saves the processed structures, models, and chains into the database,
+        This method saves the processed structures, chains, and states into the database,
         ensuring they are properly linked and retrievable.
 
         Args:
             record (dict): The processed data record to be stored.
         """
+        if 'error' in record:
+            self.logger.error(f"Record processing failed: {record['error']}")
+            return
+
         try:
-            pdb_structure = self.get_or_create_structure(record['pdb_id'])
+            # Obtener o crear la estructura
+            structure = self.get_or_create_structure(record['pdb_id'])
             for chain_data in record['chains']:
-                chain_structure = self.get_or_create_structure(record['pdb_id'], chain_data['chain_id'])
-                model = self.get_or_create_model(chain_data, chain_structure.id)
-                pdb_reference = self.get_pdb_reference(record['pdb_id'])
-                if pdb_reference:
-                    pdb_reference.structure_id = pdb_structure.id
-                    self.session.add(pdb_reference)
-                self.get_or_create_chain(chain_data, pdb_reference.id, chain_structure.id)
+                # Obtener o crear la cadena
+                chain = self.get_or_create_chain(record['pdb_id'], chain_data['chain_id'])
+
+                # Obtener o crear la secuencia
+                sequence = self.get_or_create_sequence(chain_data['sequence'])
+
+                # Obtener o crear el estado (State) en lugar del modelo
+                state = self.get_or_create_state(chain_data['file_path'], chain.id, structure.id)
+
+                # Si deseas asociar la secuencia con el estado o cadena, asegúrate de hacerlo aquí
+                # Por ejemplo, si la cadena tiene una relación con la secuencia:
+                # chain.sequence_id = sequence.id
+                # Y si el State tiene una relación con la secuencia:
+                # state.sequence_id = sequence.id
 
             self.session.commit()
 
         except Exception as e:
             self.session.rollback()
-            print(record)
             self.logger.error(f"Failed to store data in the database: {e}\n{traceback.format_exc()}")
+            self.logger.debug(f"Record data: {record}")
 
-    def get_or_create_structure(self, pdb_id, chain_id=None):
+    def get_or_create_structure(self, pdb_id):
         """
         Retrieve or create a new structure in the database.
 
@@ -258,69 +245,32 @@ class PDBExtractor(QueueTaskInitializer):
 
         Args:
             pdb_id (str): The PDB ID of the structure.
-            chain_id (str, optional): The chain ID if applicable.
 
         Returns:
             Structure: The retrieved or newly created structure object.
         """
-        file_name = f"{pdb_id}_chain_{chain_id}.cif" if chain_id else f"{pdb_id}.cif"
-
-        existing_structure = self.session.query(Structure).filter_by(
-            file_path=file_name).first()
-        if not existing_structure:
-            existing_structure = Structure(file_path=file_name)
-            self.session.add(existing_structure)
-            self.session.flush()
-
-        return existing_structure
-
-    def get_or_create_model(self, model_data, structure_id):
-        """
-        Retrieve or create a new model in the database.
-
-        This method checks if a model already exists in the database; if not,
-        it creates a new entry.
-
-        Args:
-            model_data (dict): Data of the model to be retrieved or created.
-            structure_id (int): ID of the structure this model belongs to.
-
-        Returns:
-            Model: The retrieved or newly created model object.
-        """
-        model_id_str = model_data['model_id']
-        file_name = os.path.basename(model_data['file_path'])
-
-        existing_model = self.session.query(Model).filter_by(
-            model_id=model_id_str, structure_id=structure_id
-        ).first()
-        if not existing_model:
-            existing_model = Model(
-                model_id=model_id_str,
-                structure_id=structure_id,
-                file_path=file_name
-            )
-            self.session.add(existing_model)
-            self.session.flush()
-        return existing_model
-
-    def get_pdb_reference(self, pdb_id):
-        """
-        Retrieve the PDB reference from the database.
-
-        Args:
-            pdb_id (str): The PDB ID to be retrieved.
-
-        Returns:
-            PDBReference: The PDBReference object if found, else None.
-        """
         try:
-            pdb_reference = self.session.query(PDBReference).filter_by(pdb_id=pdb_id).one()
-            return pdb_reference
+            structure = self.session.query(Structure).filter_by(id=pdb_id).one()
+            return structure
         except NoResultFound:
-            return None
+            # Asumiendo que 'protein_id' debe ser asignado de alguna manera
+            # Necesitas obtener o definir 'protein_id' según tu lógica
+            protein_id = self.get_protein_id(pdb_id)  # Implementa este método según corresponda
+            if not protein_id:
+                raise ValueError(f"No Protein found for PDB ID {pdb_id}")
 
-    def get_or_create_chain(self, chain_data, pdb_reference_id, structure_id):
+            new_structure = Structure(
+                id=pdb_id,
+                protein_id=protein_id,
+                method=self.conf.get("default_method", "X-ray"),  # Asigna valores predeterminados o extrae de los datos
+                resolution=self.conf.get("default_resolution", 2.0),  # Asigna valores predeterminados o extrae de los datos
+                file_path=f"{pdb_id}.cif"
+            )
+            self.session.add(new_structure)
+            self.session.flush()
+            return new_structure
+
+    def get_or_create_chain(self, pdb_id, chain_id):
         """
         Retrieve or create a new chain in the database.
 
@@ -328,27 +278,26 @@ class PDBExtractor(QueueTaskInitializer):
         it creates a new entry.
 
         Args:
-            chain_data (dict): Data of the chain to be retrieved or created.
-            pdb_reference_id (int): ID of the PDB reference.
-            structure_id (int): ID of the structure this chain belongs to.
+            pdb_id (str): The PDB ID of the structure.
+            chain_id (str): The chain ID to be retrieved or created.
 
         Returns:
-            PDBChains: The retrieved or newly created chain object.
+            Chain: The retrieved or newly created chain object.
         """
-        sequence_id = self.get_or_create_sequence(chain_data['sequence'])
-        existing_chain = self.session.query(PDBChains).filter_by(
-            chains=chain_data['chain_id'], pdb_reference_id=pdb_reference_id, structure_id=structure_id
-        ).first()
-        if not existing_chain:
-            new_chain = PDBChains(
-                chains=chain_data['chain_id'],
-                sequence_id=sequence_id,
-                pdb_reference_id=pdb_reference_id,
-                structure_id=structure_id
+        try:
+            chain = self.session.query(Chain).filter_by(
+                id=chain_id,
+                structure_id=pdb_id
+            ).one()
+            return chain
+        except NoResultFound:
+            new_chain = Chain(
+                id=chain_id,
+                structure_id=pdb_id
             )
             self.session.add(new_chain)
             self.session.flush()
-        return existing_chain
+            return new_chain
 
     def get_or_create_sequence(self, sequence):
         """
@@ -365,7 +314,60 @@ class PDBExtractor(QueueTaskInitializer):
         """
         existing_sequence = self.session.query(Sequence).filter_by(sequence=sequence).first()
         if not existing_sequence:
-            existing_sequence = Sequence(sequence=sequence)
-            self.session.add(existing_sequence)
+            new_sequence = Sequence(sequence=sequence)
+            self.session.add(new_sequence)
             self.session.flush()
+            return new_sequence.id
         return existing_sequence.id
+
+    def get_or_create_state(self, file_path, chain_id, structure_id):
+        """
+        Retrieve or create a new state in the database.
+
+        This method checks if a state already exists in the database based on the file_path,
+        chain_id, and structure_id; if not, it creates a new entry.
+
+        Args:
+            file_path (str): The file path of the processed chain.
+            chain_id (str): The chain ID associated with the state.
+            structure_id (str): The structure ID associated with the state.
+
+        Returns:
+            State: The retrieved or newly created state object.
+        """
+        try:
+            state = self.session.query(State).filter_by(
+                file_path=file_path,
+                chain_id=chain_id,
+                structure_id=structure_id
+            ).one()
+            return state
+        except NoResultFound:
+            new_state = State(
+                file_path=file_path,
+                chain_id=chain_id,
+                structure_id=structure_id
+            )
+            self.session.add(new_state)
+            self.session.flush()
+            return new_state
+
+    def get_protein_id(self, pdb_id):
+        """
+        Retrieve the protein_id associated with a given PDB ID.
+
+        Implementa este método según la lógica de tu aplicación para obtener
+        el 'protein_id' correspondiente al 'pdb_id'.
+
+        Args:
+            pdb_id (str): The PDB ID.
+
+        Returns:
+            str: The associated protein_id.
+        """
+        # Ejemplo de implementación:
+        # Esto depende de cómo estés gestionando las relaciones entre proteínas y estructuras.
+        protein = self.session.query(Protein).filter_by(pdb_id=pdb_id).first()
+        if protein:
+            return protein.id
+        return None

@@ -1,7 +1,7 @@
 from sqlalchemy import create_engine, QueuePool
 from sqlalchemy.orm import sessionmaker
 
-from protein_metamorphisms_is.sql.model import Base
+from protein_metamorphisms_is.sql.model.core.base import Base
 
 
 class DatabaseManager:
@@ -11,6 +11,9 @@ class DatabaseManager:
         self.Session = sessionmaker(bind=self.engine)
 
     def create_engine(self):
+        """
+        Create the SQLAlchemy engine with a QueuePool for connection management.
+        """
         DATABASE_URI = (f"postgresql+psycopg2://{self.conf['DB_USERNAME']}:"
                         f"{self.conf['DB_PASSWORD']}"
                         f"@{self.conf['DB_HOST']}:"
@@ -29,7 +32,19 @@ class DatabaseManager:
         return engine
 
     def get_session(self):
+        """
+        Return a new session instance.
+        """
         return self.Session()
 
     def get_engine(self):
+        """
+        Return the SQLAlchemy engine instance.
+        """
         return self.engine
+
+    def get_pool(self):
+        """
+        Return the pool object used by the engine.
+        """
+        return self.engine.pool

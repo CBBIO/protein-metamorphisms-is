@@ -1,7 +1,7 @@
 import importlib
 from itertools import combinations
 from protein_metamorphisms_is.tasks.queue import QueueTaskInitializer
-from protein_metamorphisms_is.sql.model import SubclusterEntry, Subcluster, StructureEmbedding, Model, Structure, \
+from protein_metamorphisms_is.sql.model.model import SubclusterEntry, Subcluster, StructureEmbedding, Model, Structure, \
     StructuralAlignmentResults, StructuralAlignmentType
 import logging
 
