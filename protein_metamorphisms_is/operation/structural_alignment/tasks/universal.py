@@ -1,85 +1,38 @@
-import logging
 import os
 import re
 import subprocess
+import traceback
 
-
-def align_task(alignment_entry, conf):
+def align_task(alignment_entry, conf, logger):
     """
     Executes a protein structure alignment task using the US-align algorithm.
-
-    This function aligns a target protein structure against a representative
-    structure using US-align, an advanced algorithm for measuring structural
-    similarity between protein structures. It runs an external US-align binary,
-    captures its output, and extracts key metrics such as RMSD (Root Mean Square
-    Deviation), sequence identity, and alignment scores.
-
-    File paths for the representative and target structures are constructed based
-    on their PDB IDs, chain identifiers, and model numbers. The US-align binary is
-    executed with these structures as input, and its output is parsed using regular
-    expressions to extract alignment metrics.
-
-    If execution is successful, a dictionary containing these metrics is returned.
-    If US-align encounters an error or if an exception occurs, the error is logged
-    and an error object with the error message is returned.
-
-    Args:
-        alignment_entry (object): Contains data for the alignment task, including
-            PDB IDs, chain identifiers, model numbers for both representative and
-            target structures, and the cluster entry ID.
-        conf (dict): Configuration settings, including paths to the directory where
-            PDB chain files are stored and the directory containing the US-align
-            binary.
-
-    Returns:
-        tuple: Contains the queue entry ID of the alignment task and either a result
-            dictionary with keys for 'cluster_entry_id', 'us_rms', 'us_seq_id',
-            'us_score', or an error object with 'cluster_entry_id' and
-            'error_message'.
-
-    Raises:
-        Exception: Any exceptions during the process are captured, logged, and
-            an error object with the error message is returned.
-
-    Example:
-        >>> alignment_entry = {
-                'rep_pdb_id': '1A2B',
-                'rep_chains': 'A',
-                'rep_model': 0,
-                'pdb_id': '2B3C',
-                'chains': 'B',
-                'model': 0,
-                'cluster_id': 123,
-                'queue_entry_id': 456
-            }
-        >>> conf = {
-                'pdb_chains_path': '/path/to/pdb_chains',
-                'binaries_path': '/path/to/binaries'
-            }
-        >>> align_task(alignment_entry, conf)
-        (456, {'cluster_entry_id': 123, 'us_rms': 0.5, 'us_seq_id': 0.8, 'us_score': 0.95})
     """
-    align_task_logger = logging.getLogger("align_task")
     try:
-        align_task_logger.info("Aligning structures using US-align...")
+        logger.info("Aligning structures using US-align...")
+
         pdb_chains_path = os.path.join(conf['data_directory'], 'models')
 
-        # Correct dictionary-style access for 'alignment_entry'
-        representative_name = f"{alignment_entry['subcluster_1_file_path']}"
-        representative_structure_path = os.path.join(pdb_chains_path, representative_name)
+        # Access the subcluster file paths
+        representative_name = alignment_entry.get('subcluster_1_file_path')
+        target_name = alignment_entry.get('subcluster_2_file_path')
 
-        target_name = f"{alignment_entry['subcluster_2_file_path']}"
+        if not representative_name or not target_name:
+            raise ValueError("Missing file paths for representative or target structures.")
+
+        representative_structure_path = os.path.join(pdb_chains_path, representative_name)
         target_structure_path = os.path.join(pdb_chains_path, target_name)
 
+        # Construct the US-align command
         command = [os.path.join(conf['binaries_path'], "USalign"), representative_structure_path, target_structure_path]
+        logger.info(f"Running US-align command: {' '.join(command)}")
 
+        # Execute the US-align command
         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-
-        # Lee la salida y el error (si existe)
         stdout, stderr = process.communicate()
+
+        # Check the result of the process
         if process.returncode == 0:
-            # Procesa la salida si el comando fue exitoso
-            # Expresiones regulares para buscar los valores deseados
+            # Regular expressions to extract the values from the US-align output
             rmsd_pattern = re.compile(r"RMSD=\s*(\d+\.\d+)")
             seq_id_pattern = re.compile(r"Seq_ID=n_identical/n_aligned=\s*(\d+\.\d+)")
             tm_score_chain_1_pattern = re.compile(r"TM-score=\s*(\d+\.\d+)\s*\(normalized by length of Structure_1")
@@ -87,31 +40,42 @@ def align_task(alignment_entry, conf):
 
             rmsd = float(rmsd_pattern.search(stdout).group(1)) if rmsd_pattern.search(stdout) else None
             seq_id = float(seq_id_pattern.search(stdout).group(1)) if seq_id_pattern.search(stdout) else None
-            tm_score_chain_1 = float(
-                tm_score_chain_1_pattern.search(stdout).group(1)) if tm_score_chain_1_pattern.search(stdout) else None
-            tm_score_chain_2 = float(
-                tm_score_chain_2_pattern.search(stdout).group(1)) if tm_score_chain_2_pattern.search(stdout) else None
+            tm_score_chain_1 = float(tm_score_chain_1_pattern.search(stdout).group(1)) if tm_score_chain_1_pattern.search(stdout) else None
+            tm_score_chain_2 = float(tm_score_chain_2_pattern.search(stdout).group(1)) if tm_score_chain_2_pattern.search(stdout) else None
 
+            # Return the results as a dictionary
             result = {
-                'cluster_id': alignment_entry['cluster_id'],
-                'subcluster_entry_1_id': alignment_entry['subcluster_entry_1_id'],
-                'subcluster_entry_2_id': alignment_entry['subcluster_entry_2_id'],
+                'cluster_id': alignment_entry.get('cluster_id'),
+                'subcluster_entry_1_id': alignment_entry.get('subcluster_entry_1_id'),
+                'subcluster_entry_2_id': alignment_entry.get('subcluster_entry_2_id'),
                 'tm_rms': rmsd,
                 'tm_seq_id': seq_id,
                 'tm_score_chain_1': tm_score_chain_1,
                 'tm_score_chain_2': tm_score_chain_2
             }
 
+            logger.info("Alignment completed successfully.")
         else:
+            # Handle process error
+            error_message = f"US-align failed with return code {process.returncode} and stderr: {stderr.strip()}"
+            logger.error(error_message)
             result = {
-                'cluster_entry_id': alignment_entry.cluster_id,
-                'error_message': stderr
+                'cluster_id': alignment_entry.get('cluster_id'),
+                'subcluster_entry_1_id': alignment_entry.get('subcluster_entry_1_id'),
+                'subcluster_entry_2_id': alignment_entry.get('subcluster_entry_2_id'),
+                'error_message': error_message
             }
-            print('command',command)
 
-        align_task_logger.info("Alignment completed successfully.")
         return result
+
     except Exception as e:
-        align_task_logger.error(f"Error during alignment task: {str(e)}")
-        error_object = {'error_message': e}
-        return alignment_entry.queue_entry_id, error_object
+        # Log detailed error message with traceback
+        error_message = f"Error during alignment for cluster {alignment_entry.get('cluster_id')}: {str(e)}"
+        logger.error(error_message)
+        logger.error("Traceback:\n" + traceback.format_exc())
+        return {
+            'cluster_id': alignment_entry.get('cluster_id'),
+            'subcluster_entry_1_id': alignment_entry.get('subcluster_entry_1_id'),
+            'subcluster_entry_2_id': alignment_entry.get('subcluster_entry_2_id'),
+            'error_message': error_message
+        }

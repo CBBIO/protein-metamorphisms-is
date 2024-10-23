@@ -44,13 +44,7 @@ from abc import ABC, abstractmethod
 import yaml
 from protein_metamorphisms_is.helpers.logger.logger import setup_logger
 from protein_metamorphisms_is.sql.base.database_manager import DatabaseManager
-# from protein_metamorphisms_is.sql.constants import (
-#     handle_structural_complexity_levels,
-#     handle_structural_alignment_types,
-#     handle_prediction_methods,
-#     handle_sequence_embedding_types,
-#     handle_structure_embedding_types
-# )
+from protein_metamorphisms_is.sql.constants import handle_sequence_embedding_types, handle_structural_alignment_types
 
 
 class BaseTaskInitializer(ABC):
@@ -128,8 +122,8 @@ class BaseTaskInitializer(ABC):
         self.logger.info(f"Loading constants from {constants_path}")
         constants = yaml.safe_load(open(constants_path))
         # handle_structural_complexity_levels(self.session, constants)
-        # handle_structural_alignment_types(self.session, constants)
-        # handle_sequence_embedding_types(self.session, constants)
+        handle_structural_alignment_types(self.session, constants)
+        handle_sequence_embedding_types(self.session, constants)
         # handle_structure_embedding_types(self.session, constants)
         # handle_prediction_methods(self.session, constants)
 

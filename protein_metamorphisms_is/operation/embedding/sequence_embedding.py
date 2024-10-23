@@ -1,7 +1,9 @@
 import importlib
 import traceback
+
+from protein_metamorphisms_is.sql.model.entities.embedding.sequence_embedding import SequenceEmbeddingType, SequenceEmbedding
+from protein_metamorphisms_is.sql.model.entities.sequence.sequence import Sequence
 from protein_metamorphisms_is.tasks.gpu import GPUTaskInitializer
-from protein_metamorphisms_is.sql.model.model import SequenceEmbedding, Sequence, SequenceEmbeddingType
 
 
 class SequenceEmbeddingManager(GPUTaskInitializer):
@@ -24,7 +26,6 @@ class SequenceEmbeddingManager(GPUTaskInitializer):
         for type_obj in embedding_types:
             if type_obj.id in self.conf['embedding']['types']:
                 module_name = f"{self.base_module_path}.{type_obj.task_name}"
-                print(module_name)
                 module = importlib.import_module(module_name)
                 self.types[type_obj.id] = {
                     'module': module,

@@ -13,6 +13,7 @@ class Sequence(Base):
     sequence_hash = Column(String, unique=True, index=True)
 
     protein = relationship("Protein", back_populates="sequence", uselist=False)
+    chain = relationship("Chain", back_populates="sequence", uselist=False)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

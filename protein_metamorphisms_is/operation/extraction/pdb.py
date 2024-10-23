@@ -5,6 +5,7 @@ import warnings
 import gemmi
 from Bio import PDB
 from Bio.PDB import Select
+from sqlalchemy import func, text
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.sql import or_
 
@@ -185,7 +186,8 @@ class PDBExtractor(QueueTaskInitializer):
                         data['chains'].append({
                             "chain_id": chain.name,
                             "sequence": sequence,
-                            "file_path": clean_file_path
+                            "file_path": clean_file_path,
+                            'model': model.name
                         })
 
                         self.logger.info(f"Saved cleaned chain {chain.name} of model {model.name} to {clean_file_path}")
@@ -200,174 +202,59 @@ class PDBExtractor(QueueTaskInitializer):
         """
         Store the processed PDB data into the database.
 
-        This method saves the processed structures, chains, and states into the database,
-        ensuring they are properly linked and retrievable.
+        This method saves the processed states and chains into the database,
+        ensuring they are properly linked to an existing structure.
 
         Args:
             record (dict): The processed data record to be stored.
         """
-        if 'error' in record:
-            self.logger.error(f"Record processing failed: {record['error']}")
-            return
+        pdb_id = record["pdb_id"]
+        chains_data = record["chains"]
 
         try:
-            # Obtener o crear la estructura
-            structure = self.get_or_create_structure(record['pdb_id'])
-            for chain_data in record['chains']:
-                # Obtener o crear la cadena
-                chain = self.get_or_create_chain(record['pdb_id'], chain_data['chain_id'])
+            # Propagate the existing Structure
+            structure = self.session.query(Structure).filter_by(id=pdb_id).one()
 
-                # Obtener o crear la secuencia
-                sequence = self.get_or_create_sequence(chain_data['sequence'])
+            # Iterate over chains to store Chain, Sequence, and State
+            for chain_data in chains_data:
+                chain_id = chain_data["chain_id"]
+                sequence = chain_data["sequence"]
+                file_path = chain_data["file_path"]
+                # Handle the Sequence
+                sequence_entry = self.session.query(Sequence).filter_by(sequence=sequence).one_or_none()
+                if sequence_entry is None:
+                    # Create new Sequence entry if it doesn't exist
+                    sequence_entry = Sequence(sequence=sequence)
+                    self.session.add(sequence_entry)
 
-                # Obtener o crear el estado (State) en lugar del modelo
-                state = self.get_or_create_state(chain_data['file_path'], chain.id, structure.id)
+                # Handle the Chain
+                chain = self.session.query(Chain).filter_by(name=chain_id, structure_id=structure.id).one_or_none()
+                if chain is None:
+                    # Create new Chain entry if it doesn't exist
+                    file_path = chain_data["file_path"]
 
-                # Si deseas asociar la secuencia con el estado o cadena, asegúrate de hacerlo aquí
-                # Por ejemplo, si la cadena tiene una relación con la secuencia:
-                # chain.sequence_id = sequence.id
-                # Y si el State tiene una relación con la secuencia:
-                # state.sequence_id = sequence.id
+                    chain = Chain(name=chain_id, structure_id=structure.id, sequence_id=sequence_entry.id)
+                    self.session.add(chain)
 
+
+
+
+                # Handle the State
+                state = self.session.query(State).filter_by(chain_id=chain.id, structure_id=structure.id, model_id=chain_data['model']).one_or_none()
+                if state is None:
+                    state = State(
+                        model_id=chain_data['model'],  # Use model from the chain data
+                        file_path=file_path,
+                        chain_id=chain.id,
+                        structure_id=structure.id
+                    )
+                    self.session.add(state)
+
+            # Commit all changes to the database
             self.session.commit()
+            self.logger.info(f"Stored data for PDB ID: {pdb_id}")
 
         except Exception as e:
             self.session.rollback()
-            self.logger.error(f"Failed to store data in the database: {e}\n{traceback.format_exc()}")
-            self.logger.debug(f"Record data: {record}")
-
-    def get_or_create_structure(self, pdb_id):
-        """
-        Retrieve or create a new structure in the database.
-
-        This method checks if a structure already exists in the database; if not,
-        it creates a new entry.
-
-        Args:
-            pdb_id (str): The PDB ID of the structure.
-
-        Returns:
-            Structure: The retrieved or newly created structure object.
-        """
-        try:
-            structure = self.session.query(Structure).filter_by(id=pdb_id).one()
-            return structure
-        except NoResultFound:
-            # Asumiendo que 'protein_id' debe ser asignado de alguna manera
-            # Necesitas obtener o definir 'protein_id' según tu lógica
-            protein_id = self.get_protein_id(pdb_id)  # Implementa este método según corresponda
-            if not protein_id:
-                raise ValueError(f"No Protein found for PDB ID {pdb_id}")
-
-            new_structure = Structure(
-                id=pdb_id,
-                protein_id=protein_id,
-                method=self.conf.get("default_method", "X-ray"),  # Asigna valores predeterminados o extrae de los datos
-                resolution=self.conf.get("default_resolution", 2.0),  # Asigna valores predeterminados o extrae de los datos
-                file_path=f"{pdb_id}.cif"
-            )
-            self.session.add(new_structure)
-            self.session.flush()
-            return new_structure
-
-    def get_or_create_chain(self, pdb_id, chain_id):
-        """
-        Retrieve or create a new chain in the database.
-
-        This method checks if a chain already exists in the database; if not,
-        it creates a new entry.
-
-        Args:
-            pdb_id (str): The PDB ID of the structure.
-            chain_id (str): The chain ID to be retrieved or created.
-
-        Returns:
-            Chain: The retrieved or newly created chain object.
-        """
-        try:
-            chain = self.session.query(Chain).filter_by(
-                id=chain_id,
-                structure_id=pdb_id
-            ).one()
-            return chain
-        except NoResultFound:
-            new_chain = Chain(
-                id=chain_id,
-                structure_id=pdb_id
-            )
-            self.session.add(new_chain)
-            self.session.flush()
-            return new_chain
-
-    def get_or_create_sequence(self, sequence):
-        """
-        Retrieve or create a new sequence in the database.
-
-        This method checks if a sequence already exists in the database; if not,
-        it creates a new entry.
-
-        Args:
-            sequence (str): The sequence to be retrieved or created.
-
-        Returns:
-            int: The ID of the retrieved or newly created sequence.
-        """
-        existing_sequence = self.session.query(Sequence).filter_by(sequence=sequence).first()
-        if not existing_sequence:
-            new_sequence = Sequence(sequence=sequence)
-            self.session.add(new_sequence)
-            self.session.flush()
-            return new_sequence.id
-        return existing_sequence.id
-
-    def get_or_create_state(self, file_path, chain_id, structure_id):
-        """
-        Retrieve or create a new state in the database.
-
-        This method checks if a state already exists in the database based on the file_path,
-        chain_id, and structure_id; if not, it creates a new entry.
-
-        Args:
-            file_path (str): The file path of the processed chain.
-            chain_id (str): The chain ID associated with the state.
-            structure_id (str): The structure ID associated with the state.
-
-        Returns:
-            State: The retrieved or newly created state object.
-        """
-        try:
-            state = self.session.query(State).filter_by(
-                file_path=file_path,
-                chain_id=chain_id,
-                structure_id=structure_id
-            ).one()
-            return state
-        except NoResultFound:
-            new_state = State(
-                file_path=file_path,
-                chain_id=chain_id,
-                structure_id=structure_id
-            )
-            self.session.add(new_state)
-            self.session.flush()
-            return new_state
-
-    def get_protein_id(self, pdb_id):
-        """
-        Retrieve the protein_id associated with a given PDB ID.
-
-        Implementa este método según la lógica de tu aplicación para obtener
-        el 'protein_id' correspondiente al 'pdb_id'.
-
-        Args:
-            pdb_id (str): The PDB ID.
-
-        Returns:
-            str: The associated protein_id.
-        """
-        # Ejemplo de implementación:
-        # Esto depende de cómo estés gestionando las relaciones entre proteínas y estructuras.
-        protein = self.session.query(Protein).filter_by(pdb_id=pdb_id).first()
-        if protein:
-            return protein.id
-        return None
+            self.logger.error(f"Failed to store data for PDB ID: {pdb_id}: {e}")
+            raise

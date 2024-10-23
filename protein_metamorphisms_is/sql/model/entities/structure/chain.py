@@ -1,18 +1,19 @@
-# chain.py
-from sqlalchemy import Column, String, ForeignKey
+from sqlalchemy import Column, String, Integer, ForeignKey
 from sqlalchemy.orm import relationship
 from protein_metamorphisms_is.sql.model.core.base import Base
-from protein_metamorphisms_is.sql.model.entities.structure.state import State
 
 class Chain(Base):
     __tablename__ = 'chain'
 
-    id = Column(String, primary_key=True)  # Nombre de la cadena
-    structure_id = Column(String, ForeignKey('structure.id'), primary_key=True)  # ID de la estructura
+    id = Column(Integer, primary_key=True, autoincrement=True)  # Autoincremental
+    name = Column(String, nullable=False)  # Nombre de la cadena
+    structure_id = Column(String, ForeignKey('structure.id'), nullable=False)
+    sequence_id = Column(Integer, ForeignKey('sequence.id'))
 
     # Relaciones
     structure = relationship("Structure", back_populates="chains")
     states = relationship("State", back_populates="chain", cascade="all, delete-orphan")
+    sequence = relationship("Sequence", back_populates="chain")
 
     def __repr__(self):
-        return f"<Chain(id={self.id}, structure_id={self.structure_id})>"
+        return f"<Chain(id={self.id}, name={self.name}, structure_id={self.structure_id})>"

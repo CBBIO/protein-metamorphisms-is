@@ -69,9 +69,9 @@ Here is an example of how to subclass `SequenceClustering`:
            # Custom start logic
            pass
 """
-
+from protein_metamorphisms_is.sql.model.entities.sequence.sequence import Sequence
+from protein_metamorphisms_is.sql.model.operational.clustering.cluster import Cluster, ClusterEntry
 from protein_metamorphisms_is.tasks.base import BaseTaskInitializer
-from protein_metamorphisms_is.sql.model.model import Cluster, ClusterEntry, Sequence
 from pycdhit import cd_hit, read_clstr
 
 class SequenceClustering(BaseTaskInitializer):

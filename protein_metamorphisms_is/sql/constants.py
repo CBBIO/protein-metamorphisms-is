@@ -13,27 +13,34 @@
 #     session.commit()
 #
 #
-# def handle_structural_alignment_types(session, constants):
-#     structural_alignment_types = constants['structural_alignment_types']
+from protein_metamorphisms_is.sql.model.operational.structural_alignment.structural_alignment_type import \
+    StructuralAlignmentType
+
+
+def handle_structural_alignment_types(session, constants):
+    structural_alignment_types = constants['structural_alignment_types']
+
+    for level_data in structural_alignment_types:
+        exists = session.query(StructuralAlignmentType).filter_by(name=level_data['name']).first()
+        if not exists:
+            alignment_type = StructuralAlignmentType(**level_data)
+            session.add(alignment_type)
+    session.commit()
 #
-#     for level_data in structural_alignment_types:
-#         exists = session.query(StructuralAlignmentType).filter_by(name=level_data['name']).first()
-#         if not exists:
-#             alignment_type = StructuralAlignmentType(**level_data)
-#             session.add(alignment_type)
-#     session.commit()
 #
-#
-# def handle_sequence_embedding_types(session, constants):
-#     sequence_embedding_types = constants['sequence_embedding_types']
-#
-#     for type_data in sequence_embedding_types:
-#         exists = session.query(SequenceEmbeddingType).filter_by(name=type_data['name']).first()
-#         if not exists:
-#             embedding_type = SequenceEmbeddingType(**type_data)
-#             session.add(embedding_type)
-#     session.commit()
-#
+from protein_metamorphisms_is.sql.model.entities.embedding.sequence_embedding import SequenceEmbeddingType
+
+
+def handle_sequence_embedding_types(session, constants):
+    sequence_embedding_types = constants['sequence_embedding_types']
+
+    for type_data in sequence_embedding_types:
+        exists = session.query(SequenceEmbeddingType).filter_by(name=type_data['name']).first()
+        if not exists:
+            embedding_type = SequenceEmbeddingType(**type_data)
+            session.add(embedding_type)
+    session.commit()
+
 #
 # def handle_structure_embedding_types(session, constants):
 #     structure_embedding_types = constants['structure_embedding_types']

@@ -14,7 +14,6 @@ from protein_metamorphisms_is.tasks.queue import QueueTaskInitializer
 from protein_metamorphisms_is.helpers.parser.parser import extract_float
 
 
-
 class UniProtExtractor(QueueTaskInitializer):
     """
     Handles the extraction and processing of data from UniProt. This includes retrieving protein sequences,
@@ -115,14 +114,25 @@ class UniProtExtractor(QueueTaskInitializer):
             raise e
 
     def update_protein_details(self, protein, data):
+        """
+        Updates the protein details in the database and ensures the protein is linked to the correct sequence.
+
+        Args:
+            protein (Protein): The protein object to update.
+            data (SwissProt.Record): The data containing the new protein information.
+        """
         try:
-            new_sequence = self.get_or_create_sequence(data.sequence)
+            # Get or create the associated sequence
+            sequence = self.get_or_create_sequence(data.sequence)
 
-            # Asigna la nueva secuencia si es diferente
-            if protein.sequence_id != new_sequence.id:
-                protein.sequence = new_sequence
+            # Flush the session to ensure the sequence.id is available
+            self.session.flush()
 
-            # Actualiza todos los demás campos
+            # Update the protein's sequence link if different
+            if protein.sequence_id != sequence.id:
+                protein.sequence_id = sequence.id
+
+            # Update other protein fields
             protein.data_class = data.data_class
             protein.molecule_type = data.molecule_type
             protein.sequence_length = data.sequence_length
@@ -143,7 +153,7 @@ class UniProtExtractor(QueueTaskInitializer):
             protein.protein_existence = data.protein_existence
             protein.seqinfo = data.seqinfo
 
-            # Asegúrate de agregar el objeto a la sesión para que se actualice
+            # Ensure the protein object is added to the session for update
             self.session.add(protein)
         except Exception as e:
             self.logger.error(f"Failed to update protein details: {e}")
@@ -170,7 +180,6 @@ class UniProtExtractor(QueueTaskInitializer):
             self.logger.error(f"Failed to retrieve or create sequence: {e}\n{traceback.format_exc()}")
             raise e
 
-
     def handle_cross_references(self, protein, cross_references):
         """
         Manages the cross-references associated with the protein, such as database links to PDB and GO terms.
@@ -181,8 +190,10 @@ class UniProtExtractor(QueueTaskInitializer):
         try:
             for reference in cross_references:
                 if reference[0] == "PDB":
+
                     self.handle_pdb_reference(protein, reference)
                 elif reference[0] == "GO":
+
                     self.handle_go_reference(protein, reference)
         except Exception as e:
             self.logger.error(
@@ -204,6 +215,7 @@ class UniProtExtractor(QueueTaskInitializer):
         except Exception as e:
             self.logger.error(f"Error handling PDB reference {reference}: {e}\n{traceback.format_exc()}")
             raise e
+
     def get_or_create_structure(self, reference, protein_id):
         """
         Retrieves or creates a Structure entry in the database based on the provided PDB ID.
@@ -317,4 +329,3 @@ class UniProtExtractor(QueueTaskInitializer):
             self.logger.error(
                 f"Failed to retrieve or create association for {entry_name} and GO term {go_id}: {e}")
             raise e
-

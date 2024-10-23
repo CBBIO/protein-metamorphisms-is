@@ -38,8 +38,6 @@ def embedding_task(sequences, model, tokenizer):
 
                 embedding_records.append(record)
             except Exception as e:
-                print(sequences)
-                print(f"Failed to process sequence {sequence}: {e}")
                 traceback.print_exc()  # This will print the traceback
                 continue
 

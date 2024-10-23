@@ -191,26 +191,7 @@ class StructuralAlignmentType(Base):
     task_name = Column(String)
 
 
-class SequenceEmbeddingType(Base):
-    """
-    Represents a type of protein sequence analysis embedding.
 
-    This class is designed to manage different embedding techniques used in protein sequence analysis, offering a structured way to categorize and store information about various embedding methods such as ESM and Prot-T5.
-
-    Attributes:
-        id (Integer): Unique identifier for each embedding type.
-        name (String): Unique name of the embedding type.
-        description (String): Detailed description of the embedding technique.
-        task_name (String): Name of the specific task associated with this embedding type, if applicable.
-    """
-    __tablename__ = 'sequence_embedding_types'
-    id = Column(Integer, primary_key=True)
-    name = Column(String, nullable=False, unique=True)
-    description = Column(String)
-    task_name = Column(String)
-    model_name = Column(String)
-
-    seq_embeddings = relationship("SequenceEmbedding", back_populates="embedding_type")
 
 
 class StructureEmbeddingType(Base):

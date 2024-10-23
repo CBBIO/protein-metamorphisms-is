@@ -2,10 +2,12 @@ import os
 
 import mini3di
 from Bio.PDB import MMCIFParser, Chain
-from protein_metamorphisms_is.tasks.queue import QueueTaskInitializer
-from protein_metamorphisms_is.sql.model.model import StructureEmbedding, Model
 
-class StructureEmbeddingManager(QueueTaskInitializer):
+from protein_metamorphisms_is.sql.model.entities.embedding.structure_3di import Structure3Di
+from protein_metamorphisms_is.sql.model.entities.structure.state import State
+from protein_metamorphisms_is.tasks.queue import QueueTaskInitializer
+
+class Structure3DiManager(QueueTaskInitializer):
     def __init__(self, conf):
         super().__init__(conf)
         self.encoder = mini3di.Encoder()
@@ -13,9 +15,9 @@ class StructureEmbeddingManager(QueueTaskInitializer):
         self.reference_attribute= "model"
 
     def enqueue(self):
-        models = self.session.query(Model).all()
-        for model in models:
-            self.publish_task(model.__dict__)
+        states = self.session.query(State).all()
+        for state in states:
+            self.publish_task(state.__dict__)
 
     def process(self, model_info):
         file_path = os.path.join(self.conf['data_directory'], 'models', model_info['file_path'])
@@ -76,8 +78,8 @@ class StructureEmbeddingManager(QueueTaskInitializer):
             self.logger.error(f"Failed during logging chain details: {log_error}", exc_info=True)
 
     def store_entry(self, record):
-        new_embedding = StructureEmbedding(
-            model_id=record['model_id'],
+        new_embedding = Structure3Di(
+            state_id=record['model_id'],
             embedding=record['embedding'],
         )
         try:
