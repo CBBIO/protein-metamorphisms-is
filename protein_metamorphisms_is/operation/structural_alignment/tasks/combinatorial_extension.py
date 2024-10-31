@@ -1,6 +1,8 @@
 import os
 import traceback
 from Bio.PDB import MMCIFParser, CEAligner
+from Bio.PDB.PDBExceptions import PDBException
+
 
 def align_task(alignment_entry, conf, logger):
     """
@@ -32,8 +34,22 @@ def align_task(alignment_entry, conf, logger):
 
         # Perform the alignment using CEAligner
         aligner = CEAligner()
-        aligner.set_reference(representative_structure)
-        aligner.align(target_structure)
+
+        try:
+            aligner.set_reference(representative_structure)
+            aligner.align(target_structure)
+
+        except PDBException as e:
+            # Check if the error is due to too few atoms in the reference structure
+            if "Too few atoms in the reference structure" in str(e):
+                logger.warning(f"{str(e)}. Reducing the window_size parameter.")
+                # Here you would typically reduce the window_size; for example:
+                aligner.window_size = 5  # Ajusta este valor según sea necesario
+                # Retry alignment after adjusting the window size
+                aligner.set_reference(representative_structure)
+                aligner.align(target_structure)
+            else:
+                raise  # Re-raise if the exception is not related to too few atoms
 
         # Extract the RMS value from the alignment
         rms = aligner.rms
@@ -48,9 +64,10 @@ def align_task(alignment_entry, conf, logger):
 
         logger.info("Alignment completed successfully.")
         return result
+
     except Exception as e:
         # Log the error with traceback
-        error_message = f"Error during alignment for cluster {alignment_entry.get('cluster_id')}: {str(e)}"
+        error_message = f"Error during CE-alignment for cluster {alignment_entry.get('cluster_id')}: {str(e)}"
         logger.error(error_message)
         logger.error("Traceback:\n" + traceback.format_exc())
         return {

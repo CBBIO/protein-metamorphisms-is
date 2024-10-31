@@ -61,3 +61,4 @@ class SubclusterEntry(Base):
     # Relaciones
     subcluster = relationship("Subcluster", back_populates="subcluster_entries")
     structure_3di = relationship("Structure3Di")
+    alignment_group_entry = relationship("AlignmentGroupEntry", uselist=False, back_populates="subcluster_entry")  # Relación uno a uno

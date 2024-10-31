@@ -70,7 +70,7 @@ def align_task(alignment_entry, conf, logger):
 
     except Exception as e:
         # Log detailed error message with traceback
-        error_message = f"Error during alignment for cluster {alignment_entry.get('cluster_id')}: {str(e)}"
+        error_message = f"Error during US-alignment for cluster {alignment_entry.get('cluster_id')}: {str(e)}"
         logger.error(error_message)
         logger.error("Traceback:\n" + traceback.format_exc())
         return {

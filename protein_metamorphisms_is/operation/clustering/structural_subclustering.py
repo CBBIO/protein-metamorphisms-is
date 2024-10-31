@@ -148,7 +148,5 @@ class StructuralSubClustering(BaseTaskInitializer):
             )
             self.session.add(subcluster_entry)
 
-        # Hacer commit de todos los subcluster entries al final
-        return
         self.session.commit()
         self.logger.info(f"Subcluster data stored for cluster {cluster_id}")
