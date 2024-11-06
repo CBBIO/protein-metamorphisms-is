@@ -23,7 +23,7 @@ tag: 'GOA'
 max_attempts: 5
 
 search_criteria: '(structure_3d:true)'
-limit: 100
+limit: 20
 # Uniprot Extraction
 
 

@@ -1,5 +1,6 @@
 import re
 
+import requests
 from Bio import SeqIO
 from Bio.PDB import MMCIFParser, PDBIO
 
@@ -150,3 +151,57 @@ def cif_to_pdb(cif_path, pdb_path):
             if len(chain.id) > 1:
                 chain.id = "X"
     io.save(pdb_path)
+
+
+
+
+def obtener_cadenas_y_accesiones(pdb_id):
+    # URL del endpoint de GraphQL en RCSB PDB
+    url = "https://data.rcsb.org/graphql"
+
+    # Consulta GraphQL para obtener información de cadenas y accesiones
+    query = f"""
+    {{
+      entry(entry_id: "{pdb_id}") {{
+        rcsb_id
+        polymer_entities {{
+          rcsb_polymer_entity_container_identifiers {{
+            auth_asym_ids
+          }}
+          rcsb_polymer_entity_container_identifiers {{
+            reference_sequence_identifiers {{
+              database_accession
+              database_name
+            }}
+          }}
+        }}
+      }}
+    }}
+    """
+
+    # Realiza la solicitud POST al endpoint de GraphQL
+    response = requests.post(url, json={'query': query})
+
+    # Verifica que la solicitud fue exitosa
+    if response.status_code == 200:
+        data = response.json()
+        entry = data.get("data", {}).get("entry", {})
+
+        # Mapa de cadenas y accesiones
+        cadenas_accesiones = {}
+
+        # Extrae las cadenas y accesiones
+        for entity in entry.get("polymer_entities", []):
+            chains = entity.get("rcsb_polymer_entity_container_identifiers", {}).get("auth_asym_ids", [])
+            references = entity.get("rcsb_polymer_entity_container_identifiers", {}).get(
+                "reference_sequence_identifiers", [])
+
+            for chain in chains:
+                for ref in references:
+                    if ref.get("database_name") == "UniProt":
+                        cadenas_accesiones[chain] = ref.get("database_accession")
+
+        return cadenas_accesiones
+    else:
+        print("Error en la solicitud:", response.status_code)
+        return None

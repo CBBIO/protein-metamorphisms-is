@@ -31,6 +31,8 @@ gemmi = "^0.6.7"
 graphviz = "^0.20.3"
 pygraphviz = "^1.14"
 sentencepiece = "^0.2.0"
+rcsb-api = "^0.5.0"
+rcsbsearchapi = "^2.0.0"
 
 
 

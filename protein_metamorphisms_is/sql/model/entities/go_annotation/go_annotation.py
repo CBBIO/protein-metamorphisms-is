@@ -13,4 +13,4 @@ class ProteinGOTermAnnotation(Base):
     go_term = relationship("GOTerm", back_populates="annotations")
 
     def __repr__(self):
-        return f"<ProteinGOTermAnnotation(protein_id={self.protein_id}, go_id={self.go_id}, evidence_code={self.evidence_code})>"
+        return f"<SequenceGOTermAnnotation(protein_id={self.protein_id}, go_id={self.go_id}, evidence_code={self.evidence_code})>"

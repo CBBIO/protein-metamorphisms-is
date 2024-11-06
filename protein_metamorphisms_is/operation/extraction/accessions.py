@@ -1,4 +1,6 @@
+import gzip
 import traceback
+from io import BytesIO
 from urllib.parse import quote
 import pandas as pd
 import requests
@@ -84,39 +86,74 @@ class AccessionManager(BaseTaskInitializer):
             csv_tag = self.conf['tag']
 
             data = pd.read_csv(csv_path)
-            accessions = data[accession_column].dropna().unique()[:1000
+            accessions = data[accession_column].dropna().unique()[:100
                          ]
             self.logger.info(f"Loaded {len(accessions)} unique accession codes from CSV.")
             self._process_new_accessions(accessions, csv_tag)
         except Exception as e:
             self.logger.error(f"Failed to load or process CSV: {traceback.format_exc()}")
 
+    import requests
+    import gzip
+    from io import BytesIO
+    from urllib.parse import quote
+
+    import requests
+    import gzip
+    from io import BytesIO
+    from urllib.parse import quote
+
     def fetch_accessions_from_api(self):
         """
-        Fetches accession codes from the UniProt API based on the specified search criteria.
-
-        This method sends a request to the UniProt API using the configured search criteria
-        and processes the resulting accession codes by invoking the `_process_new_accessions` method.
-
-        Raises:
-            requests.RequestException: If there is an issue with the API request.
+        Fetches accession codes from the UniProt API based on the specified search criteria,
+        with compression and pagination enabled.
         """
         try:
             search_criteria = self.conf['search_criteria']
-            limit = self.conf['limit']
+            limit = self.conf.get('limit', 100)  # Default limit if not specified
             tag = self.conf.get('tag')
 
             encoded_search_criteria = quote(search_criteria)
-            url = f"https://rest.uniprot.org/uniprotkb/stream?query={encoded_search_criteria}&format=list&size={limit}"
-            self.logger.info(f"Fetching data from URL: {url}")
+            base_url = f"https://rest.uniprot.org/uniprotkb/search?compressed=true&format=list&query={encoded_search_criteria}&size={limit}"
 
-            response = requests.get(url)
-            response.raise_for_status()
-            accessions = response.text.strip().split("\n")[:3000]
-            self.logger.info(f"Retrieved {len(accessions)} accessions from UniProt API.")
-            self._process_new_accessions(accessions, tag)
+            all_accessions = []
+            next_cursor = None
+            i = 0
+            while i <2:
+                i+=1
+                # Construct the URL with the cursor if available
+                url = base_url if not next_cursor else f"{base_url}&cursor={next_cursor}"
+                self.logger.info(f"Fetching data from URL: {url}")
+
+                response = requests.get(url)
+                response.raise_for_status()
+
+                # Descomprime el contenido usando gzip
+                with gzip.GzipFile(fileobj=BytesIO(response.content)) as f:
+                    decompressed_content = f.read().decode('utf-8')
+
+                # Obtén los accessions y añádelos a la lista total
+                accessions = decompressed_content.strip().split("\n")
+                all_accessions.extend(accessions)
+                self.logger.info(f"Retrieved {len(accessions)} accessions from current page.")
+
+                # Revisa si hay más páginas para obtener el siguiente cursor
+                link_header = response.headers.get("link")
+                if link_header and 'rel="next"' in link_header:
+                    # Extrae el siguiente cursor del link header
+                    next_cursor = link_header.split("cursor=")[-1].split(">")[0]
+                else:
+                    break  # No hay más páginas, termina el bucle
+
+            self.logger.info(f"Total accessions retrieved: {len(all_accessions)}")
+            self._process_new_accessions(all_accessions, tag)
+
         except requests.RequestException as e:
             self.logger.error(f"Failed to fetch data from UniProt: {e}")
+        except gzip.BadGzipFile as e:
+            self.logger.error("Received an invalid gzip file. Unable to decompress the data.")
+        except Exception as e:
+            self.logger.error(f"An error occurred while processing the response: {e}")
 
     def _process_new_accessions(self, accessions, tag):
         """

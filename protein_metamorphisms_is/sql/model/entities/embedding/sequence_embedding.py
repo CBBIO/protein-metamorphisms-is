@@ -32,8 +32,9 @@ class SequenceEmbedding(Base):
     sequence_id = Column(Integer, ForeignKey('sequence.id'), nullable=False)
     embedding_type_id = Column(Integer, ForeignKey('sequence_embedding_type.id'))
     embedding = mapped_column(Vector())
-    shape = Column(ARRAY(Integer))  # Almacena las dimensiones del embedding como un array de enteros
+    shape = Column(ARRAY(Integer))
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, onupdate=func.now())
     sequence = relationship("Sequence")
     embedding_type = relationship("SequenceEmbeddingType")
+    annotation = relationship("SequenceGoTermAnnotation", uselist=False, back_populates="embedding")  # Relación 1:1

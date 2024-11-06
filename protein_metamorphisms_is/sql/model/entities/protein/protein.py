@@ -1,7 +1,6 @@
 from sqlalchemy import Column, DateTime, Boolean, Integer, String, func, Date, ForeignKey
 from sqlalchemy.orm import relationship
 from protein_metamorphisms_is.sql.model.core.base import Base
-from protein_metamorphisms_is.sql.model.entities.structure.structure import Structure
 
 class Protein(Base):
     __tablename__ = "protein"
@@ -25,10 +24,12 @@ class Protein(Base):
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, onupdate=func.now())
 
-    # Relationships
+    # Relaciones
     structure = relationship("Structure", back_populates="protein")
     sequence = relationship("Sequence", back_populates="protein", uselist=False)
     annotations = relationship("ProteinGOTermAnnotation", back_populates="protein")
+    accessions = relationship("Accession", back_populates="protein")  # Relación con Accession
+
 
     def __repr__(self):
         return f"<Protein(id={self.id}, gene_name={self.gene_name}, organism={self.organism})>"

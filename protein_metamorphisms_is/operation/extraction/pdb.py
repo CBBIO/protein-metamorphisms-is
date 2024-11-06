@@ -5,10 +5,13 @@ import warnings
 import gemmi
 from Bio import PDB
 from Bio.PDB import Select
+from gemmi import cif
 from sqlalchemy import func, text
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.sql import or_
 
+from protein_metamorphisms_is.helpers.parser.parser import obtener_cadenas_y_accesiones
+from protein_metamorphisms_is.sql.model.entities.protein.accesion import Accession
 from protein_metamorphisms_is.sql.model.entities.protein.protein import Protein
 from protein_metamorphisms_is.sql.model.entities.sequence.sequence import Sequence
 from protein_metamorphisms_is.tasks.queue import QueueTaskInitializer
@@ -117,36 +120,27 @@ class PDBExtractor(QueueTaskInitializer):
 
     def process(self, pdb_id):
         """
-        Process a PDB file, extracting and saving its models and chains.
-
-        This method downloads the PDB file, processes each model and chain,
-        and saves the results in a structured format.
+        Process a PDB file, extracting models, chains, and associated UniProt accessions.
 
         Args:
-            pdb_id (str): The PDB ID to be processed.
+            pdb_id (str): PDB ID to be processed.
 
         Returns:
-            dict: A dictionary containing the processed data.
+            dict: Processed data, including chains and accessions.
         """
         pdb_list = PDB.PDBList(server=self.conf.get("server", "ftp.wwpdb.org"), pdb=self.pdb_directory)
-        data = {
-            "pdb_id": pdb_id,
-            "chains": []
+        data = {"pdb_id": pdb_id, "chains": []}
+        amino_acids = {
+            'ALA', 'ARG', 'ASN', 'ASP', 'CYS', 'GLU', 'GLY', 'HIS', 'ILE', 'LEU',
+            'LYS', 'MET', 'PHE', 'PRO', 'SER', 'THR', 'TRP', 'TYR', 'VAL'
         }
 
-        # Lista de aminoácidos a conservar
-        amino_acids = [
-            'ALA', 'ARG', 'ASN', 'ASP', 'CYS',
-            'GLU', 'GLY', 'HIS', 'ILE', 'LEU',
-            'LYS', 'MET', 'PHE', 'PRO', 'SER',
-            'THR', 'TRP', 'TYR', 'VAL'
-        ]
+        # Obtener el mapa de cadenas y accesiones
+        cadenas_accesiones = obtener_cadenas_y_accesiones(pdb_id)
 
         try:
             file_path = pdb_list.retrieve_pdb_file(
-                pdb_id,
-                file_format=self.conf.get("file_format", "mmCif"),
-                pdir=self.pdb_directory
+                pdb_id, file_format=self.conf.get("file_format", "mmCif"), pdir=self.pdb_directory
             )
             self.logger.info(f"Downloaded PDB {pdb_id} to {file_path}")
 
@@ -157,40 +151,37 @@ class PDBExtractor(QueueTaskInitializer):
 
             for model in structure:
                 for chain in model:
-                    # Crear una nueva estructura limpia
-                    clean_structure = gemmi.Structure()
-                    clean_model = gemmi.Model(model.name)
-                    clean_chain = gemmi.Chain(chain.name)
+                    if chain.name not in cadenas_accesiones:
+                        continue
 
-                    # Iterar sobre los residuos y filtrar los que sean aminoácidos
+                    clean_chain = gemmi.Chain(chain.name)
                     for residue in chain:
                         if residue.name in amino_acids:
                             clean_chain.add_residue(residue)
 
-                    # Si la cadena tiene residuos después de filtrar, guárdala
-                    if len(clean_chain) > 0:
-                        clean_model.add_chain(clean_chain)
-                        clean_structure.add_model(clean_model)
+                    if not clean_chain:
+                        continue
 
-                        clean_file_path = os.path.join(
-                            self.models_directory,
-                            f"{pdb_id}_clean_chain_{chain.name}_model_{model.name}.cif"
-                        )
-                        clean_structure.make_mmcif_document().write_file(clean_file_path)
+                    sequence = ''.join(gemmi.find_tabulated_residue(res.name).one_letter_code for res in clean_chain)
+                    accession_code = cadenas_accesiones.get(chain.name)
+                    clean_file_path = os.path.join(self.models_directory, f"{pdb_id}_{chain.name}_{model.name}.cif")
 
-                        # Generar secuencia de una letra
-                        sequence = ''.join(
-                            [gemmi.find_tabulated_residue(residue.name).one_letter_code for residue in clean_chain]
-                        )
+                    # Guardar la estructura limpia
+                    clean_structure = gemmi.Structure()
+                    clean_model = gemmi.Model(model.name)
+                    clean_model.add_chain(clean_chain)
+                    clean_structure.add_model(clean_model)
+                    clean_structure.make_mmcif_document().write_file(clean_file_path)
 
-                        data['chains'].append({
-                            "chain_id": chain.name,
-                            "sequence": sequence,
-                            "file_path": clean_file_path,
-                            'model': model.name
-                        })
+                    data['chains'].append({
+                        "chain_id": chain.name,
+                        "sequence": sequence,
+                        "file_path": clean_file_path,
+                        "model": model.name,
+                        "accession": accession_code
+                    })
 
-                        self.logger.info(f"Saved cleaned chain {chain.name} of model {model.name} to {clean_file_path}")
+                    self.logger.info(f"Saved cleaned chain {chain.name} of model {model.name} to {clean_file_path}")
 
         except Exception as e:
             self.logger.error(f"Error processing PDB {pdb_id}: {e}\n{traceback.format_exc()}")
@@ -202,55 +193,48 @@ class PDBExtractor(QueueTaskInitializer):
         """
         Store the processed PDB data into the database.
 
-        This method saves the processed states and chains into the database,
-        ensuring they are properly linked to an existing structure.
-
         Args:
-            record (dict): The processed data record to be stored.
+            record (dict): Processed data record to be stored.
         """
         pdb_id = record["pdb_id"]
         chains_data = record["chains"]
 
         try:
-            # Propagate the existing Structure
             structure = self.session.query(Structure).filter_by(id=pdb_id).one()
 
-            # Iterate over chains to store Chain, Sequence, and State
             for chain_data in chains_data:
-                chain_id = chain_data["chain_id"]
-                sequence = chain_data["sequence"]
-                file_path = chain_data["file_path"]
-                # Handle the Sequence
-                sequence_entry = self.session.query(Sequence).filter_by(sequence=sequence).one_or_none()
-                if sequence_entry is None:
-                    # Create new Sequence entry if it doesn't exist
-                    sequence_entry = Sequence(sequence=sequence)
-                    self.session.add(sequence_entry)
+                sequence_entry = (
+                        self.session.query(Sequence)
+                        .filter_by(sequence=chain_data["sequence"])
+                        .one_or_none() or Sequence(sequence=chain_data["sequence"])
+                )
+                self.session.add(sequence_entry) if not sequence_entry.id else None
 
-                # Handle the Chain
-                chain = self.session.query(Chain).filter_by(name=chain_id, structure_id=structure.id).one_or_none()
-                if chain is None:
-                    # Create new Chain entry if it doesn't exist
-                    file_path = chain_data["file_path"]
+                accession_entry = (
+                        self.session.query(Accession)
+                        .filter_by(accession_code=chain_data["accession"])
+                        .one_or_none() or Accession(accession_code=chain_data["accession"])
+                )
+                self.session.add(accession_entry) if not accession_entry.id else None
 
-                    chain = Chain(name=chain_id, structure_id=structure.id, sequence_id=sequence_entry.id)
-                    self.session.add(chain)
+                chain = (
+                        self.session.query(Chain)
+                        .filter_by(name=chain_data["chain_id"], structure_id=structure.id)
+                        .one_or_none() or Chain(name=chain_data["chain_id"], structure_id=structure.id,
+                                                sequence_id=sequence_entry.id, accession_id=accession_entry.id)
+                )
+                self.session.add(chain) if not chain.id else None
 
+                state = (
+                        self.session.query(State)
+                        .filter_by(chain_id=chain.id, structure_id=structure.id, model_id=chain_data['model'])
+                        .one_or_none() or State(
+                    model_id=chain_data['model'], file_path=chain_data["file_path"], chain_id=chain.id,
+                    structure_id=structure.id
+                )
+                )
+                self.session.add(state) if not state.id else None
 
-
-
-                # Handle the State
-                state = self.session.query(State).filter_by(chain_id=chain.id, structure_id=structure.id, model_id=chain_data['model']).one_or_none()
-                if state is None:
-                    state = State(
-                        model_id=chain_data['model'],  # Use model from the chain data
-                        file_path=file_path,
-                        chain_id=chain.id,
-                        structure_id=structure.id
-                    )
-                    self.session.add(state)
-
-            # Commit all changes to the database
             self.session.commit()
             self.logger.info(f"Stored data for PDB ID: {pdb_id}")
 
