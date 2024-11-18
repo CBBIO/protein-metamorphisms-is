@@ -10,7 +10,7 @@ from sqlalchemy import func, text
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.sql import or_
 
-from protein_metamorphisms_is.helpers.parser.parser import obtener_cadenas_y_accesiones
+from protein_metamorphisms_is.helpers.parser.parser import obtener_cadenas_y_accesiones, get_chain_to_accession_map
 from protein_metamorphisms_is.sql.model.entities.protein.accesion import Accession
 from protein_metamorphisms_is.sql.model.entities.protein.protein import Protein
 from protein_metamorphisms_is.sql.model.entities.sequence.sequence import Sequence
@@ -135,14 +135,15 @@ class PDBExtractor(QueueTaskInitializer):
             'LYS', 'MET', 'PHE', 'PRO', 'SER', 'THR', 'TRP', 'TYR', 'VAL'
         }
 
-        # Obtener el mapa de cadenas y accesiones
-        cadenas_accesiones = obtener_cadenas_y_accesiones(pdb_id)
-
         try:
             file_path = pdb_list.retrieve_pdb_file(
                 pdb_id, file_format=self.conf.get("file_format", "mmCif"), pdir=self.pdb_directory
             )
+
             self.logger.info(f"Downloaded PDB {pdb_id} to {file_path}")
+
+            # Get chain-to-accession mappings
+            chain_to_accession_map = get_chain_to_accession_map(file_path)
 
             structure = gemmi.read_structure(file_path)
             structure.remove_ligands_and_waters()
@@ -151,9 +152,6 @@ class PDBExtractor(QueueTaskInitializer):
 
             for model in structure:
                 for chain in model:
-                    if chain.name not in cadenas_accesiones:
-                        continue
-
                     clean_chain = gemmi.Chain(chain.name)
                     for residue in chain:
                         if residue.name in amino_acids:
@@ -163,7 +161,6 @@ class PDBExtractor(QueueTaskInitializer):
                         continue
 
                     sequence = ''.join(gemmi.find_tabulated_residue(res.name).one_letter_code for res in clean_chain)
-                    accession_code = cadenas_accesiones.get(chain.name)
                     clean_file_path = os.path.join(self.models_directory, f"{pdb_id}_{chain.name}_{model.name}.cif")
 
                     # Guardar la estructura limpia
@@ -178,7 +175,7 @@ class PDBExtractor(QueueTaskInitializer):
                         "sequence": sequence,
                         "file_path": clean_file_path,
                         "model": model.name,
-                        "accession": accession_code
+                        "accession": chain_to_accession_map.get(chain.name)
                     })
 
                     self.logger.info(f"Saved cleaned chain {chain.name} of model {model.name} to {clean_file_path}")
@@ -212,16 +209,20 @@ class PDBExtractor(QueueTaskInitializer):
 
                 accession_entry = (
                         self.session.query(Accession)
-                        .filter_by(accession_code=chain_data["accession"])
-                        .one_or_none() or Accession(accession_code=chain_data["accession"])
+                        .filter_by(code=chain_data["accession"])
+                        .one_or_none() or Accession(code=chain_data["accession"])
                 )
-                self.session.add(accession_entry) if not accession_entry.id else None
+                self.session.add(accession_entry) if not accession_entry.code else None  # Cambiado a 'code'
 
                 chain = (
                         self.session.query(Chain)
                         .filter_by(name=chain_data["chain_id"], structure_id=structure.id)
-                        .one_or_none() or Chain(name=chain_data["chain_id"], structure_id=structure.id,
-                                                sequence_id=sequence_entry.id, accession_id=accession_entry.id)
+                        .one_or_none() or Chain(
+                    name=chain_data["chain_id"],
+                    structure_id=structure.id,
+                    sequence_id=sequence_entry.id,
+                    accession_code=accession_entry.code  # Cambiado a 'accession_code'
+                )
                 )
                 self.session.add(chain) if not chain.id else None
 
@@ -229,7 +230,9 @@ class PDBExtractor(QueueTaskInitializer):
                         self.session.query(State)
                         .filter_by(chain_id=chain.id, structure_id=structure.id, model_id=chain_data['model'])
                         .one_or_none() or State(
-                    model_id=chain_data['model'], file_path=chain_data["file_path"], chain_id=chain.id,
+                    model_id=chain_data['model'],
+                    file_path=chain_data["file_path"],
+                    chain_id=chain.id,
                     structure_id=structure.id
                 )
                 )
@@ -242,3 +245,4 @@ class PDBExtractor(QueueTaskInitializer):
             self.session.rollback()
             self.logger.error(f"Failed to store data for PDB ID: {pdb_id}: {e}")
             raise
+

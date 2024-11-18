@@ -86,8 +86,7 @@ class AccessionManager(BaseTaskInitializer):
             csv_tag = self.conf['tag']
 
             data = pd.read_csv(csv_path)
-            accessions = data[accession_column].dropna().unique()[:100
-                         ]
+            accessions = data[accession_column].dropna().unique()
             self.logger.info(f"Loaded {len(accessions)} unique accession codes from CSV.")
             self._process_new_accessions(accessions, csv_tag)
         except Exception as e:
@@ -119,7 +118,7 @@ class AccessionManager(BaseTaskInitializer):
             all_accessions = []
             next_cursor = None
             i = 0
-            while i <2:
+            while i < 5:
                 i+=1
                 # Construct the URL with the cursor if available
                 url = base_url if not next_cursor else f"{base_url}&cursor={next_cursor}"
@@ -168,9 +167,9 @@ class AccessionManager(BaseTaskInitializer):
             Exception: If there is an issue with database operations.
         """
         self.logger.info(f"Processing {len(accessions)} accessions.")
-        existing_accessions = {acc[0] for acc in self.session.query(Accession.accession_code).filter(
-            Accession.accession_code.in_(accessions)).all()}
-        new_accessions = [Accession(accession_code=acc, primary=True, tag=tag) for acc in accessions if
+        existing_accessions = {acc[0] for acc in self.session.query(Accession.code).filter(
+            Accession.code.in_(accessions)).all()}
+        new_accessions = [Accession(code=acc, primary=True, tag=tag) for acc in accessions if
                           acc not in existing_accessions]
         self.session.bulk_save_objects(new_accessions)
         self.session.commit()

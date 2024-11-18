@@ -34,8 +34,8 @@ class UniProtExtractor(QueueTaskInitializer):
     def enqueue(self):
         accessions = self.session.query(Accession).all()
         for accession in accessions:
-            self.logger.debug(f"Publishing task for {self.reference_attribute} code: {accession.accession_code}")
-            self.publish_task(accession.accession_code)
+            self.logger.debug(f"Publishing task for {self.reference_attribute} code: {accession.code}")
+            self.publish_task(accession.code)
 
     # Existing method in uniprot.py
 
@@ -69,27 +69,42 @@ class UniProtExtractor(QueueTaskInitializer):
 
     def store_entry(self, data):
         """
-        Stores the downloaded UniProt data in the database.
-        Processes and stores detailed protein information including annotations, cross-references, and sequence data.
-        The function is designed to handle both new entries and updates to existing records, ensuring data consistency.
-
-        Args:
-            data (SwissProt.Record): The UniProt data record to store.
+        Store the UniProt data in the database, ensuring that Accession is linked to the correct Protein.
         """
         try:
-            self.logger.debug(f"Attempting to store or update protein data for entry_name {data.entry_name}.")
+            self.logger.debug(f"Storing data for entry_name {data.entry_name}.")
+
+            # Retrieve or create the protein
             protein = self.get_or_create_protein(data)
-            self.update_protein_details(protein, data)
-            self.handle_cross_references(protein, data.cross_references)
+
+            # Link Accession to Protein
+            accession_entry = (
+                self.session.query(Accession)
+                .filter_by(code=data.accessions[0])  # Assuming `data.accessions[0]` is the primary accession
+                .first()
+            )
+
+            if not accession_entry:
+                accession_entry = Accession(
+                    code=data.accessions[0],
+                    protein_id=protein.id,  # Link the protein ID
+                    primary=True
+                )
+                self.session.add(accession_entry)
+                self.logger.debug(f"Created new accession {data.accessions[0]} linked to protein {protein.id}.")
+            else:
+                # Update the existing accession if necessary
+                if accession_entry.protein_id != protein.id:
+                    accession_entry.protein_id = protein.id
+                    self.logger.debug(f"Updated accession {data.accessions[0]} with new protein ID {protein.id}.")
+
+            # Commit changes
             self.session.commit()
-            self.logger.info(f"Successfully stored or updated data for protein {data.entry_name}.")
-        except HTTPException as e:
-            self.logger.error(f"HTTP error occurred while processing {data.entry_name}: {e}")
-            self.session.rollback()
+            self.logger.info(f"Successfully stored accession {data.accessions[0]} for protein {protein.id}.")
         except Exception as e:
-            self.logger.error(
-                f"An unexpected error occurred while processing {data.entry_name}: {e}\n{traceback.format_exc()}")
             self.session.rollback()
+            self.logger.error(f"Failed to store data for entry {data.entry_name}: {e}")
+            raise
 
     def get_or_create_protein(self, data):
         """

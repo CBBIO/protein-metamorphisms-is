@@ -2,6 +2,7 @@ from sqlalchemy import Column, String, Integer, ForeignKey
 from sqlalchemy.orm import relationship
 from protein_metamorphisms_is.sql.model.core.base import Base
 
+
 class Chain(Base):
     __tablename__ = 'chain'
 
@@ -9,7 +10,7 @@ class Chain(Base):
     name = Column(String, nullable=False)
     structure_id = Column(String, ForeignKey('structure.id'), nullable=False)
     sequence_id = Column(Integer, ForeignKey('sequence.id'))
-    accession_id = Column(Integer, ForeignKey('accession.id'), unique=False)  # Relación uno a uno con Accession
+    accession_code = Column(String, ForeignKey('accession.code'), unique=False)  # Cambiado a String
 
     # Relaciones
     structure = relationship("Structure", back_populates="chains")

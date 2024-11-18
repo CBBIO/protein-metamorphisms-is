@@ -3,6 +3,7 @@ import re
 import requests
 from Bio import SeqIO
 from Bio.PDB import MMCIFParser, PDBIO
+import gemmi
 
 
 def extract_float(s):
@@ -155,8 +156,9 @@ def cif_to_pdb(cif_path, pdb_path):
 
 
 
+import requests
+
 def obtener_cadenas_y_accesiones(pdb_id):
-    # URL del endpoint de GraphQL en RCSB PDB
     url = "https://data.rcsb.org/graphql"
 
     # Consulta GraphQL para obtener información de cadenas y accesiones
@@ -179,13 +181,18 @@ def obtener_cadenas_y_accesiones(pdb_id):
     }}
     """
 
-    # Realiza la solicitud POST al endpoint de GraphQL
-    response = requests.post(url, json={'query': query})
+    try:
+        # Realiza la solicitud POST al endpoint de GraphQL
+        response = requests.post(url, json={'query': query})
+        response.raise_for_status()  # Genera una excepción en caso de error HTTP
 
-    # Verifica que la solicitud fue exitosa
-    if response.status_code == 200:
         data = response.json()
-        entry = data.get("data", {}).get("entry", {})
+
+        # Verificar que se obtuvo una respuesta válida con los datos necesarios
+        if "data" not in data or "entry" not in data["data"]:
+            raise ValueError("No se encontraron datos para el PDB ID proporcionado.")
+
+        entry = data["data"]["entry"]
 
         # Mapa de cadenas y accesiones
         cadenas_accesiones = {}
@@ -202,6 +209,62 @@ def obtener_cadenas_y_accesiones(pdb_id):
                         cadenas_accesiones[chain] = ref.get("database_accession")
 
         return cadenas_accesiones
-    else:
-        print("Error en la solicitud:", response.status_code)
-        return None
+
+    except requests.exceptions.RequestException as e:
+        raise ConnectionError(f"Error en la solicitud a RCSB PDB: {e}")
+    except ValueError as e:
+        raise ValueError(f"Error en los datos recibidos: {e}")
+
+
+def get_chain_to_accession_map(cif_path):
+    """
+    Extracts the mapping of chain names to UniProt accessions from a CIF file.
+
+    Args:
+        cif_path (str): Path to the CIF file.
+
+    Returns:
+        dict: A dictionary mapping chain names to UniProt accessions.
+    """
+    doc = gemmi.cif.read(cif_path)
+    block = doc.sole_block()
+
+    # Initialize mappings
+    chain_accession_map = {}
+
+    try:
+        # Extract _entity_poly fields
+        entity_ids_poly = block.find_values('_entity_poly.entity_id')
+        pdbx_strand_ids = block.find_values('_entity_poly.pdbx_strand_id')
+
+        # Extract _struct_ref fields
+        db_names = block.find_values('_struct_ref.db_name')
+        db_codes = block.find_values('_struct_ref.db_code')
+        entity_ids_ref = block.find_values('_struct_ref.entity_id')
+        pdbx_db_accessions = block.find_values('_struct_ref.pdbx_db_accession')
+
+        # Map entity IDs to UniProt accessions
+        struct_ref_map = {
+            entity_id: accession
+            for db_name, entity_id, accession in zip(db_names, entity_ids_ref, pdbx_db_accessions)
+            if db_name == 'UNP' and accession  # Only consider UniProt entries
+        }
+
+        # Map entity IDs to chain names
+        entity_chain_map = {
+            entity_id: chains.split(',')
+            for entity_id, chains in zip(entity_ids_poly, pdbx_strand_ids)
+            if chains
+        }
+
+        # Combine mappings to produce chain -> accession map
+        for entity_id, chains in entity_chain_map.items():
+            if entity_id in struct_ref_map:
+                accession = struct_ref_map[entity_id]
+                for chain in chains:
+                    chain_accession_map[chain.strip()] = accession
+
+    except KeyError as e:
+        print(f"Missing key in CIF file: {e}")
+
+    return chain_accession_map
