@@ -10,7 +10,7 @@ class Chain(Base):
     name = Column(String, nullable=False)
     structure_id = Column(String, ForeignKey('structure.id'), nullable=False)
     sequence_id = Column(Integer, ForeignKey('sequence.id'))
-    accession_code = Column(String, ForeignKey('accession.code'), unique=False)  # Cambiado a String
+    accession_code = Column(String, ForeignKey('accession.code'), nullable= True, unique=False)  # Cambiado a String
 
     # Relaciones
     structure = relationship("Structure", back_populates="chains")

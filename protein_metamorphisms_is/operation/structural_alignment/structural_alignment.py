@@ -7,9 +7,12 @@ from protein_metamorphisms_is.sql.model.entities.embedding.structure_3di import 
 from protein_metamorphisms_is.sql.model.entities.structure.state import State
 from protein_metamorphisms_is.sql.model.entities.structure.structure import Structure
 from protein_metamorphisms_is.sql.model.operational.clustering.cluster import SubclusterEntry, Subcluster
-from protein_metamorphisms_is.sql.model.operational.structural_alignment.group import AlignmentGroup, AlignmentGroupEntry
-from protein_metamorphisms_is.sql.model.operational.structural_alignment.structural_alignment_result import AlignmentResult
-from protein_metamorphisms_is.sql.model.operational.structural_alignment.structural_alignment_type import StructuralAlignmentType
+from protein_metamorphisms_is.sql.model.operational.structural_alignment.group import AlignmentGroup, \
+    AlignmentGroupEntry
+from protein_metamorphisms_is.sql.model.operational.structural_alignment.structural_alignment_result import \
+    AlignmentResult
+from protein_metamorphisms_is.sql.model.operational.structural_alignment.structural_alignment_type import \
+    StructuralAlignmentType
 
 from protein_metamorphisms_is.tasks.queue import QueueTaskInitializer
 import logging
@@ -211,7 +214,8 @@ class StructuralAlignmentManager(QueueTaskInitializer):
                 subcluster_entry_id=subcluster_entry_id
             )
             self.session.add(new_entry)
-            self.logger.info(f"Added new entry for subcluster_entry_id {subcluster_entry_id} in alignment group {alignment_group_id}.")
+            self.logger.info(
+                f"Added new entry for subcluster_entry_id {subcluster_entry_id} in alignment group {alignment_group_id}.")
 
     def _create_or_update_alignment_result(self, alignment_group_id, record):
         """

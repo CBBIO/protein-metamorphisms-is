@@ -197,47 +197,69 @@ class PDBExtractor(QueueTaskInitializer):
         chains_data = record["chains"]
 
         try:
+            # Recuperar la estructura asociada al PDB ID
             structure = self.session.query(Structure).filter_by(id=pdb_id).one()
 
             for chain_data in chains_data:
+                # Crear o recuperar la secuencia
                 sequence_entry = (
-                        self.session.query(Sequence)
-                        .filter_by(sequence=chain_data["sequence"])
-                        .one_or_none() or Sequence(sequence=chain_data["sequence"])
+                    self.session.query(Sequence)
+                    .filter_by(sequence=chain_data["sequence"])
+                    .one_or_none()
                 )
-                self.session.add(sequence_entry) if not sequence_entry.id else None
+                if not sequence_entry:
+                    sequence_entry = Sequence(sequence=chain_data["sequence"])
+                    self.session.add(sequence_entry)
+                    self.session.flush()
+                    self.logger.debug(f"Created new sequence for chain {chain_data['chain_id']}.")
 
-                accession_entry = (
+                # Crear o recuperar el accession si existe
+                accession_entry = None
+                if chain_data.get("accession"):
+                    accession_entry = (
                         self.session.query(Accession)
                         .filter_by(code=chain_data["accession"])
-                        .one_or_none() or Accession(code=chain_data["accession"])
-                )
-                self.session.add(accession_entry) if not accession_entry.code else None  # Cambiado a 'code'
+                        .one_or_none()
+                    )
+                    if not accession_entry:
+                        accession_entry = Accession(code=chain_data["accession"])
+                        self.session.add(accession_entry)
+                        self.session.flush()
+                        self.logger.debug(f"Created new accession with code {chain_data['accession']}.")
 
+                # Crear o recuperar la cadena
                 chain = (
-                        self.session.query(Chain)
-                        .filter_by(name=chain_data["chain_id"], structure_id=structure.id)
-                        .one_or_none() or Chain(
-                    name=chain_data["chain_id"],
-                    structure_id=structure.id,
-                    sequence_id=sequence_entry.id,
-                    accession_code=accession_entry.code  # Cambiado a 'accession_code'
+                    self.session.query(Chain)
+                    .filter_by(name=chain_data["chain_id"], structure_id=structure.id)
+                    .one_or_none()
                 )
-                )
-                self.session.add(chain) if not chain.id else None
+                if not chain:
+                    chain = Chain(
+                        name=chain_data["chain_id"],
+                        structure_id=structure.id,
+                        sequence_id=sequence_entry.id,
+                        accession_code=accession_entry.code if accession_entry else None
+                    )
+                    self.session.add(chain)
+                    self.logger.debug(f"Created new chain {chain_data['chain_id']} for structure {structure.id}.")
 
+                # Crear o recuperar el estado
                 state = (
-                        self.session.query(State)
-                        .filter_by(chain_id=chain.id, structure_id=structure.id, model_id=chain_data['model'])
-                        .one_or_none() or State(
-                    model_id=chain_data['model'],
-                    file_path=chain_data["file_path"],
-                    chain_id=chain.id,
-                    structure_id=structure.id
+                    self.session.query(State)
+                    .filter_by(chain_id=chain.id, structure_id=structure.id, model_id=chain_data['model'])
+                    .one_or_none()
                 )
-                )
-                self.session.add(state) if not state.id else None
+                if not state:
+                    state = State(
+                        model_id=chain_data['model'],
+                        file_path=chain_data["file_path"],
+                        chain_id=chain.id,
+                        structure_id=structure.id
+                    )
+                    self.session.add(state)
+                    self.logger.debug(f"Created new state for chain {chain.name} in structure {structure.id}.")
 
+            # Confirmar los cambios
             self.session.commit()
             self.logger.info(f"Stored data for PDB ID: {pdb_id}")
 
@@ -245,4 +267,5 @@ class PDBExtractor(QueueTaskInitializer):
             self.session.rollback()
             self.logger.error(f"Failed to store data for PDB ID: {pdb_id}: {e}")
             raise
+
 

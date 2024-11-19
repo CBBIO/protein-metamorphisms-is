@@ -266,5 +266,5 @@ def get_chain_to_accession_map(cif_path):
 
     except KeyError as e:
         print(f"Missing key in CIF file: {e}")
-
+    print(chain_accession_map)
     return chain_accession_map

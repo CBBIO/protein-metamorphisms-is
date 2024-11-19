@@ -29,15 +29,15 @@ from protein_metamorphisms_is.operation.structural_alignment.structural_alignmen
 
 def main(config_path="config/config.yaml"):
     conf = read_yaml_config(config_path)
-    AccessionManager(conf).fetch_accessions_from_api()
-    UniProtExtractor(conf).start()
-    PDBExtractor(conf).start()
+    # AccessionManager(conf).fetch_accessions_from_api()
+    # UniProtExtractor(conf).start()
+    # PDBExtractor(conf).start()
     # SequenceEmbeddingManager(conf).start()
     # Structure3DiManager(conf).start()
     # SequenceClustering(conf).start()
     # StructuralSubClustering(conf).start()
-    # StructuralAlignmentManager(conf).start()
-    # SequenceGOAnnotation(conf).start()
+    StructuralAlignmentManager(conf).start()
+    SequenceGOAnnotation(conf).start()
     # GoMultifunctionalityMetrics(conf).start()
 
 

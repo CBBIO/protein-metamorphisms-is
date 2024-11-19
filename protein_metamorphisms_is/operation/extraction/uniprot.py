@@ -76,6 +76,10 @@ class UniProtExtractor(QueueTaskInitializer):
 
             # Retrieve or create the protein
             protein = self.get_or_create_protein(data)
+            self.handle_cross_references(protein, data.cross_references)
+
+            # Update the details of the protein
+            self.update_protein_details(protein, data)
 
             # Link Accession to Protein
             accession_entry = (
@@ -101,6 +105,7 @@ class UniProtExtractor(QueueTaskInitializer):
             # Commit changes
             self.session.commit()
             self.logger.info(f"Successfully stored accession {data.accessions[0]} for protein {protein.id}.")
+
         except Exception as e:
             self.session.rollback()
             self.logger.error(f"Failed to store data for entry {data.entry_name}: {e}")
