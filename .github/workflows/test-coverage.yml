@@ -40,12 +40,20 @@ jobs:
             -p 5432:5432 \
             pgvector/pgvector:pg16
 
+      - name: Wait for PostgreSQL to be ready
+        run: |
+          until docker exec pgvectorsql pg_isready -U usuario; do sleep 1; done
+
+      - name: Enable pgvector extension
+        run: |
+          docker exec -i pgvectorsql psql -U usuario -d BioData -c "CREATE EXTENSION vector;"
+
       - name: Run tests and coverage
         run: poetry run task coverage
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v4
         with:
-          token: ${{ secrets.CODECOV_TOKEN }} # Not required for public repo
+          token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: true
           verbose: true
