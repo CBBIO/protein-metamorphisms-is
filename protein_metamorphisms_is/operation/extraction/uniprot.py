@@ -1,5 +1,4 @@
 import traceback
-from http.client import HTTPException
 
 from Bio import ExPASy, SwissProt
 from sqlalchemy import exists
@@ -16,9 +15,39 @@ from protein_metamorphisms_is.helpers.parser.parser import extract_float
 
 class UniProtExtractor(QueueTaskInitializer):
     """
-    Handles the extraction and processing of data from UniProt. This includes retrieving protein sequences,
-    annotations, and functional data. The class extends ExtractorBase to utilize base functionalities and ensures
-    integration with a database to store and manage the extracted data.
+    The UniProtExtractor class is responsible for extracting, processing, and storing protein data
+    from the UniProt database. It extends the QueueTaskInitializer to handle task queuing and
+    database integration seamlessly.
+
+    **Purpose**
+
+    The UniProtExtractor class provides functionalities to manage and process protein data
+    from UniProt, ensuring it is properly stored and cross-referenced in the database.
+
+    **Key Features**
+
+    - **Task Management**: Supports enqueuing tasks for processing accession codes from UniProt.
+    - **Protein Data Retrieval**: Downloads detailed protein information using BioPython's ExPASy and SwissProt modules.
+    - **Database Integration**: Ensures extracted data is stored and linked correctly in the database.
+    - **Cross-Reference Handling**: Processes references to PDB structures and Gene Ontology (GO) terms.
+
+    **Example Usage**
+
+    Below is an example demonstrating how to use the `UniProtExtractor` class:
+
+    .. code-block:: python
+
+        from protein_metamorphisms_is.tasks.uniprot import UniProtExtractor
+
+        # Configuration for UniProtExtractor
+        config = {
+            'allowed_evidences': ['EXP', 'IDA'],
+                }
+
+        # Initialize and start the extractor
+        uniprot_extractor = UniProtExtractor(config)
+        uniprot_extractor.start()
+
     """
 
     def __init__(self, conf):
@@ -32,24 +61,49 @@ class UniProtExtractor(QueueTaskInitializer):
         self.reference_attribute = 'Accession'
 
     def enqueue(self):
-        accessions = self.session.query(Accession).all()
-        for accession in accessions:
-            self.logger.debug(f"Publishing task for {self.reference_attribute} code: {accession.code}")
-            self.publish_task(accession.code)
+        """
+        Reads all accession codes from the database and publishes them as tasks to be processed.
+        """
+        try:
+            # Recuperar accesiones de la base de datos
+            accessions = self.session.query(Accession).all()
 
-    # Existing method in uniprot.py
+            if not accessions:
+                self.logger.info("No accession codes found in the database. Enqueue operation skipped.")
+                return
+
+            # Aplicar el límite de ejecución si está configurado
+            limit_execution = self.conf.get("limit_execution")
+            if limit_execution and isinstance(limit_execution, int):
+                accessions = accessions[:limit_execution]
+
+            self.logger.info(f"Retrieved {len(accessions)} accession codes from the database.")
+
+            # Publicar tareas
+            for accession in accessions:
+                self.logger.debug(f"Publishing task for accession code '{accession.code}'...")
+                self.publish_task(accession.code)
+
+            self.logger.info(f"Successfully enqueued {len(accessions)} tasks for accession codes.")
+        except Exception as e:
+            self.logger.error(
+                f"Error occurred during enqueue operation: {e}\n{traceback.format_exc()}"
+            )
+            raise
 
     def process(self, accession_code):
         """
-        Download detailed protein information from UniProt using ExPASy and SwissProt.
-        ExPASy is a Bioinformatics Resource Portal which provides access to scientific databases and software tools,
-        while SwissProt is a manually annotated and reviewed protein sequence database part of UniProt.
+        Downloads detailed protein information from UniProt using ExPASy and SwissProt modules.
+
         Args:
-            accession_dict (dict): The dictionary containing the accession code of the protein record to download.
+            accession_code (str): The accession code of the protein record to download.
+
         Returns:
-            record: A dictionary containing detailed protein information.
+            SwissProt.Record: The protein record fetched from UniProt.
+
         Raises:
             ValueError: If no SwissProt record is found for the accession code.
+            Exception: If any other error occurs during data retrieval.
         """
         if not accession_code:
             raise ValueError("No accession code provided in the input dictionary.")
@@ -63,13 +117,21 @@ class UniProtExtractor(QueueTaskInitializer):
             self.logger.error(error_message)
             raise ValueError(error_message)
         except Exception as e:
-            error_message = f"Error downloading the entry {accession_code}: {e}"
+            error_message = f"Error downloading UniProt entry for accession '{accession_code}'"
             self.logger.error(error_message)
             raise Exception(error_message)
 
     def store_entry(self, data):
         """
-        Store the UniProt data in the database, ensuring that Accession is linked to the correct Protein.
+        Stores the retrieved UniProt data into the database.
+
+        Links accession codes to the associated protein and ensures all references and annotations are updated.
+
+        Args:
+            data (SwissProt.Record): The UniProt data to store.
+
+        Raises:
+            Exception: If the storage process fails.
         """
         try:
             self.logger.debug(f"Storing data for entry_name {data.entry_name}.")
@@ -104,7 +166,10 @@ class UniProtExtractor(QueueTaskInitializer):
 
             # Commit changes
             self.session.commit()
-            self.logger.info(f"Successfully stored accession {data.accessions[0]} for protein {protein.id}.")
+            self.logger.info(
+                f"Accession '{data.accessions[0]}' successfully linked to protein '{protein.id}'."
+            )
+
 
         except Exception as e:
             self.session.rollback()
@@ -113,24 +178,32 @@ class UniProtExtractor(QueueTaskInitializer):
 
     def get_or_create_protein(self, data):
         """
-        Retrieves an existing protein record from the database using the entry_name from data or creates a new one if it does not exist.
+        Retrieves or creates a protein record in the database.
+
         Args:
-            data (SwissProt.Record): Data containing the entry_name of the protein.
+            data (SwissProt.Record): The UniProt record containing protein details.
+
         Returns:
             Protein: The retrieved or newly created protein object.
+
+        Raises:
+            Exception: If an error occurs during the operation.
         """
         try:
             protein = self.session.query(Protein).filter_by(id=data.entry_name).first()
             if not protein:
                 protein = Protein(id=data.entry_name)
                 self.session.add(protein)
-                self.logger.debug(f"Created new protein record for entry_name {data.entry_name}.")
+                self.logger.debug(
+                    f"New protein record created for UniProt entry '{data.entry_name}'."
+                )
+
             else:
                 self.logger.debug(f"Retrieved existing protein record for entry_name {data.entry_name}.")
             return protein
         except Exception as e:
             self.logger.error(
-                f"Failed to retrieve or create protein for entry_name {data.entry_name}: {e}\n{traceback.format_exc()}")
+                f"Failed to retrieve or create protein for entry_name {data.entry_name}")
             raise e
 
     def update_protein_details(self, protein, data):
@@ -173,7 +246,6 @@ class UniProtExtractor(QueueTaskInitializer):
             protein.protein_existence = data.protein_existence
             protein.seqinfo = data.seqinfo
 
-            # Ensure the protein object is added to the session for update
             self.session.add(protein)
         except Exception as e:
             self.logger.error(f"Failed to update protein details: {e}")

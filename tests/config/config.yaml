@@ -1,5 +1,5 @@
 #System
-max_workers: 12
+max_workers: 8
 binaries_path: '../binaries'
 
 # DB CONFIGURATION
@@ -9,26 +9,43 @@ DB_HOST: localhost
 DB_PORT: 5432
 DB_NAME: BioData
 
-## Information System
-# Uniprot Extraction
+rabbitmq_host: localhost
+rabbitmq_user: guest
+rabbitmq_password: guest
+
+#Execution
+limit_execution: 100 # Debug Mode. False for complete run
+
+### Information System/
+## Load Accessions
+tag: 'GOA'
+
+# Load  from CSV
+load_accesion_csv: data/sample_accessions.csv
+load_accesion_column: ID
+
+# Fetch from API
 search_criteria: '(structure_3d:true)'
-limit: 100
+limit: 20
+# Uniprot Extraction6
+
 
 # PDB Extraction
-resolution_threshold: 2.5
+resolution_threshold: 5
 server: "https://files.wwpdb.org/"
-pdb_path: "/home/bioxaxi/data/pdb"
-pdb_chains_path: "/home/bioxaxi/data/chains"
+data_directory: "/home/bioxaxi/data"
 file_format: "mmCif"
 allow_multiple_chain_models: False # NMR
 
+models_path:
+
 ## Operations
-constants: "config/constants.yaml"
+constants: "tests/config/constants.yaml"
 
 # Sequence Clustering
 fasta_path: "/home/bioxaxi/data/complete.fasta"
 cdhit_out_path: "/home/bioxaxi/data/out"
-sequence_identity_threshold: 0.95
+sequence_identity_threshold: 0.98
 alignment_coverage: 0.95
 memory_usage: 25000
 most_representative_search: 1
@@ -44,4 +61,27 @@ structural_alignment:
   retry_count: 5
   batch_size: 1000
   task_timeout: 20
+
+
+# Embedding
+embedding:
+  types:
+    - 1 # ESM
+#    - 2 # Prost
+  batch_size: 40
+# GO Metrics
+obo: '../data/go-basic.obo'
+go_annotation_file: '../data/cgd.gaf'
+
+allowed_evidences:
+  - EXP
+  - IDA
+  - IPI
+  - IMP
+  - IGI
+  - IEP
+  - TAS
+  - IC
+
+k: 5
 

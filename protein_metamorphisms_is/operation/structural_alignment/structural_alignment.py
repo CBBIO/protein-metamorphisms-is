@@ -9,7 +9,7 @@ from protein_metamorphisms_is.sql.model.entities.structure.structure import Stru
 from protein_metamorphisms_is.sql.model.operational.clustering.cluster import SubclusterEntry, Subcluster
 from protein_metamorphisms_is.sql.model.operational.structural_alignment.group import AlignmentGroup, \
     AlignmentGroupEntry
-from protein_metamorphisms_is.sql.model.operational.structural_alignment.structural_alignment_result import \
+from protein_metamorphisms_is.sql.model.operational.structural_alignment.result import \
     AlignmentResult
 from protein_metamorphisms_is.sql.model.operational.structural_alignment.structural_alignment_type import \
     StructuralAlignmentType

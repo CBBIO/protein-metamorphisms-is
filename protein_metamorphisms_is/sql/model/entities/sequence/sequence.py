@@ -12,8 +12,12 @@ class Sequence(Base):
     sequence = Column(String, nullable=False)
     sequence_hash = Column(String, unique=True, index=True)
 
+    # Relaciones existentes
     protein = relationship("Protein", back_populates="sequence", uselist=False)
     chain = relationship("Chain", back_populates="sequence", uselist=False)
+
+    # Nueva relación
+    go_annotations = relationship("SequenceGoTermAnnotation", back_populates="sequence")  # Relación 1:N
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

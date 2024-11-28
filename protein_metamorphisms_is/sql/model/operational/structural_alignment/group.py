@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, DateTime, func, ForeignKey
 from sqlalchemy.orm import relationship
 from protein_metamorphisms_is.sql.model.core.base import Base
-from protein_metamorphisms_is.sql.model.operational.structural_alignment.structural_alignment_result import AlignmentResult
+from protein_metamorphisms_is.sql.model.operational.structural_alignment.result import AlignmentResult
 
 
 class AlignmentGroup(Base):

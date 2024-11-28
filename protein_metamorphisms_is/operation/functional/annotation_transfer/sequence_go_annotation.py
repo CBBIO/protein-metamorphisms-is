@@ -46,62 +46,75 @@ class SequenceGOAnnotation(QueueTaskInitializer):
             task_type_id = task_data.get('task_type_id')
 
             query = text("""
-            WITH TargetEmbedding AS (
+            WITH target_embedding AS (
                 SELECT embedding
                 FROM sequence_embeddings
                 WHERE sequence_id = :sequence_id AND embedding_type_id = :embedding_type_id
             ),
-            AllSequenceEmbeddings AS (
+            filtered_sequences AS (
                 SELECT 
-                    seq.id AS sequence_id,
-                    seq_embedding.embedding
-                FROM "sequence" AS seq
-                JOIN sequence_embeddings AS seq_embedding ON seq_embedding.sequence_id = seq.id
-                WHERE seq_embedding.embedding_type_id = :embedding_type_id
-            ),
-            TopKSequences AS (
-                SELECT 
-                    all_seq.sequence_id,
-                    l2_distance(target.embedding, all_seq.embedding) AS distance
+                    se.sequence_id,
+                    se.embedding,
+                    (se.embedding <-> te.embedding) AS distance
                 FROM 
-                    TargetEmbedding AS target, 
-                    AllSequenceEmbeddings AS all_seq
+                    sequence_embeddings se,
+                    target_embedding te
+                WHERE 
+                    (se.embedding <-> te.embedding) < 1
+            ),
+            ranked_sequences AS (
+                SELECT 
+                    fs.sequence_id,
+                    fs.distance,
+                    COALESCE(p.id, acc.protein_id) AS protein_id,
+                    COALESCE(p.description, 'Derived from Chain') AS protein_description,
+                    c.id AS chain_id,
+                    c.name AS chain_name
+                FROM 
+                    filtered_sequences fs
+                LEFT JOIN 
+                    chain c ON c.sequence_id = fs.sequence_id
+                LEFT JOIN 
+                    accession acc ON acc.code = c.accession_code
+                LEFT JOIN 
+                    protein p ON p.sequence_id = fs.sequence_id OR p.id = acc.protein_id
                 ORDER BY 
-                    distance ASC
-                LIMIT :k
+                    fs.distance ASC
             ),
-            GoTermAssociations AS (
+            ranked_go_terms AS (
                 SELECT 
-                    seq.id AS sequence_id,
-                    top_k.distance,
-                    annotation.go_id AS go_term_id,
-                    prot.id AS protein_entry,
-                    ROW_NUMBER() OVER (PARTITION BY annotation.go_id ORDER BY top_k.distance ASC) AS rank
-                FROM 
-                    TopKSequences AS top_k
-                LEFT JOIN "sequence" AS seq ON seq.id = top_k.sequence_id
-                LEFT JOIN "chain" AS ch ON ch.sequence_id = seq.id    
-                LEFT JOIN "structure" AS struct ON struct.id = ch.structure_id   
-                JOIN protein AS prot ON prot.id = struct.protein_id
-                LEFT JOIN protein_go_term_annotation AS annotation ON annotation.protein_id = prot.id
-                LEFT JOIN go_terms AS go ON go.go_id = annotation.go_id
+                    rs.sequence_id,
+                    rs.distance,
+                    rs.protein_id,
+                    rs.protein_description,
+                    rs.chain_id,
+                    rs.chain_name,
+                    gta.go_id,
+                    gt.category AS go_category,
+                    gt.description AS go_description,
+                    ROW_NUMBER() OVER (PARTITION BY gta.go_id ORDER BY rs.distance ASC) AS rank
+                FROM ranked_sequences rs
+                LEFT JOIN protein_go_term_annotation gta ON gta.protein_id = rs.protein_id
+                LEFT JOIN go_terms gt ON gt.go_id = gta.go_id
             )
             SELECT 
                 sequence_id,
                 distance,
-                go_term_id,
-                protein_entry
-            FROM 
-                GoTermAssociations
-            WHERE 
-                rank = 1  -- Seleccionar solo la fila con menor distancia por cada go_term_id
-            ORDER BY 
-                sequence_id;
+                protein_id,
+                protein_description,
+                chain_id,
+                chain_name,
+                go_id,
+                go_category,
+                go_description
+            FROM ranked_go_terms
+            WHERE rank = 1
+            ORDER BY distance ASC, protein_id;
             """)
 
             # Ejecutar la consulta
             with self.engine.connect() as connection:
-                parameters = {'sequence_id': sequence_id, 'k': self.k, 'embedding_type_id': embedding_type_id}
+                parameters = {'sequence_id': sequence_id, 'embedding_type_id': embedding_type_id}
                 results = connection.execute(query, parameters).fetchall()
                 self.logger.info(f"Query executed successfully for sequence_id: {sequence_id}")
 
@@ -109,16 +122,16 @@ class SequenceGOAnnotation(QueueTaskInitializer):
             predictions = []
             for result in results:
                 prediction = {
-                    'go_term_id': result.go_term_id,
+                    'go_term_id': result.go_id,
                     'source_sequence_id': sequence_id,
                     'target_sequence_id': result.sequence_id,
                     'distance': result.distance,
                     'embedding_type_id': embedding_type_id,
-                    'protein_entry': result.protein_entry,
+                    'protein_entry': result.protein_id,
                     'task_type_id': task_type_id
                 }
                 predictions.append(prediction)
-
+            print(predictions)
             return predictions
 
         except Exception as e:
@@ -130,33 +143,41 @@ class SequenceGOAnnotation(QueueTaskInitializer):
         Almacena las entradas de predicción en la base de datos, verificando si ya existen.
         """
         try:
-            return
             self.logger.info("Storing predictions...")
 
             for prediction in predictions:
-                if prediction.get('go_term_id') is None:
+                if not prediction.get('go_term_id'):
                     self.logger.warning(f"Skipping entry due to missing go_id: {prediction}")
                     continue
 
-                transfer_entry = ProteinGOTermAnnotation(
+                # Verificar si la entrada ya existe
+                existing_entry = self.session.query(SequenceGoTermAnnotation).filter_by(
                     go_id=prediction['go_term_id'],
-                    protein_entry_name=prediction['protein_entry'],
-                    source_sequence_id=prediction['source_sequence_id'],
-                    target_sequence_id=prediction['target_sequence_id'],
-                    distance=prediction['distance'],
-                    is_transferred=prediction.get('is_transferred', True),
-                    embedding_type_id=prediction['embedding_type_id']
+                    sequence_id=prediction['source_sequence_id']  # Relación con la secuencia correspondiente
+                ).first()
+
+                if existing_entry:
+                    self.logger.info(
+                        f"Entry already exists for GO term: {prediction['go_term_id']} and sequence: {prediction['target_sequence_id']}")
+                    continue
+
+                # Crear nueva entrada
+                transfer_entry = SequenceGoTermAnnotation(
+                    go_id=prediction['go_term_id'],
+                    sequence_id=prediction['source_sequence_id'],  # Relación con la secuencia
+                    distance=prediction['distance']
                 )
 
                 self.session.add(transfer_entry)
                 self.logger.info(
-                    f"Stored new entry for protein: {prediction['protein_entry']}, GO term: {prediction['go_term_id']}")
+                    f"Stored new entry for GO term: {prediction['go_term_id']}, sequence: {prediction['target_sequence_id']}"
+                )
 
+            # Confirmar los cambios
             self.session.commit()
             self.logger.info("Predictions successfully stored.")
 
         except Exception as e:
             self.logger.error(f"Error storing predictions: {e}")
             self.session.rollback()
-
 

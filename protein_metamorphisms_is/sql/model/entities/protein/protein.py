@@ -28,8 +28,8 @@ class Protein(Base):
     structure = relationship("Structure", back_populates="protein")
     sequence = relationship("Sequence", back_populates="protein", uselist=False)
     annotations = relationship("ProteinGOTermAnnotation", back_populates="protein")
-    accessions = relationship("Accession", back_populates="protein")  # Relación con Accession
-
+    accessions = relationship("Accession", back_populates="protein")
+    go_term_pairs = relationship("GOTermPair", back_populates="protein")  # Muchos go_term_pairs
 
     def __repr__(self):
         return f"<Protein(id={self.id}, gene_name={self.gene_name}, organism={self.organism})>"

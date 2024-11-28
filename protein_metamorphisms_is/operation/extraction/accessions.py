@@ -1,4 +1,5 @@
 import gzip
+import os
 import traceback
 from io import BytesIO
 from urllib.parse import quote
@@ -27,34 +28,37 @@ class AccessionManager(BaseTaskInitializer):
     - **Database Integration**: Seamlessly integrates with the database to store and manage accession codes.
     - **Logging**: Inherits logging capabilities from BaseTaskInitializer for tracking operations and errors.
 
-    **Customization**
+    **Configuration**
 
-    Subclasses can override the enqueue, process, and store_entry methods to implement
-    specific task logic related to accession data management.
-
-    Attributes:
-        conf (dict): Configuration dictionary loaded from YAML or other sources.
-        logger (Logger): Logger instance for logging task-specific information.
-        session (Session): Database session used for ORM operations.
+    :param conf: Configuration dictionary loaded from YAML or other sources.
+    :type conf: dict
+    :param session_required: Whether a database session is required. Default is True.
+    :type session_required: bool
 
     Example Usage:
+        Below are examples showing how to use the key functionalities of the `AccessionManager`:
 
-    .. code-block:: python
+        .. code-block:: python
 
-       from protein_metamorphisms_is.tasks.accessions import AccessionManager
+            from protein_metamorphisms_is.tasks.accessions import AccessionManager
 
-       class MyAccessionManager(AccessionManager):
-           def enqueue(self):
-               # Implementation of enqueue logic
-               pass
+            # Initialize the AccessionManager with configuration
+            config = {
+                'load_accesion_csv': 'path_to_csv_file.csv',
+                'load_accesion_column': 'accession_column_name',
+                'tag': 'example_tag',
+                'search_criteria': 'example_criteria',
+                'limit': 200,
+                'debug': True
+            }
+            accession_manager = AccessionManager(config)
 
-           def process(self, _):
-               # Implementation of process logic
-               pass
+            # Load accessions from CSV
+            accession_manager.load_accessions_from_csv()
 
-           def store_entry(self, record):
-               # Implementation of store_entry logic
-               pass
+            # Fetch accessions from API
+            accession_manager.fetch_accessions_from_api()
+
     """
 
     def __init__(self, conf, session_required=True):
@@ -84,43 +88,44 @@ class AccessionManager(BaseTaskInitializer):
             csv_path = self.conf['load_accesion_csv']
             accession_column = self.conf['load_accesion_column']
             csv_tag = self.conf['tag']
-
+            limit_execution = self.conf.get('limit_execution', None)  # Obtener el límite de ejecución
             data = pd.read_csv(csv_path)
-            accessions = data[accession_column].dropna().unique()
+            accessions = list(data[accession_column].dropna().unique())
+
+            # Aplica el límite si está configurado
+            if limit_execution and isinstance(limit_execution, int):
+                accessions = accessions[:limit_execution]
+
             self.logger.info(f"Loaded {len(accessions)} unique accession codes from CSV.")
             self._process_new_accessions(accessions, csv_tag)
-        except Exception as e:
+        except Exception:
             self.logger.error(f"Failed to load or process CSV: {traceback.format_exc()}")
-
-    import requests
-    import gzip
-    from io import BytesIO
-    from urllib.parse import quote
-
-    import requests
-    import gzip
-    from io import BytesIO
-    from urllib.parse import quote
 
     def fetch_accessions_from_api(self):
         """
-        Fetches accession codes from the UniProt API based on the specified search criteria,
-        with compression and pagination enabled.
+        Fetches accession codes from the UniProt API based on the specified search criteria.
+
+        This method queries the UniProt API with compression and pagination enabled. It processes
+        the results and stores new accession codes in the database.
+
+        :raises requests.RequestException: If there is an error in the API request.
+        :raises gzip.BadGzipFile: If the response is not a valid gzip file.
+        :raises Exception: For any other errors during processing.
         """
         try:
             search_criteria = self.conf['search_criteria']
-            limit = self.conf.get('limit', 100)  # Default limit if not specified
+            limit_per_page = self.conf.get('limit', 100)  # Límite por página
+            total_limit = self.conf.get('limit_execution', None)  # Límite total de ejecución
             tag = self.conf.get('tag')
 
             encoded_search_criteria = quote(search_criteria)
-            base_url = f"https://rest.uniprot.org/uniprotkb/search?compressed=true&format=list&query={encoded_search_criteria}&size={limit}"
+            base_url = f"https://rest.uniprot.org/uniprotkb/search?compressed=true&format=list&query={encoded_search_criteria}&size={limit_per_page}"
 
             all_accessions = []
             next_cursor = None
-            i = 0
-            while i < 5:
-                i+=1
-                # Construct the URL with the cursor if available
+
+            while True:
+                # Construye la URL con el cursor si está disponible
                 url = base_url if not next_cursor else f"{base_url}&cursor={next_cursor}"
                 self.logger.info(f"Fetching data from URL: {url}")
 
@@ -131,25 +136,28 @@ class AccessionManager(BaseTaskInitializer):
                 with gzip.GzipFile(fileobj=BytesIO(response.content)) as f:
                     decompressed_content = f.read().decode('utf-8')
 
-                # Obtén los accessions y añádelos a la lista total
+                # Obtén los accesiones y añádelos a la lista total
                 accessions = decompressed_content.strip().split("\n")
+
                 all_accessions.extend(accessions)
-                self.logger.info(f"Retrieved {len(accessions)} accessions from current page.")
+
+                # Verifica si alcanzamos el límite total
+                if total_limit and len(all_accessions) >= total_limit:
+                    all_accessions = all_accessions[:total_limit]
+                    break
 
                 # Revisa si hay más páginas para obtener el siguiente cursor
                 link_header = response.headers.get("link")
                 if link_header and 'rel="next"' in link_header:
-                    # Extrae el siguiente cursor del link header
                     next_cursor = link_header.split("cursor=")[-1].split(">")[0]
                 else:
                     break  # No hay más páginas, termina el bucle
-
+            print(all_accessions)
             self.logger.info(f"Total accessions retrieved: {len(all_accessions)}")
             self._process_new_accessions(all_accessions, tag)
-
         except requests.RequestException as e:
             self.logger.error(f"Failed to fetch data from UniProt: {e}")
-        except gzip.BadGzipFile as e:
+        except gzip.BadGzipFile:
             self.logger.error("Received an invalid gzip file. Unable to decompress the data.")
         except Exception as e:
             self.logger.error(f"An error occurred while processing the response: {e}")
@@ -185,27 +193,18 @@ class AccessionManager(BaseTaskInitializer):
 
     def store_entry(self, record):
         """
-        Abstract method for storing processed entries.
-
-        This method should be implemented in subclasses to define how processed accession entries
-        are stored in the database.
+        (Not used)
         """
         pass
 
     def process(self, _):
         """
-        Abstract method for processing tasks.
-
-        This method should be implemented in subclasses to define the logic for processing
-        accession data.
+        (Not used)
         """
         pass
 
     def start(self):
         """
-        Abstract method for starting the task processing.
-
-        This method should be implemented in subclasses to define how the task processing
-        is initiated for accession management.
+        (Not used)
         """
         pass

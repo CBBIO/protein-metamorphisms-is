@@ -13,18 +13,31 @@ rabbitmq_host: localhost
 rabbitmq_user: guest
 rabbitmq_password: guest
 
+#Execution
+limit_execution: 100 # Debug Mode. False for complete run
 
 ### Information System/
-# Load Accessions
-load_accesion_csv: ../data/uniprot_full.csv
-load_accesion_column: id
+## Load Accessions
 tag: 'GOA'
 
-max_attempts: 5
+# Load  from CSV
+load_accesion_csv: ../data/uniprot_full.csv
+load_accesion_column: id
 
+# Fetch from API
 search_criteria: '(structure_3d:true)'
 limit: 20
-# Uniprot Extraction
+
+# UniProt Extraction
+allowed_evidences:
+  - EXP
+  - IDA
+  - IPI
+  - IMP
+  - IGI
+  - IEP
+  - TAS
+  - IC
 
 
 # PDB Extraction
@@ -32,7 +45,6 @@ resolution_threshold: 5
 server: "https://files.wwpdb.org/"
 data_directory: "/home/bioxaxi/data"
 file_format: "mmCif"
-allow_multiple_chain_models: False # NMR
 
 models_path:
 
@@ -70,15 +82,7 @@ embedding:
 obo: '../data/go-basic.obo'
 go_annotation_file: '../data/cgd.gaf'
 
-allowed_evidences:
-  - EXP
-  - IDA
-  - IPI
-  - IMP
-  - IGI
-  - IEP
-  - TAS
-  - IC
+
 
 k: 5
 

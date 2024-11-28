@@ -9,8 +9,9 @@ class GOTerm(Base):
     category = Column(String)
     description = Column(String)
 
-    # Establish relationship with ProteinGOTermAnnotation
+    # Relaciones
     annotations = relationship("ProteinGOTermAnnotation", back_populates="go_term")
+    entries = relationship("GOTermPairEntry", back_populates="go_term")
 
     def __repr__(self):
         return f"<GOTerm(go_id={self.go_id}, category={self.category}, description={self.description})>"

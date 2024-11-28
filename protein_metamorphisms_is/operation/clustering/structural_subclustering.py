@@ -96,7 +96,7 @@ class StructuralSubClustering(BaseTaskInitializer):
         cd_hit(
             i=fasta_path,
             o=cdhit_out_path,
-            c=0.8,
+            c=0.65,
             d=0,
             sc=1,
             aL=self.conf.get('alignment_coverage', 0.9),

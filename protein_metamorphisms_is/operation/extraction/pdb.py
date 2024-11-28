@@ -170,6 +170,11 @@ class PDBExtractor(QueueTaskInitializer):
                     clean_structure.add_model(clean_model)
                     clean_structure.make_mmcif_document().write_file(clean_file_path)
 
+                    accession = chain_to_accession_map.get(chain.name)
+
+                    if not accession:
+                        self.retrieve_accession_for_chain(pdb_id, chain.name)
+
                     data['chains'].append({
                         "chain_id": chain.name,
                         "sequence": sequence,
@@ -267,5 +272,77 @@ class PDBExtractor(QueueTaskInitializer):
             self.session.rollback()
             self.logger.error(f"Failed to store data for PDB ID: {pdb_id}: {e}")
             raise
+
+    def retrieve_accession_for_chain(self, pdb_id, chain_name):
+        """
+        Retrieves the accession for a specific chain in a PDB entry using a GraphQL query.
+
+        Args:
+            pdb_id (str): The ID of the PDB entry.
+            chain_name (str): The chain name for which to retrieve the accession.
+
+        Returns:
+            str: The retrieved accession code or None if not found.
+        """
+        import requests
+
+        # Define the GraphQL query
+        graphql_query = """
+        query structure($id: String!) {
+          entry(entry_id: $id) {
+            polymer_entities {
+              polymer_entity_instances {
+                rcsb_polymer_entity_instance_container_identifiers {
+                  auth_asym_id
+                }
+              }
+              rcsb_polymer_entity_container_identifiers {
+                uniprot_ids
+              }
+            }
+          }
+        }
+        """
+
+        # Prepare the variables
+        variables = {"id": pdb_id}
+
+        # Correct endpoint for GraphQL
+        graphql_endpoint = "https://data.rcsb.org/graphql"
+
+        try:
+            # Execute the query
+            response = requests.post(
+                graphql_endpoint,
+                json={"query": graphql_query, "variables": variables},
+                timeout=10
+            )
+
+            # Check for a successful response
+            response.raise_for_status()
+
+            # Parse the response JSON
+            data = response.json()
+            entities = data.get("data", {}).get("entry", {}).get("polymer_entities", [])
+
+            # Search for the accession in the polymer entities
+            for entity in entities:
+                instances = entity.get("polymer_entity_instances", [])
+                for instance in instances:
+                    auth_asym_id = instance.get("rcsb_polymer_entity_instance_container_identifiers", {}).get(
+                        "auth_asym_id")
+                    if auth_asym_id == chain_name:
+                        uniprot_ids = entity.get("rcsb_polymer_entity_container_identifiers", {}).get("uniprot_ids", [])
+                        if uniprot_ids:
+                            return uniprot_ids[0]  # Return the first UniProt ID found
+
+            self.logger.info(f"No accession found for chain {chain_name} in PDB ID {pdb_id}.")
+            return None
+
+        except requests.exceptions.RequestException as e:
+            self.logger.error(f"Failed to retrieve accession for chain {chain_name} in PDB ID {pdb_id}: {e}")
+            return None
+
+
 
 

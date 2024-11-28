@@ -25,9 +25,15 @@ class SequenceEmbeddingType(Base):
     model_name = Column(String)
 
     seq_embeddings = relationship("SequenceEmbedding", back_populates="embedding_type")
+from pgvector.sqlalchemy import Vector
+from sqlalchemy import Column, Integer, String, ForeignKey, ARRAY, DateTime, func
+from sqlalchemy.orm import relationship, mapped_column
+
+from protein_metamorphisms_is.sql.model.core.base import Base
 
 class SequenceEmbedding(Base):
     __tablename__ = 'sequence_embeddings'
+
     id = Column(Integer, primary_key=True)
     sequence_id = Column(Integer, ForeignKey('sequence.id'), nullable=False)
     embedding_type_id = Column(Integer, ForeignKey('sequence_embedding_type.id'))
@@ -35,6 +41,7 @@ class SequenceEmbedding(Base):
     shape = Column(ARRAY(Integer))
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, onupdate=func.now())
+
+    # Relaciones existentes
     sequence = relationship("Sequence")
     embedding_type = relationship("SequenceEmbeddingType")
-    annotation = relationship("SequenceGoTermAnnotation", uselist=False, back_populates="embedding")  # Relación 1:1

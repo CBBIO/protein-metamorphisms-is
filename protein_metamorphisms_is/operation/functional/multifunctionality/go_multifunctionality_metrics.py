@@ -1,10 +1,17 @@
 from itertools import combinations
 
+from goatools.base import get_godag
+from goatools.godag.go_tasks import get_go2ancestors
 from sqlalchemy.orm import aliased
 
+from protein_metamorphisms_is.sql.model.entities.go_annotation.go_annotation import ProteinGOTermAnnotation
+from protein_metamorphisms_is.sql.model.entities.go_annotation.go_term import GOTerm
+from protein_metamorphisms_is.sql.model.operational.functional.group import GOTermPair, GOTermPairEntry, \
+    GOTermPairProtein
+from protein_metamorphisms_is.sql.model.operational.functional.result import GOTermPairResult
+# from protein_metamorphisms_is.sql.model.operational.functional.pairwise_group import GOResult, GOGroupEntry, GOGroup
 from protein_metamorphisms_is.tasks.queue import QueueTaskInitializer
-from protein_metamorphisms_is.sql.model.model import GOTerm, GOPairs, \
-    GOAnnotation, GOPairsTerms, GOResultsPairwise, ProteinGoPair
+
 from goatools import obo_parser
 from goatools.semantic import min_branch_length
 from goatools.anno.gaf_reader import GafReader
@@ -19,7 +26,7 @@ class GoMultifunctionalityMetrics(QueueTaskInitializer):
             conf (dict): Configuration dictionary containing paths to OBO and GAF files.
         """
         super().__init__(conf)
-        self.go = obo_parser.GODag(conf['obo'])
+        self.go = get_godag('go-basic.obo', optional_attrs='relationship')
         self.logger.info("GoMetrics instance created")
         self.reference_attribute = "go_terms_per_protein"
 
@@ -35,50 +42,32 @@ class GoMultifunctionalityMetrics(QueueTaskInitializer):
         for pair in pairs:
             self.publish_task({'pair': pair})
 
-    def load_filtered_annotations(self):
-        """
-        Carga las anotaciones de GO, filtrando aquellas que tienen un 'protein_entry'.
-
-        Returns:
-            list: Lista de anotaciones filtradas.
-        """
-        session = self.session
-        try:
-            # Filtrar solo las anotaciones con 'protein_entry'
-            annotations = session.query(GOAnnotation).filter(GOAnnotation.protein_entry_name.isnot(None)).all()
-            self.logger.info(f"Loaded {len(annotations)} annotations with 'protein_entry'.")
-            return annotations
-        except Exception as e:
-            self.logger.error(f"Error loading filtered annotations: {e}")
-            session.rollback()
-        finally:
-            session.close()
-
     def load_pairs(self):
         """
-        Genera pares de términos GO para cada categoría (P, C, F) en proteínas.
+        Genera pares de términos GO únicos por categoría (P, C, F) en proteínas,
+        y asocia cada par con una lista de proteínas donde aparece.
 
         Returns:
-            list: Una lista de diccionarios que representan pares de términos GO por categoría y proteína.
+            list: Una lista de diccionarios que representan pares de términos GO
+                  únicos por categoría, junto con las proteínas asociadas.
         """
         session = self.session
-        all_pairs = []
+        pairs_dict = {}
 
         try:
             # Consultar las anotaciones con términos GO y proteínas
             annotations = (
-                session.query(GOAnnotation, GOTerm)
-                .join(GOTerm, GOAnnotation.go_id == GOTerm.go_id)
-                .filter(GOAnnotation.protein_entry_name.isnot(None))
-                .order_by(GOAnnotation.protein_entry_name, GOAnnotation.is_transferred.asc(),
-                          GOAnnotation.distance.asc())
+                session.query(ProteinGOTermAnnotation, GOTerm)
+                .join(GOTerm, ProteinGOTermAnnotation.go_id == GOTerm.go_id)
+                .filter(ProteinGOTermAnnotation.id.isnot(None))
+                .order_by(ProteinGOTermAnnotation.id)
                 .all()
             )
 
             # Organizar los términos GO por categoría y proteína
             go_terms_by_protein = {}
             for annotation, go_term in annotations:
-                protein = annotation.protein_entry_name
+                protein = annotation.protein_id
                 category = go_term.category
 
                 # Inicializar la estructura para la proteína si no existe
@@ -89,34 +78,34 @@ class GoMultifunctionalityMetrics(QueueTaskInitializer):
                 if category in go_terms_by_protein[protein]:
                     go_terms_by_protein[protein][category].append(go_term.go_id)
 
-            # Debug: Imprimir los términos GO organizados
-            print(go_terms_by_protein)
-
-            # Generar pares de términos GO por cada proteína y categoría
+            # Generar pares únicos de términos GO por categoría
             for protein, categories in go_terms_by_protein.items():
-                self.logger.info('cat', categories)
                 for category, terms in categories.items():
                     sorted_terms = sorted(set(terms))
                     for go_term_1, go_term_2 in combinations(sorted_terms, 2):
-                        all_pairs.append({
-                            'go_term_1': go_term_1,
-                            'go_term_2': go_term_2,
-                            'category': category,
-                            'protein': protein
-                        })
-                        self.logger.info(
-                            f"Generated pair: Protein={protein}, Category={category}, GO1={go_term_1}, GO2={go_term_2}")
+                        pair_key = (go_term_1, go_term_2, category)
+                        if pair_key not in pairs_dict:
+                            pairs_dict[pair_key] = {'proteins': []}
+                        pairs_dict[pair_key]['proteins'].append(protein)
 
+            # Convertir el diccionario de pares en una lista estructurada
+            all_pairs = [
+                {
+                    'go_term_1': go_term_1,
+                    'go_term_2': go_term_2,
+                    'category': category,
+                    'proteins': sorted(set(data['proteins']))
+                }
+                for (go_term_1, go_term_2, category), data in pairs_dict.items()
+            ]
 
-            self.logger.info(f"Total pairs generated with 'protein_entry': {len(all_pairs)}")
+            self.logger.info(f"Total unique pairs generated: {len(all_pairs)}")
+            print(all_pairs)
             return all_pairs
 
         except Exception as e:
-            self.logger.error(f"Error loading GO pairs with 'protein_entry': {e}")
-            session.rollback()
-
-        finally:
-            session.close()
+            self.logger.error(f"Error loading GO term pairs: {e}")
+            return []
 
     def process(self, data):
         """
@@ -128,30 +117,23 @@ class GoMultifunctionalityMetrics(QueueTaskInitializer):
         Returns:
             dict: A dictionary containing the calculated metrics for each GO term pair.
         """
-        pair = data['pair']
-        go_term_1_id = pair['go_term_1']
-        go_term_2_id = pair['go_term_2']
-        protein = pair['protein']
+
 
         # Calcular el contenido de información para cada término GO
         try:
-            # term_counts = TermCounts(self.go, self.annotations)
-            # ic1 = get_info_content(go_term_1_id, term_counts)
-            # ic2 = get_info_content(go_term_2_id, term_counts)
+            pair = data['pair']
+            go_term_1_id = pair['go_term_1']
+            go_term_2_id = pair['go_term_2']
+            proteins = pair['proteins']
 
-            # Calcular la distancia de Resnik entre los términos GO
-            # resnik = resnik_sim(go_term_1_id, go_term_2_id, self.go, term_counts)
-            # Calcular la longitud mínima de rama entre los términos GO
-            mbl = min_branch_length(go_term_1_id, go_term_2_id, self.go, branch_dist=None)
+            # Calcular la MBL utilizando las relaciones opcionales
+            mbl = calculate_mbl_with_relationships(go_term_1_id, go_term_2_id, self.go)
 
             # Guardar los resultados en un diccionario con las métricas calculadas
             result = {
-                'protein': protein,
+                'proteins': proteins,
                 'go_term_1_id': go_term_1_id,
                 'go_term_2_id': go_term_2_id,
-                # 'information_content_1': ic1,
-                # 'information_content_2': ic2,
-                # 'resnik_distance': resnik,
                 'minimum_branch_length': mbl
             }
 
@@ -163,70 +145,81 @@ class GoMultifunctionalityMetrics(QueueTaskInitializer):
             return None
 
     def store_entry(self, record):
+        """
+        Almacena un GOTermPair, sus entradas y las proteínas relacionadas.
+
+        Args:
+            record (dict): Diccionario con los datos del par de términos GO y las proteínas asociadas.
+        """
         session = self.session
         try:
-            # Extraer información del registro
+            # Extraer datos del registro
             go_term_1_id = record['go_term_1_id']
             go_term_2_id = record['go_term_2_id']
-            protein = record['protein']
-            minimum_branch_length = record['minimum_branch_length']
-            information_content_1 = record.get('information_content_1', None)
-            information_content_2 = record.get('information_content_2', None)
-            resnik_distance = record.get('resnik_distance', None)
+            proteins = record['proteins']
+            mbl = record.get('minimum_branch_length', None)
 
-            # Aliases para las dos instancias de GOPairsTerms
-            gpt1 = aliased(GOPairsTerms)
-            gpt2 = aliased(GOPairsTerms)
+            # Crear un nuevo GOTermPair
+            go_term_pair = GOTermPair()
+            session.add(go_term_pair)
+            session.flush()  # Obtener el ID del GOTermPair
 
-            # Paso 1: Verificar si el par de GO ya existe
-            go_pair = session.query(GOPairs).join(gpt1, GOPairs.id == gpt1.id).join(
-                gpt2, GOPairs.id == gpt2.id
-            ).filter(
-                gpt1.go_term_id == go_term_1_id,
-                gpt2.go_term_id == go_term_2_id
-            ).first()
+            # Crear entradas en GOTermPairEntry para los dos términos GO
+            for go_term_id in [go_term_1_id, go_term_2_id]:
+                term_entry = GOTermPairEntry(go_term_pair_id=go_term_pair.id, go_term_id=go_term_id)
+                session.add(term_entry)
 
-            # Paso 2: Si el par no existe, crearlo
-            if not go_pair:
-                go_pair = GOPairs()
-                session.add(go_pair)
-                session.flush()  # Obtener el ID generado automáticamente
+            # Asociar proteínas al GOTermPair mediante GOTermPairProtein
+            for protein_id in proteins:
+                association = session.query(GOTermPairProtein).filter_by(
+                    go_term_pair_id=go_term_pair.id, protein_id=protein_id
+                ).first()
+                if not association:
+                    association = GOTermPairProtein(go_term_pair_id=go_term_pair.id, protein_id=protein_id)
+                    session.add(association)
 
-                # Almacenar los términos en GOPairsTerms
-                go_pair_terms = [
-                    GOPairsTerms(id=go_pair.id, go_term_id=go_term_1_id),
-                    GOPairsTerms(id=go_pair.id, go_term_id=go_term_2_id)
-                ]
-                session.add_all(go_pair_terms)
+            # Crear el resultado asociado al GOTermPair
+            term_result = session.query(GOTermPairResult).filter_by(go_term_pair_id=go_term_pair.id).first()
+            if not term_result:
+                term_result = GOTermPairResult(go_term_pair_id=go_term_pair.id, mbl=mbl)
+                session.add(term_result)
 
-            # Paso 3: Verificar si la relación en ProteinGoPair ya existe
-            existing_protein_go_pair = session.query(ProteinGoPair).filter_by(
-                go_pair_id=go_pair.id, protein_entry_name=protein
-            ).first()
-
-            # Si no existe, agregar la relación
-            if not existing_protein_go_pair:
-                protein_go_pair = ProteinGoPair(go_pair_id=go_pair.id, protein_entry_name=protein)
-                session.add(protein_go_pair)
-
-            # Paso 4: Almacenar los resultados en GOResultsPairwise
-            results_entry = GOResultsPairwise(
-                pair_id=go_pair.id,
-                information_content_1=information_content_1,
-                information_content_2=information_content_2,
-                resnik_distance=resnik_distance,
-                minimum_branch_length=minimum_branch_length
-            )
-            session.add(results_entry)
-
-            # Commit de la transacción
+            # Confirmar los cambios
             session.commit()
-            self.logger.info(
-                f"Stored entries for GO pair: {go_term_1_id} and {go_term_2_id} with pair ID {go_pair.id} and protein {protein}")
 
         except Exception as e:
-            self.logger.error(f"Error storing entry for {go_term_1_id} and {go_term_2_id}: {e}")
+            self.logger.error(f"Error storing entry: {e}")
             session.rollback()
-
         finally:
             session.close()
+
+
+
+
+
+def calculate_mbl_with_relationships(go_id1, go_id2, godag):
+    # Crear el subgrafo con todas las relaciones
+    go2ancestors = get_go2ancestors(set(godag.values()), relationships={"is_a", "part_of", "regulates"})
+
+    # Obtener todos los ancestros de ambos términos
+    ancestors1 = get_all_ancestors(go_id1, go2ancestors) | {go_id1}
+    ancestors2 = get_all_ancestors(go_id2, go2ancestors) | {go_id2}
+
+    # Encontrar los ancestros comunes
+    common_ancestors = ancestors1.intersection(ancestors2)
+    if not common_ancestors:
+        print("No hay ancestros comunes entre los términos dados.")
+        return None
+
+    # Calcular la distancia mínima a los ancestros comunes
+    min_distance = float("inf")
+    for ancestor in common_ancestors:
+        distance = abs(godag[go_id1].depth + godag[go_id2].depth - 2 * godag[ancestor].depth)
+        min_distance = min(min_distance, distance)
+
+    print(f"Minimum Branch Length (MBL) entre {go_id1} y {go_id2}: {min_distance}")
+    return min_distance
+
+def get_all_ancestors(go_id, go2ancestors):
+    """Devuelve todos los ancestros del término GO incluyendo relaciones opcionales."""
+    return go2ancestors.get(go_id, set())
