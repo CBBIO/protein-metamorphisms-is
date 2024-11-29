@@ -21,6 +21,7 @@ class StructuralSubClustering(BaseTaskInitializer):
     def start(self):
         self.logger.info("Starting subclustering process...")
         clusters = self.load_sequences_from_clusters()
+
         for cluster_id, embeddings in clusters.items():
             if len(embeddings) > 1:  # Ensure the cluster has more than one embedding
                 self.logger.info(f"Processing subclustering for cluster {cluster_id} with {len(embeddings)} embeddings")
@@ -56,6 +57,8 @@ class StructuralSubClustering(BaseTaskInitializer):
         )
 
         results = query.all()
+
+
         self.logger.info(f"Loaded {len(results)} embedding entries for subclustering")
 
         # Group results by cluster_id

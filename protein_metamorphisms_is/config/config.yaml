@@ -52,12 +52,16 @@ models_path:
 constants: "config/constants.yaml"
 
 # Sequence Clustering
-fasta_path: "/home/bioxaxi/data/complete.fasta"
-cdhit_out_path: "/home/bioxaxi/data/out"
+## Temporal files that will be created, check that the directories path exists
+fasta_path: "/home/bioxaxi/data/complete.fasta" #Check
+cdhit_out_path: "/home/bioxaxi/data/cd_hitout" # Temporal file that will be created, check that the directory path exists
+## --
 sequence_identity_threshold: 0.98
 alignment_coverage: 0.95
 memory_usage: 25000
 most_representative_search: 1
+
+
 
 # Structural Alignment
 structural_alignment:

@@ -1,7 +1,8 @@
 import importlib
 import traceback
 
-from protein_metamorphisms_is.sql.model.entities.embedding.sequence_embedding import SequenceEmbeddingType, SequenceEmbedding
+from protein_metamorphisms_is.sql.model.entities.embedding.sequence_embedding import SequenceEmbeddingType, \
+    SequenceEmbedding
 from protein_metamorphisms_is.sql.model.entities.sequence.sequence import Sequence
 from protein_metamorphisms_is.tasks.gpu import GPUTaskInitializer
 
@@ -39,6 +40,10 @@ class SequenceEmbeddingManager(GPUTaskInitializer):
             self.logger.info("Starting embedding enqueue process.")
             self.session_init()
             sequences = self.session.query(Sequence).all()
+
+            if self.conf['limit_execution']:
+                sequences = sequences[:self.conf['limit_execution']]
+
             sequence_batches = [sequences[i:i + self.batch_size] for i in range(0, len(sequences), self.batch_size)]
 
             for batch in sequence_batches:

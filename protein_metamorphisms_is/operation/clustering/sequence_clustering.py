@@ -106,6 +106,7 @@ class SequenceClustering(BaseTaskInitializer):
         try:
             self.logger.info("Starting CD-HIT clustering process for sequences")
             sequences = self.load_sequences()
+
             self.create_fasta(sequences)
             cluster_data = self.process()
             self.store_entry(cluster_data)

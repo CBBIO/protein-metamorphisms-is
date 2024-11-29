@@ -7,15 +7,18 @@ from protein_metamorphisms_is.sql.model.entities.embedding.structure_3di import 
 from protein_metamorphisms_is.sql.model.entities.structure.state import State
 from protein_metamorphisms_is.tasks.queue import QueueTaskInitializer
 
+
 class Structure3DiManager(QueueTaskInitializer):
     def __init__(self, conf):
         super().__init__(conf)
         self.encoder = mini3di.Encoder()
         self.parser = MMCIFParser(QUIET=True)
-        self.reference_attribute= "model"
+        self.reference_attribute = "model"
 
     def enqueue(self):
         states = self.session.query(State).all()
+        if self.conf['limit_execution']:
+            states = states[:self.conf['limit_execution']]
         for state in states:
             self.publish_task(state.__dict__)
 
@@ -52,7 +55,7 @@ class Structure3DiManager(QueueTaskInitializer):
             sequence = self.encoder.build_sequence(states)
         except Exception as e:
             # Logging the entire chain might be too verbose, so log specific details instead
-            self.log_chain_details(chain,model_info)
+            self.log_chain_details(chain, model_info)
             self.logger.error(f"Error processing the chain: {e}", exc_info=True)
             return None
 
@@ -62,7 +65,7 @@ class Structure3DiManager(QueueTaskInitializer):
         }
         return embedding_result
 
-    def log_chain_details(self, chain,model_info):
+    def log_chain_details(self, chain, model_info):
         try:
             print(model_info)
             print(f"Chain ID: {chain.id}")
@@ -89,4 +92,3 @@ class Structure3DiManager(QueueTaskInitializer):
         except Exception as e:
             self.session.rollback()
             self.logger.error(f"Failed to store embedding: {e}", exc_info=True)
-

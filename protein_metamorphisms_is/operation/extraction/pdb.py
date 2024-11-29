@@ -101,17 +101,25 @@ class PDBExtractor(QueueTaskInitializer):
         such as resolution threshold or method type, and enqueues them for processing.
         """
         resolution_threshold = self.conf.get("resolution_threshold")
+        limit_execution = self.conf.get("limit_execution")  # Nuevo parámetro de configuración
+
         if resolution_threshold is None:
             self.logger.error("Resolution threshold not defined in configuration.")
             return
 
         try:
-            structures = self.session.query(Structure).filter(
+            query = self.session.query(Structure).filter(
                 or_(
                     Structure.resolution <= resolution_threshold,
                     Structure.method == "NMR"
                 )
-            ).all()
+            )
+
+            if limit_execution:  # Aplicar límite si está configurado
+                structures = query.limit(limit_execution).all()
+            else:
+                structures = query.all()
+
             for structure in structures:
                 self.logger.debug(f"Publishing task for PDB ID: {structure.id}")
                 self.publish_task(structure.id)
