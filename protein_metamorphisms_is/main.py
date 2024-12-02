@@ -25,8 +25,8 @@ def main(config_path="config/config.yaml"):
     Structure3DiManager(conf).start()
     SequenceClustering(conf).start()
     StructuralSubClustering(conf).start()
-    # StructuralAlignmentManager(conf).start()
-    # SequenceGOAnnotation(conf).start()
+    StructuralAlignmentManager(conf).start()
+    SequenceGOAnnotation(conf).start()
     # GoMultifunctionalityMetrics(conf).start()
 
 

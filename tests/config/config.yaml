@@ -1,6 +1,6 @@
 #System
 max_workers: 8
-binaries_path: '../binaries'
+binaries_path: 'binaries'
 
 # DB CONFIGURATION
 DB_USERNAME: usuario
