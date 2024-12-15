@@ -1,0 +1,58 @@
+#System
+max_workers: 1
+
+# DB CONFIGURATION
+DB_USERNAME: usuario
+DB_PASSWORD: clave
+DB_HOST: localhost
+DB_PORT: 5432
+DB_NAME: BioData
+
+rabbitmq_host: localhost
+rabbitmq_user: guest
+rabbitmq_password: guest
+
+#Execution
+limit_execution: 100 # Debug Mode. False for complete run
+
+
+### Information System/
+## Load Accessions
+tag: 'GOA'
+
+# Load  from CSV
+load_accesion_csv: /home/bioxaxi/PycharmProjects/protein-metamorphisms-is/data/fantasia.csv
+load_accesion_column: id
+
+
+# UniProt Extraction
+allowed_evidences:
+  - EXP
+  - IDA
+  - IPI
+  - IMP
+  - IGI
+  - IEP
+  - TAS
+  - IC
+
+# Fantasia
+fantasia_input_fasta: /home/bioxaxi/data/fantasia/input/input.fasta
+fantasia_output_h5: /home/bioxaxi/data/fantasia/embeddings/embeddings.h5
+fantasia_output_csv: /home/bioxaxi/data/fantasia/results/output.csv
+max_distance: 1
+length_filter: 5000
+redundancy_filter: 0.95
+redundancy_file: /home/bioxaxi/data/fantasia/redundancy/output.fasta
+topgo: True
+
+embedding:
+  types:
+#    - 1 # ESM
+#    - 2 # Prost
+    - 3 # Prot
+  batch_size: 40
+
+
+## system
+constants: "config/constants.yaml"

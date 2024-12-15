@@ -21,11 +21,11 @@ limit_execution: 100 # Debug Mode. False for complete run
 tag: 'GOA'
 
 # Load  from CSV
-load_accesion_csv: ../data/uniprot_full.csv
+load_accesion_csv: ../data/fantasia.csv
 load_accesion_column: id
 
 # Fetch from API
-search_criteria: '(structure_3d:true)'
+search_criteria: '(reviewed:true)'
 limit: 20
 
 # UniProt Extraction
@@ -80,7 +80,7 @@ structural_alignment:
 embedding:
   types:
     - 1 # ESM
-#    - 2 # Prost
+    - 2 # Prost
   batch_size: 40
 # GO Metrics
 obo: '../data/go-basic.obo'

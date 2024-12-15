@@ -43,73 +43,36 @@ class SequenceGOAnnotation(QueueTaskInitializer):
         try:
             sequence_id = task_data['sequence_id']
             embedding_type_id = task_data['embedding_type_id']
-            task_type_id = task_data.get('task_type_id')
 
             query = text("""
-            WITH target_embedding AS (
-                SELECT embedding
-                FROM sequence_embeddings
-                WHERE sequence_id = :sequence_id AND embedding_type_id = :embedding_type_id
-            ),
-            filtered_sequences AS (
+                WITH target_embedding AS (
+                    SELECT embedding
+                    FROM sequence_embeddings
+                    WHERE sequence_id = :sequence_id AND embedding_type_id = :embedding_type_id
+                )
                 SELECT 
-                    se.sequence_id,
-                    se.embedding,
-                    (se.embedding <-> te.embedding) AS distance
+                    se.sequence_id AS sequence_id,
+                    se.embedding AS embedding,
+                    (se.embedding <-> te.embedding) AS distance,
+                    p.id AS protein_id,
+                    p.description AS protein_description,
+                    p.gene_name AS gene_name,
+                    p.organism AS organism,
+                    pgo.go_id AS go_id,
+                    gt.description AS go_term_description
                 FROM 
-                    sequence_embeddings se,
-                    target_embedding te
+                    sequence_embeddings se
+                    JOIN target_embedding te ON TRUE
+                    JOIN sequence s ON se.sequence_id = s.id
+                    JOIN protein p ON s.id = p.sequence_id
+                    LEFT JOIN protein_go_term_annotation pgo ON p.id = pgo.protein_id
+                    LEFT JOIN go_terms gt ON pgo.go_id = gt.go_id
                 WHERE 
-                    (se.embedding <-> te.embedding) < 1
-            ),
-            ranked_sequences AS (
-                SELECT 
-                    fs.sequence_id,
-                    fs.distance,
-                    COALESCE(p.id, acc.protein_id) AS protein_id,
-                    COALESCE(p.description, 'Derived from Chain') AS protein_description,
-                    c.id AS chain_id,
-                    c.name AS chain_name
-                FROM 
-                    filtered_sequences fs
-                LEFT JOIN 
-                    chain c ON c.sequence_id = fs.sequence_id
-                LEFT JOIN 
-                    accession acc ON acc.code = c.accession_code
-                LEFT JOIN 
-                    protein p ON p.sequence_id = fs.sequence_id OR p.id = acc.protein_id
+                    se.embedding_type_id = :embedding_type_id
+                    AND (se.embedding <-> te.embedding) < 3
                 ORDER BY 
-                    fs.distance ASC
-            ),
-            ranked_go_terms AS (
-                SELECT 
-                    rs.sequence_id,
-                    rs.distance,
-                    rs.protein_id,
-                    rs.protein_description,
-                    rs.chain_id,
-                    rs.chain_name,
-                    gta.go_id,
-                    gt.category AS go_category,
-                    gt.description AS go_description,
-                    ROW_NUMBER() OVER (PARTITION BY gta.go_id ORDER BY rs.distance ASC) AS rank
-                FROM ranked_sequences rs
-                LEFT JOIN protein_go_term_annotation gta ON gta.protein_id = rs.protein_id
-                LEFT JOIN go_terms gt ON gt.go_id = gta.go_id
-            )
-            SELECT 
-                sequence_id,
-                distance,
-                protein_id,
-                protein_description,
-                chain_id,
-                chain_name,
-                go_id,
-                go_category,
-                go_description
-            FROM ranked_go_terms
-            WHERE rank = 1
-            ORDER BY distance ASC, protein_id;
+                    distance ASC;
+
             """)
 
             # Ejecutar la consulta
@@ -128,7 +91,6 @@ class SequenceGOAnnotation(QueueTaskInitializer):
                     'distance': result.distance,
                     'embedding_type_id': embedding_type_id,
                     'protein_entry': result.protein_id,
-                    'task_type_id': task_type_id
                 }
                 predictions.append(prediction)
             print(predictions)
