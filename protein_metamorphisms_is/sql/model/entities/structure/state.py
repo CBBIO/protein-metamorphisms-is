@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship
 from protein_metamorphisms_is.sql.model.core.base import Base
 
+
 class State(Base):
     __tablename__ = 'state'
 

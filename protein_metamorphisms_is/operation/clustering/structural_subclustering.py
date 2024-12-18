@@ -1,11 +1,7 @@
-from sqlalchemy import func
-from sqlalchemy.orm import aliased
-
 from protein_metamorphisms_is.sql.model.entities.embedding.structure_3di import Structure3Di
 from protein_metamorphisms_is.sql.model.entities.sequence.sequence import Sequence
 from protein_metamorphisms_is.sql.model.entities.structure.chain import Chain
 from protein_metamorphisms_is.sql.model.entities.structure.state import State
-from protein_metamorphisms_is.sql.model.entities.structure.structure import Structure
 from protein_metamorphisms_is.sql.model.operational.clustering.cluster import ClusterEntry, Cluster, Subcluster, \
     SubclusterEntry
 from protein_metamorphisms_is.tasks.base import BaseTaskInitializer
@@ -58,7 +54,6 @@ class StructuralSubClustering(BaseTaskInitializer):
 
         results = query.all()
 
-
         self.logger.info(f"Loaded {len(results)} embedding entries for subclustering")
 
         # Group results by cluster_id
@@ -91,8 +86,6 @@ class StructuralSubClustering(BaseTaskInitializer):
         cluster_results = self.run_cd_hit(fasta_path)
         self.store_entry(cluster_id, cluster_results)
 
-
-
     def run_cd_hit(self, fasta_path):
         cdhit_out_path = fasta_path.replace('.fasta', '')
         self.logger.info(f"Running CD-HIT on {fasta_path}")
@@ -114,8 +107,6 @@ class StructuralSubClustering(BaseTaskInitializer):
 
         if 'cluster' not in cluster_results.columns:
             cluster_results['cluster'] = 0
-
-
 
         self.logger.info(f"CD-HIT cluster results:\n{cluster_results}")
         return cluster_results

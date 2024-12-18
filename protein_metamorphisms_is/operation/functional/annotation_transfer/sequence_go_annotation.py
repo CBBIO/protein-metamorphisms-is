@@ -3,10 +3,7 @@ from sqlalchemy import text
 from protein_metamorphisms_is.sql.model.entities.embedding.sequence_embedding import SequenceEmbedding
 from protein_metamorphisms_is.sql.model.entities.go_annotation.transference.sequence_go_term_annotation import \
     SequenceGoTermAnnotation
-from protein_metamorphisms_is.sql.model.operational.clustering.cluster import ClusterEntry
 from protein_metamorphisms_is.tasks.queue import QueueTaskInitializer
-
-
 
 
 class SequenceGOAnnotation(QueueTaskInitializer):
@@ -50,7 +47,7 @@ class SequenceGOAnnotation(QueueTaskInitializer):
                     FROM sequence_embeddings
                     WHERE sequence_id = :sequence_id AND embedding_type_id = :embedding_type_id
                 )
-                SELECT 
+                SELECT
                     se.sequence_id AS sequence_id,
                     se.embedding AS embedding,
                     (se.embedding <-> te.embedding) AS distance,
@@ -60,17 +57,17 @@ class SequenceGOAnnotation(QueueTaskInitializer):
                     p.organism AS organism,
                     pgo.go_id AS go_id,
                     gt.description AS go_term_description
-                FROM 
+                FROM
                     sequence_embeddings se
                     JOIN target_embedding te ON TRUE
                     JOIN sequence s ON se.sequence_id = s.id
                     JOIN protein p ON s.id = p.sequence_id
                     LEFT JOIN protein_go_term_annotation pgo ON p.id = pgo.protein_id
                     LEFT JOIN go_terms gt ON pgo.go_id = gt.go_id
-                WHERE 
+                WHERE
                     se.embedding_type_id = :embedding_type_id
                     AND (se.embedding <-> te.embedding) < 3
-                ORDER BY 
+                ORDER BY
                     distance ASC;
 
             """)
@@ -142,4 +139,3 @@ class SequenceGOAnnotation(QueueTaskInitializer):
         except Exception as e:
             self.logger.error(f"Error storing predictions: {e}")
             self.session.rollback()
-

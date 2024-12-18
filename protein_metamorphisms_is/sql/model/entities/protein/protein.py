@@ -2,6 +2,7 @@ from sqlalchemy import Column, DateTime, Boolean, Integer, String, func, Date, F
 from sqlalchemy.orm import relationship
 from protein_metamorphisms_is.sql.model.core.base import Base
 
+
 class Protein(Base):
     __tablename__ = "protein"
 

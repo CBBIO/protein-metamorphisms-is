@@ -13,9 +13,9 @@ The main objective is to develop a comprehensive dataset that includes sets of v
 
 We have created an environment for analyzing structural distances that enables the analysis of inter-subcluster distances using leading structural alignment and distance algorithms such as Fatcat, US-Align, and CE-Align. High differences in these values are indicative of metamorphism. Concurrently, we employ similarity analysis techniques in Gene Ontology (GO) ontologies to discover proteins that, in addition to their structural conservation, exhibit multifunctionality. This includes an analysis of semantic distances per protein to identify disparate terms indicating multifunctionality.
 
-Additionally, we utilize sequence embeddings based on ProstT5, ProtT5, ESM models to perform automatic transfer of GO terms. This transfer is not only carried out through a single type of embeddings but also through the possible concatenation of these, thus enriching the precision of our predictions.
 
-Furthermore, we are developing predictors that may indicate multifunctionality or metamorphism, through the filtering of the datasets resulting from these operations. This integrated approach not only expands our understanding of the structural and functional plasticity of proteins but also significantly contributes to bioinformatics and structural biology, providing insights into the adaptability and evolution of proteins over time.
+> 🚀 **FANTASIA Support**: This tool also supports **FANTASIA**, an extended system for functional annotation and task orchestration. FANTASIA comes with its own documentation and streamlined templates, ensuring clarity and usability for large-scale annotation workflows.  
+> You can find the detailed documentation [here](protein_metamorphism_is/pipelines/fantasia/README.md).
 
 ## prerequisites
 
@@ -82,11 +82,11 @@ Use Poetry to install the project dependencies:
 poetry install
 ```
 
-### Improved Documentation for Configuration Parameters and Constants
+### Configuration Parameters and Constants
 
 #### **Configuration Parameters (`config.yaml`)**
 
-The `config.yaml` file defines various settings used across the application, including system parameters, database configuration, and task-specific settings.
+The main `config.yaml` file defines various settings used across the application, including system parameters, database configuration, and task-specific settings, pipelines such as FANTASIA contains a reduced template instance of this file on its own directory.
 
 - **System Configuration**:
   - `max_workers`: Specifies the maximum number of worker threads that the system can use. This controls the concurrency level for processing tasks.
@@ -179,8 +179,6 @@ The `constants.yaml` file defines constant values used throughout the system, in
 - **Prediction Methods**:
   - `name`: The name of the prediction method (e.g., "Cosine Similarity").
   - `description`: A description of how the prediction method works, particularly how it measures similarity between embeddings.
-
-Para documentar que utilizas el archivo `main.py` para encadenar procesos, puedes añadir una sección en el README que explique cómo se utiliza este archivo y su propósito dentro del flujo de trabajo. Aquí tienes un ejemplo de cómo podrías integrar esta información:
 
 ---
 

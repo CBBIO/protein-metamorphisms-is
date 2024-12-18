@@ -1,12 +1,15 @@
 from mini3di import Encoder
 
+
 def load_model(model_name):
     # mini3di doesn't require loading a model in the traditional sense
     return Encoder()
 
+
 def load_tokenizer(model_name):
     # mini3di doesn't use a tokenizer, but we provide a dummy function to maintain interface consistency
     return None
+
 
 def embedding_task(structures, model, tokenizer):
     """
@@ -20,8 +23,6 @@ def embedding_task(structures, model, tokenizer):
     Returns:
     A list of embedding records.
     """
-    import numpy as np
-    from math import nan
     embedding_records = []
     for structure in structures:
         # Assume structure is a dictionary with the required atomic coordinates
@@ -32,7 +33,6 @@ def embedding_task(structures, model, tokenizer):
             c = structure['c']
 
             states = model.encode_atoms(ca=ca, cb=cb, n=n, c=c)
-            sequence = model.build_sequence(states)
             embedding_shape = states.shape
 
             # Prepare the record

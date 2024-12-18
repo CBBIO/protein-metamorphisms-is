@@ -3,6 +3,7 @@ import re
 import subprocess
 import traceback
 
+
 def align_task(alignment_entry, conf, logger):
     """
     Executes a protein structure alignment task using the US-align algorithm.

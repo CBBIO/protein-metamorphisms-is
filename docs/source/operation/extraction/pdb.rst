@@ -8,7 +8,7 @@ Class Overview
 
 The `PDBExtractor` class, extending `BioinfoExtractorBase`, is central to this module. It orchestrates the fetching and processing of 3D structural protein data from PDB, leveraging Biopython's capabilities for parsing and handling PDB files.
 
-.. autoclass:: protein_metamorphisms_is.information_system.pdb.PDBExtractor
+.. autoclass:: protein_metamorphisms_is.operation.extraction.pdb.PDBExtractor
    :members:
    :undoc-members:
    :show-inheritance:

@@ -1,4 +1,11 @@
-import json
+"""
+Embedding LookUp Module
+=======================
+
+This module contains the `EmbeddingLookUp` class, which handles querying embeddings stored in HDF5 format,
+calculating distances to identify similar proteins, and storing the resulting GO terms in CSV format.
+
+"""
 import os
 
 import pandas as pd
@@ -9,18 +16,59 @@ from protein_metamorphisms_is.tasks.queue import QueueTaskInitializer
 
 
 class EmbeddingLookUp(QueueTaskInitializer):
-    def __init__(self, conf):
+    """
+    A class to process embeddings from an HDF5 file, query GO terms based on similarity,
+    and store results in a CSV file.
+
+    Parameters
+    ----------
+    conf : dict
+        Configuration dictionary containing paths and thresholds for processing.
+    current_date : str
+        A timestamp used for generating unique output file names.
+
+    Attributes
+    ----------
+    h5_path : str
+        Path to the input HDF5 file containing embeddings.
+    output_csv : str
+        Path to store the resulting GO terms in CSV format.
+    max_distance : float
+        Maximum allowed distance for similarity-based GO term retrieval.
+    """
+
+    def __init__(self, conf, current_date):
         """
-        Constructor de la clase que inicializa la configuración y el logger.
+        Initializes the EmbeddingLookUp class with configuration settings and output paths.
+
+        Parameters
+        ----------
+        conf : dict
+            The configuration dictionary containing paths and parameters.
+        current_date : str
+            The timestamp used to uniquely identify output files.
         """
         super().__init__(conf)
+        self.current_date = current_date
         self.logger.info("EmbeddingLookUp initialized")
-        self.h5_path = conf.get('fantasia_output_h5', 'embeddings_results.h5')
+        self.h5_path = os.path.join(
+            conf.get("fantasia_output_h5_path", "./embeddings"),
+            f"{conf.get('fantasia_prefix', 'default')}_embeddings_{self.current_date}.h5"
+        )
+        self.output_csv = os.path.join(
+            conf.get("fantasia_output_csv", "./results"),
+            f"{conf.get('fantasia_prefix', 'default')}_results_{self.current_date}.csv"
+        )
         self.max_distance = conf.get('max_distance', 3)  # Distancia máxima permitida para el cálculo
 
     def enqueue(self):
         """
-        Enqueue a task for each embedding from HDF5.
+        Reads embeddings from an HDF5 file and enqueues tasks for processing.
+
+        Raises
+        ------
+        Exception
+            If any error occurs while reading the HDF5 file or publishing tasks.
         """
         try:
             self.logger.info(f"Reading embeddings from HDF5: {self.h5_path}")
@@ -56,7 +104,22 @@ class EmbeddingLookUp(QueueTaskInitializer):
 
     def process(self, task_data):
         """
-        Procesa cada tarea para calcular términos GO basados en la distancia de embeddings.
+        Processes a single task by querying GO terms based on embedding similarity.
+
+        Parameters
+        ----------
+        task_data : dict
+            Dictionary containing the embedding, accession ID, and embedding type ID.
+
+        Returns
+        -------
+        list of dict
+            A list of dictionaries containing GO term results and metadata.
+
+        Raises
+        ------
+        Exception
+            If any error occurs during the query execution.
         """
         try:
             accession = task_data['accession'].removeprefix('accession_')
@@ -67,30 +130,32 @@ class EmbeddingLookUp(QueueTaskInitializer):
             vector_string = "[" + ",".join(f"{float(v):.8f}" for v in embedding) + "]"
 
             # Construir la consulta SQL con el vector embebido
-            query = text(f"""
-            WITH target_embedding AS (
-                SELECT :vector_string ::vector AS embedding
-            )
-            SELECT 
-                s.sequence,
-                (se.embedding <-> te.embedding) AS distance,
-                p.id AS protein_id,
-                p.gene_name AS gene_name,
-                p.organism AS organism,
-                pgo.go_id AS go_term_id,
-                gt.description AS go_term_description
-            FROM 
-                sequence_embeddings se
-                JOIN target_embedding te ON TRUE
-                JOIN sequence s ON se.sequence_id = s.id
-                JOIN protein p ON s.id = p.sequence_id
-                LEFT JOIN protein_go_term_annotation pgo ON p.id = pgo.protein_id
-                LEFT JOIN go_terms gt ON pgo.go_id = gt.go_id
-            WHERE 
-                se.embedding_type_id = :embedding_type_id
-                AND (se.embedding <-> te.embedding) < :max_distance
-            ORDER BY 
-                distance ASC;
+            query = text("""
+                WITH target_embedding AS (
+                    SELECT :vector_string ::vector AS embedding
+                )
+                SELECT
+                    s.sequence,
+                    (se.embedding <-> te.embedding) AS distance,
+                    p.id AS protein_id,
+                    p.gene_name AS gene_name,
+                    p.organism AS organism,
+                    pgo.go_id AS go_term_id,
+                    gt.category as category,
+                    gt.description AS go_term_description,
+                    pgo.evidence_code
+                FROM
+                    sequence_embeddings se
+                    JOIN target_embedding te ON TRUE
+                    JOIN sequence s ON se.sequence_id = s.id
+                    JOIN protein p ON s.id = p.sequence_id
+                    LEFT JOIN protein_go_term_annotation pgo ON p.id = pgo.protein_id
+                    LEFT JOIN go_terms gt ON pgo.go_id = gt.go_id
+                WHERE
+                    se.embedding_type_id = :embedding_type_id
+                    AND (se.embedding <-> te.embedding) < :max_distance
+                ORDER BY
+                    distance ASC;
             """)
 
             self.logger.info(f"Executing query for accession {accession} and embedding type {embedding_type_id}.")
@@ -111,6 +176,8 @@ class EmbeddingLookUp(QueueTaskInitializer):
                 go_terms.append({
                     'accession': accession,
                     'go_id': row.go_term_id,
+                    'category': row.category,
+                    'evidence_code': row.evidence_code,
                     'go_description': row.go_term_description,
                     'distance': row.distance,
                     'embedding_type_id': embedding_type_id,
@@ -130,15 +197,24 @@ class EmbeddingLookUp(QueueTaskInitializer):
 
     def store_entry(self, go_terms):
         """
-        Guarda los términos GO en un archivo CSV utilizando pandas.
-        Filtra las entradas donde go_terms sea None o esté vacío.
+        Stores the retrieved GO terms in a CSV file.
+
+        Parameters
+        ----------
+        go_terms : list of dict
+            List of dictionaries containing GO term results.
+
+        Raises
+        ------
+        Exception
+            If an error occurs while writing to the CSV file.
         """
         if not go_terms:  # Verifica si go_terms es None o está vacío
             self.logger.info("No valid GO terms to store.")
             return
 
         try:
-            output_csv_path = self.conf.get('fantasia_output_csv', 'results.csv')
+            output_csv_path = self.output_csv  # Usar el path único generado con current_date
 
             # Convertir go_terms a un DataFrame
             df = pd.DataFrame(go_terms)

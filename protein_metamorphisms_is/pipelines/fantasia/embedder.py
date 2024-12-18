@@ -1,20 +1,58 @@
-import importlib
+"""
+Sequence Embedding Module
+=========================
+
+This module contains the `SequenceEmbedder` class, which processes protein sequences to generate embeddings
+using protein language models, applies optional filters (like length and redundancy), and stores the embeddings
+in HDF5 format.
+"""
 import os
 import traceback
 
 from Bio import SeqIO
 
 from protein_metamorphisms_is.operation.embedding.sequence_embedding import SequenceEmbeddingManager
-from protein_metamorphisms_is.sql.model.entities.embedding.sequence_embedding import SequenceEmbeddingType, \
-    SequenceEmbedding
-from protein_metamorphisms_is.sql.model.entities.sequence.sequence import Sequence
-from protein_metamorphisms_is.tasks.gpu import GPUTaskInitializer
 import h5py
 
 
 class SequenceEmbedder(SequenceEmbeddingManager):
-    def __init__(self, conf):
+    """
+    Processes protein sequences to compute embeddings and store them in HDF5 format.
+
+    Parameters
+    ----------
+    conf : dict
+        Configuration dictionary containing parameters for embedding generation.
+    current_date : str
+        A timestamp used to generate unique output file names.
+
+    Attributes
+    ----------
+    fasta_path : str
+        Path to the input FASTA file containing protein sequences.
+    output_csv : str
+        Path to store the embedding results in CSV format.
+    output_h5 : str
+        Path to store the embeddings in HDF5 format.
+    batch_size : int
+        Number of sequences to process per batch.
+    length_filter : int or None
+        Optional filter to exclude sequences longer than the specified length.
+    """
+
+    def __init__(self, conf, current_date):
+        """
+        Initializes the SequenceEmbedder with configuration and output paths.
+
+        Parameters
+        ----------
+        conf : dict
+            The configuration dictionary containing paths and parameters.
+        current_date : str
+            The timestamp to uniquely identify output files.
+        """
         super().__init__(conf)
+        self.current_date = current_date
         self.reference_attribute = 'sequence_embedder_from_fasta'
         self.model_instances = {}
         self.tokenizer_instances = {}
@@ -24,11 +62,28 @@ class SequenceEmbedder(SequenceEmbeddingManager):
         self.fasta_path = conf.get('fantasia_input_fasta')
         self.output_csv = conf.get("fantasia_output_csv")
         self.length_filter = conf.get('length_filter', None)
-        self.output_h5 = conf.get("fantasia_output_h5", "embeddings_results.h5")
+        self.output_h5 = os.path.join(
+            conf.get("fantasia_output_h5_path", "./embeddings"),
+            f"{conf.get('fantasia_prefix', 'default')}_embeddings_{self.current_date}.h5"
+        )
 
         self.results = []
 
     def enqueue(self):
+        """
+        Reads the input FASTA file, applies optional redundancy and length filters,
+        and prepares batches of sequences for embedding generation.
+
+        Steps:
+        - Runs CD-HIT for redundancy filtering if configured.
+        - Splits sequences into batches based on batch size.
+        - Publishes tasks for embedding computation.
+
+        Raises
+        ------
+        Exception
+            If there is an error during the enqueue process.
+        """
         try:
             self.logger.info("Starting embedding enqueue process.")
             sequences = []
@@ -51,7 +106,7 @@ class SequenceEmbedder(SequenceEmbeddingManager):
                     for type in self.types.values():
                         task_data = {
                             'sequence': str(sequence.seq),
-                            'accession': sequence.id,  # Usar el ID del FASTA como accession
+                            'accession': sequence.id,
                             'model_name': type['model_name'],
                             'embedding_type_id': type['id']
                         }
@@ -70,6 +125,24 @@ class SequenceEmbedder(SequenceEmbeddingManager):
             raise
 
     def process(self, task_data):
+        """
+        Processes a batch of sequences to compute embeddings using the specified model and tokenizer.
+
+        Parameters
+        ----------
+        task_data : list of dict
+            A list of dictionaries containing sequence information and embedding parameters.
+
+        Returns
+        -------
+        list of dict
+            A list of embedding records with metadata, including accession ID and embedding type.
+
+        Raises
+        ------
+        Exception
+            If an error occurs during the embedding process.
+        """
         try:
             results = []
             for data in task_data:
@@ -91,37 +164,43 @@ class SequenceEmbedder(SequenceEmbeddingManager):
             raise
 
     def store_entry(self, results):
+        """
+        Stores the computed embeddings in an HDF5 file.
+
+        Parameters
+        ----------
+        results : list of dict
+            A list of embedding records, each containing metadata and embedding data.
+
+        Raises
+        ------
+        Exception
+            If an error occurs during file storage.
+        """
         try:
-            # Verificar y crear el directorio si no existe
             output_dir = os.path.dirname(self.output_h5)
             if not os.path.exists(output_dir):
                 os.makedirs(output_dir)
                 self.logger.info(f"Created directory: {output_dir}")
 
-            # Abrir el archivo en modo append ("a")
             with h5py.File(self.output_h5, "a") as h5file:
                 for record in results:
                     accession = record['accession']
                     embedding_type_id = record['embedding_type_id']
                     print(embedding_type_id)
 
-                    # Crear un grupo para el accession si no existe
                     accession_group = h5file.require_group(f"accession_{accession}")
 
-                    # Crear un subgrupo para el embedding_type_id si no existe
                     type_group = accession_group.require_group(f"type_{embedding_type_id}")
 
-                    # Evitar sobrescribir si el dataset ya existe
                     if "embedding" in type_group:
                         self.logger.warning(
                             f"Embedding for type {embedding_type_id} already exists in accession {accession}. Skipping.")
                         continue
 
-                    # Crear el dataset
                     type_group.create_dataset("embedding", data=record['embedding'])
                     type_group.attrs['shape'] = record['shape']
                     self.logger.info(f"Stored embedding for accession {accession}, type {embedding_type_id}.")
         except Exception as e:
             self.logger.error(f"Error storing results in HDF5: {e}")
             raise
-

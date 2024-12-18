@@ -2,15 +2,21 @@
 Queue Tasks
 ===========
 
-Queue tasks handle complex and large-scale processes by leveraging RabbitMQ as a messaging system. These tasks are designed to be distributed across multiple workers, ensuring efficient task processing and fault tolerance.
+Queue tasks handle complex and large-scale processes by leveraging RabbitMQ as a messaging system.
+These tasks are designed to be distributed across multiple workers, ensuring efficient task processing
+and fault tolerance.
 
 **Purpose**
 
-The `QueueTaskInitializer` class extends the `BaseTaskInitializer` and provides the necessary framework for managing tasks distributed via RabbitMQ. It initializes the RabbitMQ connection, manages worker processes, and ensures that tasks are processed in a reliable, scalable, and distributed manner.
+The `QueueTaskInitializer` class extends the `BaseTaskInitializer` and provides the necessary framework for
+ managing tasks distributed via RabbitMQ. It initializes the RabbitMQ connection, manages worker processes,
+ and ensures that tasks are processed in a reliable, scalable, and distributed manner.
 
 **Customization**
 
-To create a custom queue-based task, subclass `QueueTaskInitializer` and implement the `enqueue`, `process`, and `store_entry` methods. These methods define the logic for enqueuing tasks, processing them, and storing the results in the database.
+To create a custom queue-based task, subclass `QueueTaskInitializer` and implement the `enqueue`, `process`, and
+ `store_entry` methods. These methods define the logic for enqueuing tasks, processing them, and storing the results
+ in the database.
 
 **Key Features**
 
@@ -42,25 +48,16 @@ Here is an example of how to subclass `QueueTaskInitializer`:
            pass
 """
 
-
-import ast
 import multiprocessing
-import json
-import os
 import pickle
 import threading
 import time
-import traceback
 from abc import abstractmethod
-
 import pika
 import requests
 from pika import PlainCredentials
-from retry import retry
 
 from protein_metamorphisms_is.tasks.base import BaseTaskInitializer
-from protein_metamorphisms_is.helpers.logger.logger import setup_logger
-from protein_metamorphisms_is.sql.base.database_manager import DatabaseManager
 
 
 class QueueTaskInitializer(BaseTaskInitializer):
@@ -100,7 +97,6 @@ class QueueTaskInitializer(BaseTaskInitializer):
             heartbeat=300,
             credentials=PlainCredentials(self.conf['rabbitmq_user'], self.conf['rabbitmq_password'])
         )
-
 
     def setup_rabbitmq(self):
         """
@@ -252,7 +248,7 @@ class QueueTaskInitializer(BaseTaskInitializer):
                 channel.connection.process_data_events(time_limit=1)
             except pika.exceptions.ConnectionClosedByBroker:
                 break
-            except pika.exceptions.AMQPChannelError as err:
+            except pika.exceptions.AMQPChannelError:
                 break
             except pika.exceptions.AMQPConnectionError:
                 break
@@ -288,10 +284,10 @@ class QueueTaskInitializer(BaseTaskInitializer):
 
             return messages_in_memory
 
-        except requests.exceptions.RequestException as e:
+        except requests.exceptions.RequestException:
             return 0
 
-        except ValueError as e:
+        except ValueError:
             return 0
 
     def monitor_queues(self):
@@ -335,10 +331,10 @@ class QueueTaskInitializer(BaseTaskInitializer):
                     else:
                         continue
 
-            except pika.exceptions.AMQPConnectionError as e:
+            except pika.exceptions.AMQPConnectionError:
                 self.stop_event.set()
                 break
-            except Exception as e:
+            except Exception:
                 self.stop_event.set()
                 break
 
@@ -374,7 +370,7 @@ class QueueTaskInitializer(BaseTaskInitializer):
             record = pickle.loads(body)
             self.store_entry(record)
             ch.basic_ack(delivery_tag=method.delivery_tag)
-        except Exception as e:
+        except Exception:
             ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
 
     def callback(self, ch, method, properties, body):
@@ -400,9 +396,9 @@ class QueueTaskInitializer(BaseTaskInitializer):
                 ch.basic_publish(exchange='', routing_key=self.inserting_queue, body=record_bytes)
 
             ch.basic_ack(delivery_tag=method.delivery_tag)
-        except ValueError as e:
+        except ValueError:
             ch.basic_ack(delivery_tag=method.delivery_tag)
-        except Exception as e:
+        except Exception:
             ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
 
     @abstractmethod

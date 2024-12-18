@@ -116,7 +116,7 @@ class UniProtExtractor(QueueTaskInitializer):
             error_message = f"No SwissProt record found for accession code {accession_code}"
             self.logger.error(error_message)
             raise ValueError(error_message)
-        except Exception as e:
+        except Exception:
             error_message = f"Error downloading UniProt entry for accession '{accession_code}'"
             self.logger.error(error_message)
             raise Exception(error_message)
@@ -169,7 +169,6 @@ class UniProtExtractor(QueueTaskInitializer):
             self.logger.info(
                 f"Accession '{data.accessions[0]}' successfully linked to protein '{protein.id}'."
             )
-
 
         except Exception as e:
             self.session.rollback()
@@ -264,9 +263,9 @@ class UniProtExtractor(QueueTaskInitializer):
             if not existing_sequence:
                 existing_sequence = Sequence(sequence=sequence)
                 self.session.add(existing_sequence)
-                self.logger.debug(f"Created new sequence record.")
+                self.logger.debug("Created new sequence record.")
             else:
-                self.logger.debug(f"Retrieved existing sequence record.")
+                self.logger.debug("Retrieved existing sequence record.")
             return existing_sequence
         except Exception as e:
             self.logger.error(f"Failed to retrieve or create sequence: {e}\n{traceback.format_exc()}")
@@ -375,7 +374,7 @@ class UniProtExtractor(QueueTaskInitializer):
             GOTerm: The retrieved or newly created GOTerm object.
         """
         try:
-            go_id, category, description, evidence = reference[1], reference[2].split(":")[0], reference[2].split(":")[
+            go_id, category, description, _ = reference[1], reference[2].split(":")[0], reference[2].split(":")[
                 1], reference[3].split(":")[0]
             go_term = self.session.query(GOTerm).filter_by(go_id=go_id).first()
 

@@ -2,18 +2,14 @@ from itertools import combinations
 
 from goatools.base import get_godag
 from goatools.godag.go_tasks import get_go2ancestors
-from sqlalchemy.orm import aliased
 
 from protein_metamorphisms_is.sql.model.entities.go_annotation.go_annotation import ProteinGOTermAnnotation
 from protein_metamorphisms_is.sql.model.entities.go_annotation.go_term import GOTerm
 from protein_metamorphisms_is.sql.model.operational.functional.group import GOTermPair, GOTermPairEntry, \
     GOTermPairProtein
 from protein_metamorphisms_is.sql.model.operational.functional.result import GOTermPairResult
-# from protein_metamorphisms_is.sql.model.operational.functional.pairwise_group import GOResult, GOGroupEntry, GOGroup
 from protein_metamorphisms_is.tasks.queue import QueueTaskInitializer
 
-from goatools import obo_parser
-from goatools.semantic import min_branch_length
 from goatools.anno.gaf_reader import GafReader
 
 
@@ -118,7 +114,6 @@ class GoMultifunctionalityMetrics(QueueTaskInitializer):
             dict: A dictionary containing the calculated metrics for each GO term pair.
         """
 
-
         # Calcular el contenido de información para cada término GO
         try:
             pair = data['pair']
@@ -194,9 +189,6 @@ class GoMultifunctionalityMetrics(QueueTaskInitializer):
             session.close()
 
 
-
-
-
 def calculate_mbl_with_relationships(go_id1, go_id2, godag):
     # Crear el subgrafo con todas las relaciones
     go2ancestors = get_go2ancestors(set(godag.values()), relationships={"is_a", "part_of", "regulates"})
@@ -219,6 +211,7 @@ def calculate_mbl_with_relationships(go_id1, go_id2, godag):
 
     print(f"Minimum Branch Length (MBL) entre {go_id1} y {go_id2}: {min_distance}")
     return min_distance
+
 
 def get_all_ancestors(go_id, go2ancestors):
     """Devuelve todos los ancestros del término GO incluyendo relaciones opcionales."""

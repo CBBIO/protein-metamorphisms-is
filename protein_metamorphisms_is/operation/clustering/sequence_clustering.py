@@ -2,15 +2,20 @@
 Sequence Clustering Tasks
 ==========================
 
-The `SequenceClustering` class is responsible for clustering protein sequences using the CD-HIT algorithm. It extends the `BaseTaskInitializer` class, providing the necessary framework for managing sequence clustering tasks within the system.
+The `SequenceClustering` class is responsible for clustering protein sequences using the CD-HIT algorithm.
+It extends the `BaseTaskInitializer` class, providing the necessary framework for managing sequence clustering
+tasks within the system.
 
 **Purpose**
 
-The `SequenceClustering` class manages the process of clustering similar protein sequences to reduce redundancy and facilitate further analysis. This is achieved by loading sequences from the database, running the CD-HIT clustering algorithm, and storing the resulting clusters back into the database.
+The `SequenceClustering` class manages the process of clustering similar protein sequences to reduce redundancy
+and facilitate further analysis. This is achieved by loading sequences from the database,
+running the CD-HIT clustering algorithm, and storing the resulting clusters back into the database.
 
 **Customization**
 
-To create a custom sequence clustering task, subclass `SequenceClustering` and implement any additional methods or overrides necessary for specific clustering requirements.
+To create a custom sequence clustering task, subclass `SequenceClustering` and implement any additional methods
+or overrides necessary for specific clustering requirements.
 
 **Key Features**
 
@@ -21,21 +26,24 @@ To create a custom sequence clustering task, subclass `SequenceClustering` and i
 
 **Installation of CD-HIT**
 
-Before using the `SequenceClustering` class, the CD-HIT algorithm must be installed on your system. CD-HIT can be easily installed on Debian-based systems using `apt-get`:
+Before using the `SequenceClustering` class, the CD-HIT algorithm must be installed on your system.
+CD-HIT can be easily installed on Debian-based systems using `apt-get`:
 
 .. code-block:: bash
 
     sudo apt-get update
     sudo apt-get install cd-hit
 
-This ensures that the CD-HIT executable is available in your system's PATH, which is necessary for the `SequenceClustering` class to function properly.
+This ensures that the CD-HIT executable is available in your system's PATH, which is necessary
+for the `SequenceClustering` class to function properly.
 
 **SQL/ORM Entities**
 
 The module interacts with several SQL/ORM entities for organizing and storing clustering results:
 
 - :class:`~protein_metamorphisms_is.sql.model.PDBChains`: Manages Protein Data Bank chains information.
-- :class:`~protein_metamorphisms_is.sql.model.Cluster`: Stores clustering results, including cluster identifiers and sequence information.
+- :class:`~protein_metamorphisms_is.sql.model.Cluster`: Stores clustering results, including cluster
+identifiers and sequence information.
 
 These entities facilitate the storage and retrieval of clustered protein sequence data in a relational database.
 
@@ -73,6 +81,7 @@ from protein_metamorphisms_is.sql.model.entities.sequence.sequence import Sequen
 from protein_metamorphisms_is.sql.model.operational.clustering.cluster import Cluster, ClusterEntry
 from protein_metamorphisms_is.tasks.base import BaseTaskInitializer
 from pycdhit import cd_hit, read_clstr
+
 
 class SequenceClustering(BaseTaskInitializer):
     """

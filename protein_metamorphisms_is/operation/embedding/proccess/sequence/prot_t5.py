@@ -1,14 +1,15 @@
-import traceback
-from retry import retry
 from transformers import T5Tokenizer, T5EncoderModel
 import re
 import torch
 
+
 def load_model(model_name):
     return T5EncoderModel.from_pretrained(model_name).to(torch.device("cuda"))
 
+
 def load_tokenizer(model_name):
     return T5Tokenizer.from_pretrained(model_name, do_lower_case=False)
+
 
 def embedding_task(sequences, model, tokenizer, batch_size=32):
     if not torch.cuda.is_available():
@@ -43,7 +44,7 @@ def embedding_task(sequences, model, tokenizer, batch_size=32):
                 embeddings = outputs.last_hidden_state.mean(dim=1)
 
                 # Collect embeddings for the batch
-                for idx, sequence in enumerate(batch_sequences):
+                for idx, _ in enumerate(batch_sequences):
                     record = {
                         'sequence': sequences[i + idx],  # Original sequence
                         'embedding': embeddings[idx].cpu().numpy().tolist(),  # Embedding vector

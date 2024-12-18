@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, Float, ForeignKey, DateTime, func
 from sqlalchemy.orm import relationship
 from protein_metamorphisms_is.sql.model.core.base import Base
 
+
 class GOTermPairResult(Base):
     __tablename__ = 'go_term_pair_result'
 

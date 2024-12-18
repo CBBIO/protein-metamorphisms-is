@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, String, Float, ForeignKey
 from sqlalchemy.orm import relationship
 from protein_metamorphisms_is.sql.model.core.base import Base
 
+
 class SequenceGoTermAnnotation(Base):
     __tablename__ = 'sequence_go_term_annotation'
 

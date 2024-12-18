@@ -2,6 +2,7 @@ from sqlalchemy import Column, String
 from sqlalchemy.orm import relationship
 from protein_metamorphisms_is.sql.model.core.base import Base
 
+
 class GOTerm(Base):
     __tablename__ = "go_terms"
 

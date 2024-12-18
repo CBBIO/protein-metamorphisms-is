@@ -6,6 +6,7 @@ import traceback
 
 from protein_metamorphisms_is.helpers.parser.parser import cif_to_pdb
 
+
 def align_task(alignment_entry, conf, logger):
     try:
         # Extract file paths and names from alignment_entry

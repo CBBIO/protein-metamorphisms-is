@@ -80,7 +80,8 @@ structural_alignment:
 embedding:
   types:
     - 1 # ESM
-    - 2 # Prost
+    - 2 # ProstT5
+    - 3 # ProtT5
   batch_size: 40
 # GO Metrics
 obo: '../data/go-basic.obo'

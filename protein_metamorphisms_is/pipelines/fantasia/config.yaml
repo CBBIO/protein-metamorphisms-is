@@ -38,8 +38,9 @@ allowed_evidences:
 
 # Fantasia
 fantasia_input_fasta: /home/bioxaxi/data/fantasia/input/input.fasta
-fantasia_output_h5: /home/bioxaxi/data/fantasia/embeddings/embeddings.h5
-fantasia_output_csv: /home/bioxaxi/data/fantasia/results/output.csv
+fantasia_output_h5: /home/bioxaxi/data/fantasia/embeddings/
+fantasia_output_csv: /home/bioxaxi/data/fantasia/results/
+fantasia_prefix: finger_zinc
 max_distance: 1
 length_filter: 5000
 redundancy_filter: 0.95
@@ -48,8 +49,8 @@ topgo: True
 
 embedding:
   types:
-#    - 1 # ESM
-#    - 2 # Prost
+    - 1 # ESM
+    - 2 # Prost
     - 3 # Prot
   batch_size: 40
 

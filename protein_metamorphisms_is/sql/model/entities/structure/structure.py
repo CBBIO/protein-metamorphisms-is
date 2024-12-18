@@ -1,7 +1,6 @@
 from sqlalchemy import Column, String, DateTime, func, ForeignKey, Float
 from sqlalchemy.orm import relationship
 from protein_metamorphisms_is.sql.model.core.base import Base
-from protein_metamorphisms_is.sql.model.entities.structure.chain import Chain
 
 
 class Structure(Base):

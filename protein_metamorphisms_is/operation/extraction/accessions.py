@@ -1,5 +1,4 @@
 import gzip
-import os
 import traceback
 from io import BytesIO
 from urllib.parse import quote

@@ -1,4 +1,5 @@
-# from protein_metamorphisms_is.sql.model.model import StructuralComplexityLevel, StructuralAlignmentType, SequenceEmbeddingType, StructureEmbeddingType, PredictionMethod
+# from protein_metamorphisms_is.sql.model.model import StructuralComplexityLevel, StructuralAlignmentType,
+# SequenceEmbeddingType, StructureEmbeddingType, PredictionMethod
 #
 #
 #
@@ -13,6 +14,7 @@
 #     session.commit()
 #
 #
+from protein_metamorphisms_is.sql.model.entities.embedding.sequence_embedding import SequenceEmbeddingType
 from protein_metamorphisms_is.sql.model.operational.structural_alignment.structural_alignment_type import \
     StructuralAlignmentType
 
@@ -26,9 +28,9 @@ def handle_structural_alignment_types(session, constants):
             alignment_type = StructuralAlignmentType(**level_data)
             session.add(alignment_type)
     session.commit()
+
 #
 #
-from protein_metamorphisms_is.sql.model.entities.embedding.sequence_embedding import SequenceEmbeddingType
 
 
 def handle_sequence_embedding_types(session, constants):

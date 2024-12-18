@@ -5,7 +5,6 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from protein_metamorphisms_is.sql.model.entities.embedding.structure_3di import Structure3Di
 from protein_metamorphisms_is.sql.model.entities.structure.state import State
-from protein_metamorphisms_is.sql.model.entities.structure.structure import Structure
 from protein_metamorphisms_is.sql.model.operational.clustering.cluster import SubclusterEntry, Subcluster
 from protein_metamorphisms_is.sql.model.operational.structural_alignment.group import AlignmentGroup, \
     AlignmentGroupEntry
@@ -15,7 +14,6 @@ from protein_metamorphisms_is.sql.model.operational.structural_alignment.structu
     StructuralAlignmentType
 
 from protein_metamorphisms_is.tasks.queue import QueueTaskInitializer
-import logging
 
 
 class StructuralAlignmentManager(QueueTaskInitializer):
@@ -162,7 +160,6 @@ class StructuralAlignmentManager(QueueTaskInitializer):
         Store the results of the alignment in the AlignmentResult table and manage AlignmentGroup and AlignmentGroupEntry creation.
         """
         try:
-            cluster_id = record.get('cluster_id')
             subcluster_entry_1_id = record.get('subcluster_entry_1_id')
             subcluster_entry_2_id = record.get('subcluster_entry_2_id')
 

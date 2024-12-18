@@ -154,10 +154,6 @@ def cif_to_pdb(cif_path, pdb_path):
     io.save(pdb_path)
 
 
-
-
-import requests
-
 def obtener_cadenas_y_accesiones(pdb_id):
     url = "https://data.rcsb.org/graphql"
 
@@ -239,7 +235,6 @@ def get_chain_to_accession_map(cif_path):
 
         # Extract _struct_ref fields
         db_names = block.find_values('_struct_ref.db_name')
-        db_codes = block.find_values('_struct_ref.db_code')
         entity_ids_ref = block.find_values('_struct_ref.entity_id')
         pdbx_db_accessions = block.find_values('_struct_ref.pdbx_db_accession')
 

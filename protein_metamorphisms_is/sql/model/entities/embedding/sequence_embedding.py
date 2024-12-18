@@ -9,7 +9,8 @@ class SequenceEmbeddingType(Base):
     """
     Represents a type of protein sequence analysis embedding.
 
-    This class is designed to manage different embedding techniques used in protein sequence analysis, offering a structured way to categorize and store information about various embedding methods such as ESM and Prot-T5.
+    This class is designed to manage different embedding techniques used in protein sequence analysis,
+    offering a structured way to categorize and store information about various embedding methods such as ESM and Prot-T5.
 
     Attributes:
         id (Integer): Unique identifier for each embedding type.
@@ -25,11 +26,7 @@ class SequenceEmbeddingType(Base):
     model_name = Column(String)
 
     seq_embeddings = relationship("SequenceEmbedding", back_populates="embedding_type")
-from pgvector.sqlalchemy import Vector
-from sqlalchemy import Column, Integer, String, ForeignKey, ARRAY, DateTime, func
-from sqlalchemy.orm import relationship, mapped_column
 
-from protein_metamorphisms_is.sql.model.core.base import Base
 
 class SequenceEmbedding(Base):
     __tablename__ = 'sequence_embeddings'

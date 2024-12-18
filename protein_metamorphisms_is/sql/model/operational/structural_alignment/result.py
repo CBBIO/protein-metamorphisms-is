@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, Float, ForeignKey, DateTime, func
 from sqlalchemy.orm import relationship
 from protein_metamorphisms_is.sql.model.core.base import Base
 
+
 class AlignmentResult(Base):
     __tablename__ = 'alignment_result'
 

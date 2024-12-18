@@ -46,7 +46,6 @@ def embedding_task(sequences, model, tokenizer):
                     'shape': embedding_shape
                 }
 
-
                 embedding_records.append(record)
             except Exception as e:
                 print(f"Failed to process sequence {sequence}: {e}")

@@ -15,23 +15,21 @@ from protein_metamorphisms_is.operation.structural_alignment.structural_alignmen
 from protein_metamorphisms_is.operation.functional.multifunctionality.go_multifunctionality_metrics import \
     GoMultifunctionalityMetrics
 
+
 def main(config_path="config/config.yaml"):
     conf = read_yaml_config(config_path)
-    # AccessionManager(conf).fetch_accessions_from_api()
-    # AccessionManager(conf).load_accessions_from_csv()
-    # UniProtExtractor(conf).start()
-    # PDBExtractor(conf).start()
-    # SequenceEmbeddingManager(conf).start()
-    # Structure3DiManager(conf).start()
-    # SequenceClustering(conf).start()
-    # StructuralSubClustering(conf).start()
-    # StructuralAlignmentManager(conf).start()
+    AccessionManager(conf).fetch_accessions_from_api()
+    AccessionManager(conf).load_accessions_from_csv()
+    UniProtExtractor(conf).start()
+    PDBExtractor(conf).start()
+    SequenceEmbeddingManager(conf).start()
+    Structure3DiManager(conf).start()
+    SequenceClustering(conf).start()
+    StructuralSubClustering(conf).start()
+    StructuralAlignmentManager(conf).start()
     SequenceGOAnnotation(conf).start()
 
-
-    # GoMultifunctionalityMetrics(conf).start()
-
-
+    GoMultifunctionalityMetrics(conf).start()
 
 
 if __name__ == "__main__":

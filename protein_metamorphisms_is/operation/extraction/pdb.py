@@ -5,14 +5,11 @@ import warnings
 import gemmi
 from Bio import PDB
 from Bio.PDB import Select
-from gemmi import cif
-from sqlalchemy import func, text
-from sqlalchemy.exc import NoResultFound
+
 from sqlalchemy.sql import or_
 
-from protein_metamorphisms_is.helpers.parser.parser import obtener_cadenas_y_accesiones, get_chain_to_accession_map
+from protein_metamorphisms_is.helpers.parser.parser import get_chain_to_accession_map
 from protein_metamorphisms_is.sql.model.entities.protein.accesion import Accession
-from protein_metamorphisms_is.sql.model.entities.protein.protein import Protein
 from protein_metamorphisms_is.sql.model.entities.sequence.sequence import Sequence
 from protein_metamorphisms_is.tasks.queue import QueueTaskInitializer
 from protein_metamorphisms_is.sql.model.entities.structure.structure import Structure
@@ -350,7 +347,3 @@ class PDBExtractor(QueueTaskInitializer):
         except requests.exceptions.RequestException as e:
             self.logger.error(f"Failed to retrieve accession for chain {chain_name} in PDB ID {pdb_id}: {e}")
             return None
-
-
-
-
