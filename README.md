@@ -15,7 +15,7 @@ We have created an environment for analyzing structural distances that enables t
 
 
 > 🚀 **FANTASIA Support**: This tool also supports **FANTASIA**, an extended system for functional annotation and task orchestration. FANTASIA comes with its own documentation and streamlined templates, ensuring clarity and usability for large-scale annotation workflows.  
-> You can find the detailed documentation [here](protein_metamorphism_is/pipelines/fantasia/README.md).
+> You can find the detailed documentation [here](protein_metamorphisms_is/pipelines/fantasia/README.md).
 
 ## prerequisites
 
