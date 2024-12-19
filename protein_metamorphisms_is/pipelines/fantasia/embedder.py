@@ -102,15 +102,22 @@ class SequenceEmbedder(SequenceEmbeddingManager):
             self.logger.info("Starting embedding enqueue process.")
             sequences = []
 
+            # Determinar el archivo FASTA de entrada dependiendo del filtro de redundancia
+            input_fasta = self.fasta_path
             if self.conf.get('redundancy_filter'):
+                self.logger.info("Running CD-HIT for redundancy filtering.")
                 os.system(
-                    f"cd-hit -i {self.fasta_path} -o {self.conf.get('redundancy_file')} -c {self.conf.get('redundancy_filter')}")
+                    f"cd-hit -i {self.fasta_path} -o {self.conf.get('redundancy_file')} -c {self.conf.get('redundancy_filter')}"
+                )
+                input_fasta = self.conf.get('redundancy_file')  # Usar el archivo generado por CD-HIT
 
-            for record in SeqIO.parse(os.path.expanduser(self.fasta_path), "fasta"):
+            # Leer las secuencias del archivo FASTA (filtradas o no)
+            for record in SeqIO.parse(os.path.expanduser(input_fasta), "fasta"):
                 if self.length_filter and len(record.seq) > self.length_filter:
                     continue
                 sequences.append(record)
 
+            # Dividir en lotes
             sequence_batches = [sequences[i:i + self.batch_size] for i in range(0, len(sequences), self.batch_size)]
 
             for batch in sequence_batches:
@@ -206,7 +213,6 @@ class SequenceEmbedder(SequenceEmbeddingManager):
                 for record in results:
                     accession = record['accession']
                     embedding_type_id = record['embedding_type_id']
-                    print(embedding_type_id)
 
                     accession_group = h5file.require_group(f"accession_{accession}")
 

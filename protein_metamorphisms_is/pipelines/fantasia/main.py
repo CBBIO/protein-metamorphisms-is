@@ -11,14 +11,17 @@ based on the computed embeddings.
 Pipeline Overview
 -----------------
 1. **Redundancy Filtering**:
-   - Removes identical sequences using CD-HIT with a 95% similarity threshold. (Optional)
-   - Optionally excludes sequences longer than 5000 amino acids. (Optional)
+
+   - Removes identical sequences using CD-HIT with a 95% similarity threshold. (Optional/Configurable value)
+   - Optionally excludes sequences longer than 5000 amino acids. (Optional/Configurable value)
 
 2. **Embedding Generation**:
+
    - Computes embeddings for protein sequences using **ProtT5**, **ProstT5**, and **ESM2**.
    - Stores embeddings in an HDF5 file, organized by sequence accession IDs and embedding types.
 
 3. **GO Term Lookup**:
+
    - Embeddings are compared for similarity using a **vector database**.
    - Retrieves GO terms associated with the most similar proteins.
    - Results include GO terms, distances, and metadata.
@@ -59,7 +62,7 @@ https://doi.org/10.1101/2024.02.14.580341.
 
 Contact Information
 -------------------
-- Francisco Miguel Pérez Canales: fmpercan@upo.es
+- Francisco Miguel Pérez Canales: fmpercan@upo.es (dev)
 - Gemma I. Martínez-Redondo: gemma.martinez@ibe.upf-csic.es
 - Ana M. Rojas: a.rojas.m@csic.es
 - Rosa Fernández: rosa.fernandez@ibe.upf-csic.es
@@ -68,7 +71,6 @@ import argparse
 from datetime import datetime
 
 from protein_metamorphisms_is.helpers.config.yaml import read_yaml_config
-
 from protein_metamorphisms_is.operation.embedding.sequence_embedding import SequenceEmbeddingManager
 from protein_metamorphisms_is.operation.extraction.accessions import AccessionManager
 from protein_metamorphisms_is.operation.extraction.uniprot import UniProtExtractor
@@ -106,6 +108,7 @@ def main(config_path="./pipelines/fantasia/config.yaml", fasta_path=None):
     embedder = SequenceEmbedder(conf, current_date)
     embedder.start()
 
+    conf['max_workers'] = 1 # OperationalError on parallel embeddings search
     lookup = EmbeddingLookUp(conf, current_date)
     lookup.start()
 
