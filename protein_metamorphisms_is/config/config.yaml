@@ -1,5 +1,5 @@
 #System
-max_workers: 1
+max_workers: 10
 binaries_path: '../binaries'
 
 # DB CONFIGURATION

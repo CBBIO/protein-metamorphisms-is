@@ -1,5 +1,5 @@
 #System
-max_workers: 1
+max_workers: 10 # Embedding search parallelism over PGVector seems broken (Auto set to 1 for that process).
 
 # DB CONFIGURATION
 DB_USERNAME: usuario
@@ -45,9 +45,9 @@ fantasia_input_fasta: ~/fantasia/input/input.fasta
 fantasia_output_h5: ~/fantasia/embeddings/
 fantasia_output_csv: ~/fantasia/results/
 fantasia_prefix: finger_zinc
-max_distance: 1
+max_distance: 1.1
 length_filter: 5000
-redundancy_filter: 0.95
+redundancy_filter: 0.65
 redundancy_file: ~/fantasia/redundancy/output.fasta
 topgo?: True # :TODO unknown
 

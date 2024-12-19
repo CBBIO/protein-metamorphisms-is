@@ -243,29 +243,31 @@ class EmbeddingLookUp(QueueTaskInitializer):
         Exception
             If an error occurs while writing to the CSV file.
         """
-        if not go_terms:  # Verifica si go_terms es None o está vacío
+        if not go_terms:
             self.logger.info("No valid GO terms to store.")
             return
 
         try:
-            output_csv_path = self.output_csv  # Usar el path único generado con current_date
+            output_csv_path = os.path.expanduser(self.output_csv)  # Asegúrate de usar la ruta expandida
 
             # Verificar y crear el directorio "results" si no existe
             output_dir = os.path.dirname(output_csv_path)
             if not os.path.exists(output_dir):
-                os.makedirs(output_dir, exist_ok=True)  # Crear el directorio si no existe
+                os.makedirs(output_dir, exist_ok=True)
                 self.logger.info(f"Created directory: {output_dir}")
 
             # Convertir go_terms a un DataFrame
             df = pd.DataFrame(go_terms)
 
-            # Guardar en CSV (agregar al archivo existente si ya existe)
-            if not os.path.exists(output_csv_path):
-                df.to_csv(output_csv_path, index=False)
-                self.logger.info(f"Results successfully stored in {output_csv_path}.")
-            else:
+            # Escribir al archivo
+            if os.path.exists(output_csv_path) and os.path.getsize(output_csv_path) > 0:
+                # Archivo existe y tiene contenido, añade sin encabezado
                 df.to_csv(output_csv_path, mode='a', index=False, header=False)
-                self.logger.info(f"Appended results to {output_csv_path}.")
+                self.logger.info(f"Appended {len(go_terms)} entries to {output_csv_path}.")
+            else:
+                # Archivo no existe o está vacío, escribe con encabezado
+                df.to_csv(output_csv_path, mode='w', index=False, header=True)
+                self.logger.info(f"Created new file and stored {len(go_terms)} entries in {output_csv_path}.")
 
         except Exception as e:
             self.logger.error(f"Error storing results in CSV: {e}")
