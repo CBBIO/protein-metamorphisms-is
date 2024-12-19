@@ -93,6 +93,9 @@ From this interface, you can:
 
 Ensure that the RabbitMQ container is running and accessible at `localhost:15672`. Use the default credentials (`guest`/`guest`) unless you have configured different ones.
 
+
+
+--------
 ### Configuration Parameters and Constants
 
 #### **Configuration Parameters (`config.yaml`)**
