@@ -8,8 +8,11 @@ in HDF5 format.
 
 Background
 ----------
+
 This module includes functionalities inspired by:
-- **BioEmbeddings**: Techniques for embedding generation and model handling are adapted from the BioEmbeddings framework. For more details, visit https://docs.bioembeddings.com.
+
+- **BioEmbeddings**: Techniques for embedding generation and model handling are adapted from the
+ BioEmbeddings framework. For more details, visit https://docs.bioembeddings.com.
 
 Custom enhancements allow for efficient batch processing and integration with CD-HIT for redundancy filtering.
 
