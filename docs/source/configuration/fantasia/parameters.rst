@@ -31,21 +31,21 @@ Default system configuration should be OK for any Unix system, for the current s
 - `limit_execution`: Maximum number of items to process (for debugging). Default: `100`.
 
 5. LookUp table from CSV
----------------------
+-------------------------
 
 - `load_accesion_csv`: Path to the CSV file containing accessions. Default: `~/fantasia/input/genes.csv`.
 - `load_accesion_column`: Column name in the CSV file. Default: `id`.
 - `tag`: Identifier tag for accession loading. Default: `'GOA2022'`.
 
 5b. LookUp table from UniProt (By default)
-----------------------
+------------------------------------------------------------------
 
 - `search_criteria`: Query string for UniProt search. Default: `'(reviewed:true)'`.
 - `limit`: Number of results to fetch from UniProt. Default: `200`.
 - `tag`: Identifier tag for accession loading. Default: `'GOA2022'`. (It's the same defined in 5.)
 
 6. Evidence Codes
------------------
+-----------------------------------------------------------------------------------
 - `allowed_evidences`: This parameter specifies the list of UniProt evidence codes used to filter annotations. The default selection includes codes that indicate experimental evidence:
 
   - `EXP`: Inferred from Experiment.
@@ -62,7 +62,7 @@ Default system configuration should be OK for any Unix system, for the current s
   However, you can include any evidence codes from the full set defined by the Gene Ontology Consortium. For more details on all available evidence codes, visit the `Guide to GO Evidence Codes <https://geneontology.org/docs/guide-go-evidence-codes/>`_.
 
 7. FANTASIA Settings
----------------------
+-------------------------------------------
 
 - `fantasia_input_fasta`: Path to the input FASTA file. Default: `~/fantasia/input/input.fasta`.
 - `fantasia_output_h5`: Directory to save embeddings in HDF5 format. Default: `~/fantasia/embeddings/`.
@@ -75,7 +75,7 @@ Default system configuration should be OK for any Unix system, for the current s
 - `topgo`: Enable or disable TopGO analysis. Default: `True`.
 
 8. Embedding Settings
-----------------------
+--------------------------------------------
 
 - `embedding.types`: List of embedding types to compute (Comment with # at the beginning to de/activate):
 

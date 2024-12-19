@@ -12,21 +12,6 @@ BioInfo design (Plan)
 - **BioInfo - API**: Application Programming Interface that allows integration and access to system data and functionalities from other systems.
 - **BioInfo - Portal**: Indicates an access platform or user interface where the project's tools and data are deployed for research exploitation.
 
-Pipelines
-===============
-.. toctree::
-   :maxdepth: 3
-   :caption: Pipelines
-   :hidden:
-
-
-   pipelines/fantasia/
-
-
-- `Fantasia <pipelines/fantasia.html>`_: Functional ANnoTAtion based on embedding space SImilArity
-
-- Massive search of metamorphisms and multifunctionality (WIP)
-
 
 Task Types
 ===============
@@ -42,6 +27,22 @@ Task Types
 - `Base Tasks <tasks/base.html>`_: Handle Object Relational Model synchronization with the database and provide a session.
 - `Queue Tasks <tasks/queue.html>`_: Handle queuing processes with RabbitMQ for task distribution and fault tolerance.
 - `GPU Tasks <tasks/gpu.html>`_: Handle computationally intensive tasks using GPU.
+
+
+Pipelines
+===============
+.. toctree::
+   :maxdepth: 3
+   :caption: Pipelines
+   :hidden:
+
+
+   pipelines/fantasia/
+
+
+- `Fantasia <pipelines/fantasia.html>`_: Functional ANnoTAtion based on embedding space SImilArity
+
+- Massive search of metamorphisms and multifunctionality (WIP)
 
 
 Extraction
@@ -65,9 +66,9 @@ Embedding
    :caption: Embedding
    :hidden:
 
-   operation/embedding/sequence_embeddings
+   operation/embedding/sequence_embedding
 
-- `Sequence Embedding <operation/embedding/sequence_embeddings.html>`_: Facilitates encoding of protein and nucleotide sequences into dense vectors.
+- `Sequence Embedding <operation/embedding/sequence_embedding.html>`_: Facilitates encoding of protein and nucleotide sequences into dense vectors.
 
 
 FAQ

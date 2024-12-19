@@ -5,8 +5,16 @@ Embedding LookUp Module
 This module contains the `EmbeddingLookUp` class, which handles querying embeddings stored in HDF5 format,
 calculating distances to identify similar proteins, and storing the resulting GO terms in CSV format.
 
+Background
+----------
+This module integrates functionalities inspired by:
+- **GoPredSim**: The GO term similarity and distance-based lookup functionalities are adapted from GoPredSim (https://github.com/Rostlab/goPredSim).
+
+Additionally, customizations have been made to ensure seamless integration with the vectorial database and HDF5-based embedding storage used in this pipeline.
+
 """
-import importlib
+
+
 import os
 
 import pandas as pd
@@ -83,8 +91,6 @@ class EmbeddingLookUp(QueueTaskInitializer):
                     'id': type_obj.id,
                     'task_name': type_obj.task_name,
                 }
-
-
 
     def enqueue(self):
         """
@@ -261,4 +267,3 @@ class EmbeddingLookUp(QueueTaskInitializer):
         except Exception as e:
             self.logger.error(f"Error storing results in CSV: {e}")
             raise
-

@@ -9,6 +9,7 @@ def load_model(model_name):
 def load_tokenizer(model_name):
     return AutoTokenizer.from_pretrained(model_name)
 
+
 def embedding_task(sequences, model, tokenizer, embedding_type_id=None):
     """
     Processes sequences to generate embeddings.

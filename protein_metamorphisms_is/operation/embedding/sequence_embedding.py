@@ -5,6 +5,7 @@ from protein_metamorphisms_is.sql.model.entities.embedding.sequence_embedding im
     SequenceEmbeddingType,
     SequenceEmbedding,
 )
+
 from protein_metamorphisms_is.sql.model.entities.sequence.sequence import Sequence
 from protein_metamorphisms_is.tasks.gpu import GPUTaskInitializer
 
@@ -17,20 +18,27 @@ class SequenceEmbeddingManager(GPUTaskInitializer):
     for embedding generation.
 
     Attributes:
-        reference_attribute (str): Reference attribute name used for embedding.
-        model_instances (dict): A dictionary storing loaded models.
-        tokenizer_instances (dict): A dictionary storing loaded tokenizers.
-        base_module_path (str): Base module path for dynamic model imports.
-        batch_size (int): Batch size for processing sequences, defaults to 40.
-        types (dict): Dictionary containing model and task configurations.
+        reference_attribute (str): Name of the attribute used as the reference for embedding (default: 'sequence').
+        model_instances (dict): Dictionary of loaded models keyed by embedding type ID.
+        tokenizer_instances (dict): Dictionary of loaded tokenizers keyed by embedding type ID.
+        base_module_path (str): Base module path for dynamic imports of embedding tasks.
+        batch_size (int): Number of sequences processed per batch. Defaults to 40.
+        types (dict): Configuration dictionary for embedding types.
     """
 
     def __init__(self, conf):
         """
         Initializes the SequenceEmbeddingManager.
 
-        Args:
-            conf (dict): Configuration dictionary containing embedding parameters.
+        :param conf: Configuration dictionary containing embedding parameters.
+        :type conf: dict
+
+        Example:
+            >>> conf = {
+            >>>     "embedding": {"batch_size": 50, "types": [1, 2]},
+            >>>     "limit_execution": 100
+            >>> }
+            >>> manager = SequenceEmbeddingManager(conf)
         """
         super().__init__(conf)
         self.reference_attribute = 'sequence'
@@ -42,10 +50,9 @@ class SequenceEmbeddingManager(GPUTaskInitializer):
 
     def fetch_models_info(self):
         """
-        Retrieves and initializes embedding models based on configuration.
+        Retrieves and initializes embedding models based on the database configuration.
 
-        Queries the `SequenceEmbeddingType` table to fetch available embedding models.
-        Modules are dynamically imported and stored in the `types` attribute.
+        :raises sqlalchemy.exc.SQLAlchemyError: If there's an error querying the database.
         """
         self.session_init()
         embedding_types = self.session.query(SequenceEmbeddingType).all()
@@ -68,11 +75,13 @@ class SequenceEmbeddingManager(GPUTaskInitializer):
         """
         Enqueues tasks for sequence embedding processing.
 
-        Fetches all sequences from the database, batches them, and checks for existing embeddings.
-        If no existing embeddings are found, tasks are prepared and published for processing.
+        Splits all sequences into batches, checks for existing embeddings in the database,
+        and prepares tasks for missing embeddings.
 
-        Raises:
-            Exception: If an error occurs during the enqueue process.
+        :raises Exception: If an error occurs during the enqueue process.
+
+        Example:
+            >>> manager.enqueue()
         """
         try:
             self.logger.info("Starting embedding enqueue process.")
@@ -118,19 +127,17 @@ class SequenceEmbeddingManager(GPUTaskInitializer):
 
     def process(self, batch_data):
         """
-        Processes a batch of task data for embedding generation.
+        Processes a batch of sequences to generate embeddings.
 
-        Args:
-            batch_data (list[dict]): List of task data dictionaries, each containing:
-                - sequence (str): Input sequence.
-                - sequence_id (int): Sequence identifier.
-                - embedding_type_id (int): Embedding type identifier.
+        :param batch_data: List of dictionaries, each containing sequence data.
+        :type batch_data: list[dict]
+        :return: List of dictionaries with embedding results.
+        :rtype: list[dict]
+        :raises Exception: If there's an error during embedding generation.
 
-        Returns:
-            list[dict]: List of records with embedding results.
-
-        Raises:
-            Exception: If an error occurs during embedding processing.
+        Example:
+            >>> batch_data = [{"sequence": "ATCG", "sequence_id": 1, "embedding_type_id": 2}]
+            >>> results = manager.process(batch_data)
         """
         try:
             embedding_type_id = batch_data[0]['embedding_type_id']
@@ -138,8 +145,9 @@ class SequenceEmbeddingManager(GPUTaskInitializer):
             tokenizer = self.tokenizer_instances[embedding_type_id]
             module = self.types[embedding_type_id]['module']
 
-            # Pass embedding_type_id explicitly to the embedding_task function
-            embedding_records = module.embedding_task(batch_data, model, tokenizer, embedding_type_id=embedding_type_id)
+            embedding_records = module.embedding_task(
+                batch_data, model, tokenizer, embedding_type_id=embedding_type_id
+            )
 
             return embedding_records
 
@@ -149,17 +157,17 @@ class SequenceEmbeddingManager(GPUTaskInitializer):
 
     def store_entry(self, records):
         """
-        Stores embedding records in the database.
+        Stores embedding results in the database.
 
-        Args:
-            records (list[dict]): List of embedding records, each containing:
-                - sequence_id (int): Sequence identifier.
-                - embedding_type_id (int): Embedding type identifier.
-                - embedding: The embedding result.
-                - shape: Shape of the embedding.
+        :param records: List of embedding result dictionaries.
+        :type records: list[dict]
+        :raises RuntimeError: If an error occurs during database storage.
 
-        Raises:
-            RuntimeError: If an error occurs during database storage.
+        Example:
+            >>> records = [
+            >>>     {"sequence_id": 1, "embedding_type_id": 2, "embedding": [0.1, 0.2], "shape": [2]}
+            >>> ]
+            >>> manager.store_entry(records)
         """
         session = self.session
         try:

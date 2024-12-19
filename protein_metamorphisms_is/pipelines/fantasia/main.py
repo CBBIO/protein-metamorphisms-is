@@ -62,15 +62,27 @@ Contact Information
 """
 import argparse
 from datetime import datetime
-from protein_metamorphisms_is.sql.model import (
-    SequenceEmbedder,
-    EmbeddingLookUp,
-    AccessionManager,
-    UniProtExtractor,
-    SequenceEmbeddingManager,
-)
 
 from protein_metamorphisms_is.helpers.config.yaml import read_yaml_config
+
+from protein_metamorphisms_is.operation.embedding.sequence_embedding import SequenceEmbeddingManager
+from protein_metamorphisms_is.operation.extraction.accessions import AccessionManager
+from protein_metamorphisms_is.operation.extraction.uniprot import UniProtExtractor
+
+from protein_metamorphisms_is.pipelines.fantasia.embedder import SequenceEmbedder
+from protein_metamorphisms_is.pipelines.fantasia.lookup import EmbeddingLookUp
+
+# required to use the ORM
+from protein_metamorphisms_is.operation.extraction.pdb import PDBExtractor  # noqa: F401
+from protein_metamorphisms_is.operation.clustering.sequence_clustering import SequenceClustering  # noqa: F401
+from protein_metamorphisms_is.operation.clustering.structural_subclustering import StructuralSubClustering  # noqa: F401
+from protein_metamorphisms_is.operation.functional.annotation_transfer.sequence_go_annotation import \
+    SequenceGOAnnotation  # noqa: F401
+from protein_metamorphisms_is.operation.functional.multifunctionality.go_multifunctionality_metrics import \
+    GoMultifunctionalityMetrics  # noqa: F401
+from protein_metamorphisms_is.operation.structural_alignment.structural_alignment import \
+    StructuralAlignmentManager  # noqa: F401
+from protein_metamorphisms_is.operation.embedding.structure_3di import Structure3DiManager  # noqa: F401
 
 
 def main(
@@ -79,9 +91,9 @@ def main(
     # AccessionManager(conf).load_accessions_from_csv()
     AccessionManager(conf).fetch_accessions_from_api()
     UniProtExtractor(conf).start()
-    SequenceEmbeddingManager(conf).start()
     current_date = datetime.now().strftime("%Y%m%d%H%M%S")
 
+    SequenceEmbeddingManager(conf).start()
     embedder = SequenceEmbedder(conf, current_date)
     embedder.start()
 
@@ -91,7 +103,9 @@ def main(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run the pipeline with a specified configuration file.")
-    parser.add_argument("--config", type=str, required=True, help="Path to the configuration YAML file.")
+    parser.add_argument("--config", type=str, required=False, help="Path to the configuration YAML file.")
     args = parser.parse_args()
-    main(args.config)
 
+    # Establecer valor por defecto si no se proporciona argumento
+    config_path = args.config if args.config else './pipelines/fantasia/config.yaml'
+    main(config_path=config_path)
