@@ -5,14 +5,25 @@ Sequence Embedding Module
 This module contains the `SequenceEmbedder` class, which processes protein sequences to generate embeddings
 using protein language models, applies optional filters (like length and redundancy), and stores the embeddings
 in HDF5 format.
+
+Background
+----------
+This module includes functionalities inspired by:
+- **BioEmbeddings**: Techniques for embedding generation and model handling are adapted from the BioEmbeddings framework. For more details, visit https://docs.bioembeddings.com.
+
+Custom enhancements allow for efficient batch processing and integration with CD-HIT for redundancy filtering.
+
 """
+
+
 import os
 import traceback
 
 from Bio import SeqIO
 
-from protein_metamorphisms_is.operation.embedding.sequence_embedding import SequenceEmbeddingManager
 import h5py
+
+from protein_metamorphisms_is.operation.embedding.sequence_embedding import SequenceEmbeddingManager
 
 
 class SequenceEmbedder(SequenceEmbeddingManager):
@@ -75,6 +86,7 @@ class SequenceEmbedder(SequenceEmbeddingManager):
         and prepares batches of sequences for embedding generation.
 
         Steps:
+
         - Runs CD-HIT for redundancy filtering if configured.
         - Splits sequences into batches based on batch size.
         - Publishes tasks for embedding computation.
@@ -187,8 +199,6 @@ class SequenceEmbedder(SequenceEmbeddingManager):
             if not os.path.exists(output_dir):
                 os.makedirs(output_dir)
                 self.logger.info(f"Created directory: {output_dir}")
-
-
 
             with h5py.File(os.path.expanduser(self.output_h5), "a") as h5file:
                 for record in results:
