@@ -26,15 +26,13 @@ To install FANTASIA, ensure you have Python 3.8+ installed and use the following
 pip install protein-metamorphism-is
 ```
 
-For more details, visit the [PyPI page](https://protein-metamorphisms-is.readthedocs.io/en/latest/pipelines/fantasia.html).
-
 ---
 
 ## Quick Start
 
 ### Prerequisites
 
-Ensure the **Information System** is properly configured before running FANTASIA. Detailed instructions are available in the [project documentation](../../README.md).
+Ensure the **Information System** is properly configured before running FANTASIA. Detailed instructions are available in the [project documentation](../../../README.md).
 
 ### Running the Pipeline
 
