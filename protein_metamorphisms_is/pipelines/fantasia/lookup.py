@@ -18,8 +18,6 @@ the vectorial database and HDF5-based embedding storage used in this pipeline.
 
 """
 
-
-
 import os
 
 import pandas as pd
