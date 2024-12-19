@@ -40,7 +40,7 @@ allowed_evidences:
   - TAS
   - IC
 
-# Fantasia
+# FANTASIA
 fantasia_input_fasta: ~/fantasia/input/input.fasta
 fantasia_output_h5: ~/fantasia/embeddings/
 fantasia_output_csv: ~/fantasia/results/
@@ -61,4 +61,4 @@ embedding:
 
 
 ## system
-constants: "/home/bioxaxi/PycharmProjects/protein-metamorphisms-is/protein_metamorphisms_is/config/constants.yaml"
+constants: "config/constants.yaml"

@@ -50,6 +50,8 @@ Here is an example of how to subclass `BaseTaskInitializer`:
 """
 
 from abc import ABC, abstractmethod
+from pathlib import Path
+
 import yaml
 from protein_metamorphisms_is.helpers.logger.logger import setup_logger
 from protein_metamorphisms_is.sql.base.database_manager import DatabaseManager
@@ -128,13 +130,27 @@ class BaseTaskInitializer(ABC):
             FileNotFoundError: If the constants file cannot be found.
             yaml.YAMLError: If there is an error parsing the YAML file.
         """
-        self.logger.info(f"Loading constants from {constants_path}")
-        constants = yaml.safe_load(open(constants_path))
-        # handle_structural_complexity_levels(self.session, constants)
-        handle_structural_alignment_types(self.session, constants)
-        handle_sequence_embedding_types(self.session, constants)
-        # handle_structure_embedding_types(self.session, constants)
-        # handle_prediction_methods(self.session, constants)
+        try:
+            self.logger.info(f"Loading constants from {constants_path}")
+
+            # Verify file exists
+            if not Path(constants_path).is_file():
+                raise FileNotFoundError(f"Constants file not found at: {constants_path}")
+
+            # Load and parse YAML safely
+            with open(constants_path, 'r', encoding='utf-8') as f:
+                constants = yaml.safe_load(f)
+
+            # Handle specific constant types
+            handle_structural_alignment_types(self.session, constants)
+            handle_sequence_embedding_types(self.session, constants)
+
+        except yaml.YAMLError as e:
+            self.logger.error(f"Error parsing YAML file: {str(e)}")
+            raise
+        except Exception as e:
+            self.logger.error(f"Error loading constants: {str(e)}")
+            raise
 
     @abstractmethod
     def start(self):

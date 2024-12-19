@@ -1,6 +1,33 @@
 Setup Instructions
 ==================
 
+0. NVIDIA Requirements
+---------------------
+
+Before proceeding with the installation, ensure your system meets these NVIDIA requirements:
+
+Recommended Configuration
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- **NVIDIA Driver**: Version 550.120 or later
+- **CUDA Version**: 12.4 or later
+- **CUDA Compiler (nvcc)**: 12.0 or later
+
+Verify installation by running:
+
+.. code-block:: bash
+
+    nvidia-smi  # Check driver and CUDA version
+    nvcc --version  # Check CUDA compiler version
+
+If these commands fail, install or update:
+
+1. NVIDIA drivers
+
+2. CUDA Toolkit (includes nvcc)
+
+For installation guide, visit `NVIDIA CUDA Installation Guide <https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html>`_.
+
 1. Install Docker
 -----------------
 

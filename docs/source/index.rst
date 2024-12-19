@@ -40,7 +40,7 @@ Pipelines
    pipelines/fantasia/
 
 
-- `Fantasia <pipelines/fantasia.html>`_: Functional ANnoTAtion based on embedding space SImilArity
+- `FANTASIA <pipelines/fantasia.html>`_: Functional ANnoTAtion based on embedding space SImilArity
 
 - Massive search of metamorphisms and multifunctionality (WIP)
 
@@ -79,3 +79,4 @@ FAQ
 
    deployment/setup_instructions
    configuration/fantasia/parameters
+   run/fantasia/run
