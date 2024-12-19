@@ -18,8 +18,6 @@ Custom enhancements allow for efficient batch processing and integration with CD
 
 """
 
-
-
 import os
 import traceback
 
