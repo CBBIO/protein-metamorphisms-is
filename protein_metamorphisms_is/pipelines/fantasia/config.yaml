@@ -61,4 +61,4 @@ embedding:
 
 
 ## system
-constants: "/home/bioxaxi/PycharmProjects/protein-metamorphisms-is/protein_metamorphisms_is/config/constants.yaml"
+constants: "config/constants.yaml"
