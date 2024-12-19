@@ -32,4 +32,4 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run the pipeline with a specified configuration file.")
     parser.add_argument("--config", type=str, required=False, help="Path to the configuration YAML file.")
     args = parser.parse_args()
-    main()
+    main(config_path=args.config)
