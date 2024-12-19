@@ -14,8 +14,15 @@ The main objective is to develop a comprehensive dataset that includes sets of v
 We have created an environment for analyzing structural distances that enables the analysis of inter-subcluster distances using leading structural alignment and distance algorithms such as Fatcat, US-Align, and CE-Align. High differences in these values are indicative of metamorphism. Concurrently, we employ similarity analysis techniques in Gene Ontology (GO) ontologies to discover proteins that, in addition to their structural conservation, exhibit multifunctionality. This includes an analysis of semantic distances per protein to identify disparate terms indicating multifunctionality.
 
 
-> 🚀 **FANTASIA Support**: This tool also supports **FANTASIA**, an extended system for functional annotation and task orchestration. FANTASIA comes with its own documentation and streamlined templates, ensuring clarity and usability for large-scale annotation workflows.  
-> You can find the detailed documentation [here](protein_metamorphisms_is/pipelines/fantasia/README.md).
+> 📢 **FANTASIA Update in Progress**: 
+> 
+> An **updated version** of **FANTASIA** is currently being developed. This new version is a pipeline for **annotating GO (Gene Ontology) terms** in protein sequence files (FASTAs). Stay tuned for more details on the update.
+> 
+> This tool is being developed with **long-term support** in mind, and efforts are also underway to document its usage for **deployment on HPC** (High-Performance Computing) systems. Additionally, **FANTASIA** has been **re-engineered** to utilize updated dependencies and models under a formal development framework.
+> 
+> 🚀 **FANTASIA Support**: This framework has been **re-engineered** to use updated dependencies and models within a formal development framework. For more information, visit the [original project](https://github.com/MetazoaPhylogenomicsLab/FANTASIA).
+> 
+> 🔥 **Updated Documentation**: The most up-to-date and detailed documentation for this new version of **FANTASIA** is available [here](protein_metamorphisms_is/pipelines/fantasia/README.md).
 
 ## prerequisites
 

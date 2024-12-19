@@ -89,10 +89,15 @@ from protein_metamorphisms_is.operation.structural_alignment.structural_alignmen
 from protein_metamorphisms_is.operation.embedding.structure_3di import Structure3DiManager  # noqa: F401
 
 
-def main(
-        config_path="./pipelines/fantasia/config.yaml"):
+def main(config_path="./pipelines/fantasia/config.yaml", fasta_path=None):
+    # Read configuration
     conf = read_yaml_config(config_path)
-    # AccessionManager(conf).load_accessions_from_csv()
+
+    # Update the FASTA path if provided
+    if fasta_path:
+        conf["fantasia_input_fasta"] = fasta_path
+
+    # Pipeline steps
     AccessionManager(conf).fetch_accessions_from_api()
     UniProtExtractor(conf).start()
     current_date = datetime.now().strftime("%Y%m%d%H%M%S")
@@ -108,8 +113,11 @@ def main(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run the pipeline with a specified configuration file.")
     parser.add_argument("--config", type=str, required=False, help="Path to the configuration YAML file.")
+    parser.add_argument("--fasta", type=str, required=False, help="Path to the input FASTA file.")
     args = parser.parse_args()
 
-    # Establecer valor por defecto si no se proporciona argumento
+    # Use provided arguments or defaults
     config_path = args.config if args.config else './pipelines/fantasia/config.yaml'
-    main(config_path=config_path)
+    fasta_path = args.fasta
+
+    main(config_path=config_path, fasta_path=fasta_path)
