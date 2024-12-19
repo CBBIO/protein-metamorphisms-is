@@ -1,8 +1,7 @@
-Gracias por la observación. He actualizado el README con la cita faltante:
 
 ---
 
-# FANTASIA: Functional Annotation System and Task Orchestration
+# FANTASIA
 
 ![FANTASIA Logo](img/FANTASIA_logo.png)
 
@@ -24,7 +23,7 @@ FANTASIA (Functional ANnoTAtion based on embedding space SImilArity) is a pipeli
 To install FANTASIA, ensure you have Python 3.8+ installed and use the following commands:
 
 ```bash
-pip install fantasia-pipeline
+pip install protein-metamorphism-is
 ```
 
 For more details, visit the [PyPI page](https://protein-metamorphisms-is.readthedocs.io/en/latest/pipelines/fantasia.html).
@@ -79,6 +78,3 @@ If you use FANTASIA in your work, please cite the following:
 - Ana M. Rojas: a.rojas.m@csic.es  
 - Rosa Fernández: rosa.fernandez@ibe.upf-csic.es  
 
----
-
-Si necesitas más ajustes, ¡hazmelo saber!
