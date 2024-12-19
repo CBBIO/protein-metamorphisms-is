@@ -7,10 +7,14 @@ calculating distances to identify similar proteins, and storing the resulting GO
 
 Background
 ----------
-This module integrates functionalities inspired by:
-- **GoPredSim**: The GO term similarity and distance-based lookup functionalities are adapted from GoPredSim (https://github.com/Rostlab/goPredSim).
 
-Additionally, customizations have been made to ensure seamless integration with the vectorial database and HDF5-based embedding storage used in this pipeline.
+This module integrates functionalities inspired by:
+
+- **GoPredSim**: The GO term similarity and distance-based lookup functionalities are adapted from GoPredSim
+(https://github.com/Rostlab/goPredSim).
+
+Additionally, customizations have been made to ensure seamless integration with
+the vectorial database and HDF5-based embedding storage used in this pipeline.
 
 """
 
