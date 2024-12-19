@@ -1,0 +1,64 @@
+#System
+max_workers: 1
+
+# DB CONFIGURATION
+DB_USERNAME: usuario
+DB_PASSWORD: clave
+DB_HOST: localhost
+DB_PORT: 5432
+DB_NAME: BioData
+
+rabbitmq_host: localhost
+rabbitmq_user: guest
+rabbitmq_password: guest
+
+# Execution
+limit_execution: 100 # Debug Mode. False for complete run
+
+# Populate the LookUp table with the reference genomas.
+# Option 1# Seed the lookup table with your genes from a file.
+#load_accesion_csv: None
+load_accesion_csv: ../data/fantasia.csv.csv
+load_accesion_column: ID
+
+
+# Option 2# Use uniprot query (You can use the builder and export the chain)
+search_criteria: '(reviewed:true)'
+limit: 200 # TODO: Rename this parameter to "pagination"
+
+# Tag Them
+tag: 'GOA2024'
+
+# UniProt Extraction
+allowed_evidences:
+  - EXP
+  - IDA
+  - IPI
+  - IMP
+  - IGI
+  - IEP
+  - TAS
+  - IC
+
+# Fantasia
+fantasia_input_fasta: ~/fantasia/input/input.fasta
+fantasia_output_h5: ~/fantasia/embeddings/
+fantasia_output_csv: ~/fantasia/results/
+fantasia_prefix: finger_zinc
+max_distance: 1
+length_filter: 5000
+redundancy_filter: 0.95
+redundancy_file: ~/fantasia/redundancy/output.fasta
+topgo?: True # :TODO unknown
+
+embedding:
+  types:
+    - 1 # ESM
+    - 2 # Prost
+    - 3 # Prot
+  batch_size: 50 # Queue
+  embedding_batch_size: 10 # Model input size
+
+
+## system
+constants: "/home/bioxaxi/PycharmProjects/protein-metamorphisms-is/protein_metamorphisms_is/config/constants.yaml"

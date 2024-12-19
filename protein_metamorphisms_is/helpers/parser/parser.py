@@ -1,7 +1,9 @@
 import re
 
+import requests
 from Bio import SeqIO
 from Bio.PDB import MMCIFParser, PDBIO
+import gemmi
 
 
 def extract_float(s):
@@ -150,3 +152,114 @@ def cif_to_pdb(cif_path, pdb_path):
             if len(chain.id) > 1:
                 chain.id = "X"
     io.save(pdb_path)
+
+
+def obtener_cadenas_y_accesiones(pdb_id):
+    url = "https://data.rcsb.org/graphql"
+
+    # Consulta GraphQL para obtener información de cadenas y accesiones
+    query = f"""
+    {{
+      entry(entry_id: "{pdb_id}") {{
+        rcsb_id
+        polymer_entities {{
+          rcsb_polymer_entity_container_identifiers {{
+            auth_asym_ids
+          }}
+          rcsb_polymer_entity_container_identifiers {{
+            reference_sequence_identifiers {{
+              database_accession
+              database_name
+            }}
+          }}
+        }}
+      }}
+    }}
+    """
+
+    try:
+        # Realiza la solicitud POST al endpoint de GraphQL
+        response = requests.post(url, json={'query': query})
+        response.raise_for_status()  # Genera una excepción en caso de error HTTP
+
+        data = response.json()
+
+        # Verificar que se obtuvo una respuesta válida con los datos necesarios
+        if "data" not in data or "entry" not in data["data"]:
+            raise ValueError("No se encontraron datos para el PDB ID proporcionado.")
+
+        entry = data["data"]["entry"]
+
+        # Mapa de cadenas y accesiones
+        cadenas_accesiones = {}
+
+        # Extrae las cadenas y accesiones
+        for entity in entry.get("polymer_entities", []):
+            chains = entity.get("rcsb_polymer_entity_container_identifiers", {}).get("auth_asym_ids", [])
+            references = entity.get("rcsb_polymer_entity_container_identifiers", {}).get(
+                "reference_sequence_identifiers", [])
+
+            for chain in chains:
+                for ref in references:
+                    if ref.get("database_name") == "UniProt":
+                        cadenas_accesiones[chain] = ref.get("database_accession")
+
+        return cadenas_accesiones
+
+    except requests.exceptions.RequestException as e:
+        raise ConnectionError(f"Error en la solicitud a RCSB PDB: {e}")
+    except ValueError as e:
+        raise ValueError(f"Error en los datos recibidos: {e}")
+
+
+def get_chain_to_accession_map(cif_path):
+    """
+    Extracts the mapping of chain names to UniProt accessions from a CIF file.
+
+    Args:
+        cif_path (str): Path to the CIF file.
+
+    Returns:
+        dict: A dictionary mapping chain names to UniProt accessions.
+    """
+    doc = gemmi.cif.read(cif_path)
+    block = doc.sole_block()
+
+    # Initialize mappings
+    chain_accession_map = {}
+
+    try:
+        # Extract _entity_poly fields
+        entity_ids_poly = block.find_values('_entity_poly.entity_id')
+        pdbx_strand_ids = block.find_values('_entity_poly.pdbx_strand_id')
+
+        # Extract _struct_ref fields
+        db_names = block.find_values('_struct_ref.db_name')
+        entity_ids_ref = block.find_values('_struct_ref.entity_id')
+        pdbx_db_accessions = block.find_values('_struct_ref.pdbx_db_accession')
+
+        # Map entity IDs to UniProt accessions
+        struct_ref_map = {
+            entity_id: accession
+            for db_name, entity_id, accession in zip(db_names, entity_ids_ref, pdbx_db_accessions)
+            if db_name == 'UNP' and accession  # Only consider UniProt entries
+        }
+
+        # Map entity IDs to chain names
+        entity_chain_map = {
+            entity_id: chains.split(',')
+            for entity_id, chains in zip(entity_ids_poly, pdbx_strand_ids)
+            if chains
+        }
+
+        # Combine mappings to produce chain -> accession map
+        for entity_id, chains in entity_chain_map.items():
+            if entity_id in struct_ref_map:
+                accession = struct_ref_map[entity_id]
+                for chain in chains:
+                    chain_accession_map[chain.strip()] = accession
+        print(chain_accession_map)
+    except KeyError as e:
+        print(f"Missing key in CIF file: {e}")
+    print(chain_accession_map)
+    return chain_accession_map

@@ -6,31 +6,54 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [ "3.10" ]
-        poetry-version: [ "1.4.0" ]
-        os: [ ubuntu-22.04 ]
+        python-version: ["3.10"]
+        poetry-version: ["1.4.0"]
+        os: [ubuntu-22.04]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Run image
+
+      - name: Set up Poetry
         uses: abatilo/actions-poetry@v2
         with:
           poetry-version: ${{ matrix.poetry-version }}
-      - name: install dependecies
-        run: |
-          poetry install 
-          pip3 install coverage
-          pip3 install pytest
 
-      - name: test
+      - name: Install dependencies
+        run: |
+          poetry install
+          pip3 install coverage pytest
+
+      - name: Start RabbitMQ container
+        run: |
+          docker run -d --name rabbitmq -p 15672:15672 -p 5672:5672 rabbitmq:management
+
+      - name: Start PostgreSQL container with pgvector
+        run: |
+          docker run -d --name pgvectorsql \
+            -e POSTGRES_USER=usuario \
+            -e POSTGRES_PASSWORD=clave \
+            -e POSTGRES_DB=BioData \
+            -p 5432:5432 \
+            pgvector/pgvector:pg16
+
+      - name: Wait for PostgreSQL to be ready
+        run: |
+          until docker exec pgvectorsql pg_isready -U usuario; do sleep 1; done
+
+      - name: Enable pgvector extension
+        run: |
+          docker exec -i pgvectorsql psql -U usuario -d BioData -c "CREATE EXTENSION vector;"
+
+      - name: Run tests and coverage
         run: poetry run task coverage
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v4
         with:
-          token: ${{ secrets.CODECOV_TOKEN }} # not required for public repo
-          fail_ci_if_error: true # optional (default = false)
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: true
           verbose: true

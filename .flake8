@@ -8,3 +8,4 @@ exclude =
    .env
 
 max-line-length = 150
+ignore = E711

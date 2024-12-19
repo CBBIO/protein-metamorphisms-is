@@ -1,43 +1,80 @@
-===========================================================
-Information System for Protein Metamorphisms discovery.
-===========================================================
+BioInformation System (BioInfo-IS)
+==================================
+The BioInformation System (BioInfo-IS) project, part of the computational suite in development, for exploring and
+modeling different research areas related to **proteomics**, specially their structures and functionalities, it is
+designed for the comprehensive management and processing of harmonized biological data.
 
-Welcome to the documentation of the Protein Data Handler for Metamorphisms discovery, a versatile Python library designed to streamline the handling of protein data. This project offers a suite of tools for searching, downloading, and storing protein information from renowned databases like UniProt and the Protein Data Bank (PDB).
+BioInfo design (Plan)
+==============================
+- **BioInfo - This**: The core system that manages, processes, and organizes biological data, serving as the backbone of the BioResearch project.
+- **BioInfo - Data Modeler**: A tool within the BioResearch suite that focuses on modeling and structuring biological data to enable advanced analysis and integration. It serves as the central hub where essential queries are executed, generating diverse datasets that are directly ready for processing by other tools.
+- **BioInfo - Learning Models**: A component dedicated to machine learning and AI.
+- **BioInfo - API**: Application Programming Interface that allows integration and access to system data and functionalities from other systems.
+- **BioInfo - Portal**: Indicates an access platform or user interface where the project's tools and data are deployed for research exploitation.
 
-A distinctive feature of this library is its seamless integration with SQL databases, particularly PostgreSQL. It facilitates sophisticated querying and manipulation of data from UniProt and PDB at the protein chain level. Moreover, the Protein Data Handler supports the mass dumping of data from these databases into your own PostgreSQL database. This enables efficient management and analysis of large datasets, allowing users to perform complex SQL queries on protein data and execute in-depth analysis and operations on protein chains.
-
-Our use case involves the exploration of metamorphisms in protein data. This process begins with the use of **CD-HIT**, an acclaimed bioinformatics tool for grouping similar sequence chains. CD-HIT aids in organizing biological sequences by reducing redundancy, thus enhancing processing speed and data manageability.
-
-Once we have these groups formed through CD-HIT, we proceed with a detailed structural alignment comparison using multiple standard methods. This stage is vital as we select a representative sequence from each group and compare them against others to identify structural similarities and differences. Those methods proves highly effective in comparing protein structures, particularly in cases where sequences are similar, but their structures differ significantly. This approach is instrumental in our efforts to explore and understand metamorphisms in protein data.
-
-Key Features
-------------
-
-- **UniProt Integration**: Seamlessly interact with the UniProt database for comprehensive protein data.
-- **Protein Data Bank (PDB) Support**: Access and utilize data from the PDB, including 3D structures of proteins.
-- **Database Management**: Efficiently manage and store protein data using robust database solutions. Enhance your database interactions with the integration of ORM (Object-Relational Mapping) for streamlined data operations and a well-structured SQL model for optimized data organization.
-- **User-Friendly Configuration**: Customize your experience with flexible YAML configuration options.
-- **Robust Computational Result Acquisition**: Ensure reliability in the processing of computational results through a system of queuing and concurrent processing.
-
-
-Getting Started
----------------
-
-Dive into the world of protein metamorphisms discovery by exploring the sections below:
-
+Pipelines
+===============
 .. toctree::
    :maxdepth: 3
-   :caption: Information System
+   :caption: Pipelines
+   :hidden:
 
-   information_system/uniprot
-   information_system/pdb
-   information_system/model
 
+   pipelines/fantasia/
+
+
+- `Fantasia <pipelines/fantasia.html>`_: Functional ANnoTAtion based on embedding space SImilArity
+
+- Massive search of metamorphisms and multifunctionality (WIP)
+
+
+Task Types
+===============
+.. toctree::
+   :maxdepth: 2
+   :caption: Task Types
+   :hidden:
+
+   tasks/base
+   tasks/queue
+   tasks/gpu
+
+- `Base Tasks <tasks/base.html>`_: Handle Object Relational Model synchronization with the database and provide a session.
+- `Queue Tasks <tasks/queue.html>`_: Handle queuing processes with RabbitMQ for task distribution and fault tolerance.
+- `GPU Tasks <tasks/gpu.html>`_: Handle computationally intensive tasks using GPU.
+
+
+Extraction
+===============
 .. toctree::
    :maxdepth: 3
-   :caption: Operations
+   :caption: Extraction
+   :hidden:
 
-   operation/cdhit
-   operation/structural_alignment
+   operation/extraction/accessions
+   operation/extraction/uniprot
 
-We hope this documentation serves as a valuable resource in your journey with Protein Data Handler. Happy data handling!
+- `Accession Management <operation/extraction/accessions.html>`_: Manages the loading and processing of biological accession codes, ensuring data is correctly organized for subsequent analysis.
+- `UniProt Extraction <operation/extraction/uniprot.html>`_: Handles the downloading and processing of detailed protein information from UniProt, enriching the database with accurate and up-to-date data.
+
+
+Embedding
+===============
+.. toctree::
+   :maxdepth: 3
+   :caption: Embedding
+   :hidden:
+
+   operation/embedding/sequence_embeddings
+
+- `Sequence Embedding <operation/embedding/sequence_embeddings.html>`_: Facilitates encoding of protein and nucleotide sequences into dense vectors.
+
+
+FAQ
+===============
+.. toctree::
+   :maxdepth: 2
+   :caption:  Guides
+
+   deployment/setup_instructions
+   configuration/fantasia/parameters
