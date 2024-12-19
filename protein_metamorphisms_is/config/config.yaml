@@ -1,5 +1,5 @@
 #System
-max_workers: 8
+max_workers: 1
 binaries_path: '../binaries'
 
 # DB CONFIGURATION
@@ -26,7 +26,7 @@ load_accesion_column: id
 
 # Fetch from API
 search_criteria: '(reviewed:true)'
-limit: 20
+limit: 200
 
 # UniProt Extraction
 allowed_evidences:
@@ -43,7 +43,7 @@ allowed_evidences:
 # PDB Extraction
 resolution_threshold: 5
 server: "https://files.wwpdb.org/"
-data_directory: "/home/bioxaxi/data"
+data_directory: "~/data"
 file_format: "mmCif"
 
 models_path:
@@ -53,8 +53,8 @@ constants: "config/constants.yaml"
 
 # Sequence Clustering
 ## Temporal files that will be created, check that the directories path exists
-fasta_path: "/home/bioxaxi/data/complete.fasta" #Check
-cdhit_out_path: "/home/bioxaxi/data/cd_hitout" # Temporal file that will be created, check that the directory path exists
+fasta_path: "~/data/complete.fasta" #Check
+cdhit_out_path: "~/data/cd_hitout" # Temporal file that will be created, check that the directory path exists
 ## --
 sequence_identity_threshold: 0.98
 alignment_coverage: 0.95
@@ -80,9 +80,10 @@ structural_alignment:
 embedding:
   types:
     - 1 # ESM
-    - 2 # ProstT5
-    - 3 # ProtT5
-  batch_size: 40
+#    - 2 # ProstT5
+#    - 3 # ProtT5
+  batch_size: 80
+  batch_size_embedding: 40
 # GO Metrics
 obo: '../data/go-basic.obo'
 go_annotation_file: '../data/cgd.gaf'

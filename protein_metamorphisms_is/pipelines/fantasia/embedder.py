@@ -63,7 +63,7 @@ class SequenceEmbedder(SequenceEmbeddingManager):
         self.output_csv = conf.get("fantasia_output_csv")
         self.length_filter = conf.get('length_filter', None)
         self.output_h5 = os.path.join(
-            conf.get("fantasia_output_h5_path", "./embeddings"),
+            conf.get("fantasia_output_h5"),
             f"{conf.get('fantasia_prefix', 'default')}_embeddings_{self.current_date}.h5"
         )
 
@@ -91,9 +91,8 @@ class SequenceEmbedder(SequenceEmbeddingManager):
             if self.conf.get('redundancy_filter'):
                 os.system(
                     f"cd-hit -i {self.fasta_path} -o {self.conf.get('redundancy_file')} -c {self.conf.get('redundancy_filter')}")
-                print(f"cd-hit -i {self.fasta_path} -o {self.conf.get('redundancy_file')} -c {self.conf.get('redundancy_filter')}")
 
-            for record in SeqIO.parse(self.fasta_path, "fasta"):
+            for record in SeqIO.parse(os.path.expanduser(self.fasta_path), "fasta"):
                 if self.length_filter and len(record.seq) > self.length_filter:
                     continue
                 sequences.append(record)
@@ -151,8 +150,14 @@ class SequenceEmbedder(SequenceEmbeddingManager):
                 tokenizer = self.tokenizer_instances[embedding_type_id]
                 module = self.types[embedding_type_id]['module']
 
-                sequence = data['sequence']
-                embedding_records = module.embedding_task([sequence], model, tokenizer)
+                # Prepare input for embedding_task
+                sequence_info = [{
+                    'sequence': data['sequence'],
+                    'sequence_id': data['accession']  # Propagating accession as sequence_id
+                }]
+
+                embedding_records = module.embedding_task(sequence_info, model, tokenizer,
+                                                          embedding_type_id=embedding_type_id)
 
                 for record in embedding_records:
                     record['embedding_type_id'] = embedding_type_id
@@ -183,7 +188,9 @@ class SequenceEmbedder(SequenceEmbeddingManager):
                 os.makedirs(output_dir)
                 self.logger.info(f"Created directory: {output_dir}")
 
-            with h5py.File(self.output_h5, "a") as h5file:
+
+
+            with h5py.File(os.path.expanduser(self.output_h5), "a") as h5file:
                 for record in results:
                     accession = record['accession']
                     embedding_type_id = record['embedding_type_id']

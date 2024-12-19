@@ -1,22 +1,20 @@
+import argparse
 from protein_metamorphisms_is.helpers.config.yaml import read_yaml_config
 
-from protein_metamorphisms_is.operation.extraction.accessions import AccessionManager
-from protein_metamorphisms_is.operation.extraction.pdb import PDBExtractor
-from protein_metamorphisms_is.operation.extraction.uniprot import UniProtExtractor
-from protein_metamorphisms_is.operation.embedding.sequence_embedding import SequenceEmbeddingManager
-from protein_metamorphisms_is.operation.embedding.structure_3di import Structure3DiManager
-from protein_metamorphisms_is.operation.clustering.sequence_clustering import SequenceClustering
-from protein_metamorphisms_is.operation.clustering.structural_subclustering import StructuralSubClustering
-from protein_metamorphisms_is.operation.functional.annotation_transfer.sequence_go_annotation import \
-    SequenceGOAnnotation
-from protein_metamorphisms_is.operation.structural_alignment.structural_alignment import StructuralAlignmentManager
+from protein_metamorphisms_is.sql.model import (
+    AccessionManager,
+    PDBExtractor,
+    UniProtExtractor,
+    SequenceEmbeddingManager,
+    Structure3DiManager,
+    SequenceClustering,
+    StructuralSubClustering,
+    SequenceGOAnnotation,
+    StructuralAlignmentManager,
+    GoMultifunctionalityMetrics,
+)
 
-
-from protein_metamorphisms_is.operation.functional.multifunctionality.go_multifunctionality_metrics import \
-    GoMultifunctionalityMetrics
-
-
-def main(config_path="config/config.yaml"):
+def main(config_path='config/config.yaml'):
     conf = read_yaml_config(config_path)
     AccessionManager(conf).fetch_accessions_from_api()
     AccessionManager(conf).load_accessions_from_csv()
@@ -28,9 +26,10 @@ def main(config_path="config/config.yaml"):
     StructuralSubClustering(conf).start()
     StructuralAlignmentManager(conf).start()
     SequenceGOAnnotation(conf).start()
-
     GoMultifunctionalityMetrics(conf).start()
 
-
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Run the pipeline with a specified configuration file.")
+    parser.add_argument("--config", type=str, required=False, help="Path to the configuration YAML file.")
+    args = parser.parse_args()
     main()

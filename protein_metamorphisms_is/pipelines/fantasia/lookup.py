@@ -6,12 +6,14 @@ This module contains the `EmbeddingLookUp` class, which handles querying embeddi
 calculating distances to identify similar proteins, and storing the resulting GO terms in CSV format.
 
 """
+import importlib
 import os
 
 import pandas as pd
 from sqlalchemy import text
 import h5py
 
+from protein_metamorphisms_is.sql.model.entities.embedding.sequence_embedding import SequenceEmbeddingType
 from protein_metamorphisms_is.tasks.queue import QueueTaskInitializer
 
 
@@ -52,14 +54,37 @@ class EmbeddingLookUp(QueueTaskInitializer):
         self.current_date = current_date
         self.logger.info("EmbeddingLookUp initialized")
         self.h5_path = os.path.join(
-            conf.get("fantasia_output_h5_path", "./embeddings"),
+            conf.get("fantasia_output_h5"),
             f"{conf.get('fantasia_prefix', 'default')}_embeddings_{self.current_date}.h5"
         )
         self.output_csv = os.path.join(
-            conf.get("fantasia_output_csv", "./results"),
+            conf.get("fantasia_output_csv"),
             f"{conf.get('fantasia_prefix', 'default')}_results_{self.current_date}.csv"
         )
         self.max_distance = conf.get('max_distance', 3)  # Distancia máxima permitida para el cálculo
+        self.fetch_models_info()
+
+    def fetch_models_info(self):
+        """
+        Retrieves and initializes embedding models based on configuration.
+
+        Queries the `SequenceEmbeddingType` table to fetch available embedding models.
+        Modules are dynamically imported and stored in the `types` attribute.
+        """
+        self.session_init()
+        embedding_types = self.session.query(SequenceEmbeddingType).all()
+        self.session.close()
+        self.types = {}
+
+        for type_obj in embedding_types:
+            if type_obj.id in self.conf['embedding']['types']:
+                self.types[type_obj.id] = {
+                    'model_name': type_obj.model_name,
+                    'id': type_obj.id,
+                    'task_name': type_obj.task_name,
+                }
+
+
 
     def enqueue(self):
         """
@@ -74,7 +99,7 @@ class EmbeddingLookUp(QueueTaskInitializer):
             self.logger.info(f"Reading embeddings from HDF5: {self.h5_path}")
 
             tasks = []
-            with h5py.File(self.h5_path, "r") as h5file:
+            with h5py.File(os.path.expanduser(self.h5_path), "r") as h5file:
                 for accession, accession_group in h5file.items():
                     for embedding_type, type_group in accession_group.items():
                         # Verificar si el dataset 'embedding' existe
@@ -180,7 +205,7 @@ class EmbeddingLookUp(QueueTaskInitializer):
                     'evidence_code': row.evidence_code,
                     'go_description': row.go_term_description,
                     'distance': row.distance,
-                    'embedding_type_id': embedding_type_id,
+                    'model_name': self.types[embedding_type_id].get('model_name'),
                     'protein_id': row.protein_id,
                     'organism': row.organism,
                     'sequence': row.sequence
@@ -216,14 +241,14 @@ class EmbeddingLookUp(QueueTaskInitializer):
         try:
             output_csv_path = self.output_csv  # Usar el path único generado con current_date
 
-            # Convertir go_terms a un DataFrame
-            df = pd.DataFrame(go_terms)
-
-            # Verificar y crear el directorio si no existe
+            # Verificar y crear el directorio "results" si no existe
             output_dir = os.path.dirname(output_csv_path)
             if not os.path.exists(output_dir):
-                os.makedirs(output_dir)
+                os.makedirs(output_dir, exist_ok=True)  # Crear el directorio si no existe
                 self.logger.info(f"Created directory: {output_dir}")
+
+            # Convertir go_terms a un DataFrame
+            df = pd.DataFrame(go_terms)
 
             # Guardar en CSV (agregar al archivo existente si ya existe)
             if not os.path.exists(output_csv_path):
@@ -236,3 +261,4 @@ class EmbeddingLookUp(QueueTaskInitializer):
         except Exception as e:
             self.logger.error(f"Error storing results in CSV: {e}")
             raise
+

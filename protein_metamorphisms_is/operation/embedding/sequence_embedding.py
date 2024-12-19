@@ -116,12 +116,12 @@ class SequenceEmbeddingManager(GPUTaskInitializer):
             self.logger.error(f"Error during enqueue process: {e}")
             raise
 
-    def process(self, task_data):
+    def process(self, batch_data):
         """
         Processes a batch of task data for embedding generation.
 
         Args:
-            task_data (list[dict]): List of task data dictionaries, each containing:
+            batch_data (list[dict]): List of task data dictionaries, each containing:
                 - sequence (str): Input sequence.
                 - sequence_id (int): Sequence identifier.
                 - embedding_type_id (int): Embedding type identifier.
@@ -133,22 +133,15 @@ class SequenceEmbeddingManager(GPUTaskInitializer):
             Exception: If an error occurs during embedding processing.
         """
         try:
-            results = []
+            embedding_type_id = batch_data[0]['embedding_type_id']
+            model = self.model_instances[embedding_type_id]
+            tokenizer = self.tokenizer_instances[embedding_type_id]
+            module = self.types[embedding_type_id]['module']
 
-            for data in task_data:
-                embedding_type_id = data['embedding_type_id']
-                model = self.model_instances[embedding_type_id]
-                tokenizer = self.tokenizer_instances[embedding_type_id]
-                module = self.types[embedding_type_id]['module']
+            # Pass embedding_type_id explicitly to the embedding_task function
+            embedding_records = module.embedding_task(batch_data, model, tokenizer, embedding_type_id=embedding_type_id)
 
-                sequence = data['sequence']
-                embedding_records = module.embedding_task([sequence], model, tokenizer)
-
-                for record in embedding_records:
-                    record['sequence_id'] = data['sequence_id']
-                    record['embedding_type_id'] = embedding_type_id
-                    results.append(record)
-            return results
+            return embedding_records
 
         except Exception as e:
             self.logger.error(f"Error during embedding process: {e}\n{traceback.format_exc()}")
@@ -182,4 +175,5 @@ class SequenceEmbeddingManager(GPUTaskInitializer):
 
         except Exception as e:
             session.rollback()
+            self.logger.error(f"Error during database storage: {e}")
             raise RuntimeError(f"Error storing entry: {e}")

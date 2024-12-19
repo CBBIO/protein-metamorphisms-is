@@ -33,7 +33,7 @@ limit: 20
 # PDB Extraction
 resolution_threshold: 5
 server: "https://files.wwpdb.org/"
-data_directory: "/home/bioxaxi/data"
+data_directory: "~/data"
 file_format: "mmCif"
 allow_multiple_chain_models: False # NMR
 
@@ -43,8 +43,8 @@ models_path:
 constants: "tests/config/constants.yaml"
 
 # Sequence Clustering
-fasta_path: "/home/bioxaxi/data/complete.fasta"
-cdhit_out_path: "/home/bioxaxi/data/out"
+fasta_path: "~/data/complete.fasta"
+cdhit_out_path: "~/data/out"
 sequence_identity_threshold: 0.98
 alignment_coverage: 0.95
 memory_usage: 25000
