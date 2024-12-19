@@ -41,6 +41,10 @@ Configuration`
 ---------------------------------------------------------------
 `FANTASIA Parameters <../configuration/fantasia/parameters.html>`_
 
+Run`
+---------------------------------------------------------------
+`Run FANTASIA <../run/fantasia/run.html>`_
+
 
 Cite FANTASIA
 -------------
