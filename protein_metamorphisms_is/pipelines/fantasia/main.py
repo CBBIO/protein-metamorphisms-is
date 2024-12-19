@@ -11,14 +11,17 @@ based on the computed embeddings.
 Pipeline Overview
 -----------------
 1. **Redundancy Filtering**:
-   - Removes identical sequences using CD-HIT with a 95% similarity threshold. (Optional)
-   - Optionally excludes sequences longer than 5000 amino acids. (Optional)
+
+   - Removes identical sequences using CD-HIT with a 95% similarity threshold. (Optional/Configurable value)
+   - Optionally excludes sequences longer than 5000 amino acids. (Optional/Configurable value)
 
 2. **Embedding Generation**:
+
    - Computes embeddings for protein sequences using **ProtT5**, **ProstT5**, and **ESM2**.
    - Stores embeddings in an HDF5 file, organized by sequence accession IDs and embedding types.
 
 3. **GO Term Lookup**:
+
    - Embeddings are compared for similarity using a **vector database**.
    - Retrieves GO terms associated with the most similar proteins.
    - Results include GO terms, distances, and metadata.
@@ -59,7 +62,7 @@ https://doi.org/10.1101/2024.02.14.580341.
 
 Contact Information
 -------------------
-- Francisco Miguel Pérez Canales: fmpercan@upo.es
+- Francisco Miguel Pérez Canales: fmpercan@upo.es (dev)
 - Gemma I. Martínez-Redondo: gemma.martinez@ibe.upf-csic.es
 - Ana M. Rojas: a.rojas.m@csic.es
 - Rosa Fernández: rosa.fernandez@ibe.upf-csic.es
