@@ -124,16 +124,17 @@ class SequenceEmbedder(SequenceEmbeddingManager):
                 model_batches = {}
                 for sequence in batch:
                     for type in self.types.values():
-                        task_data = {
-                            'sequence': str(sequence.seq),
-                            'accession': sequence.id,
-                            'model_name': type['model_name'],
-                            'embedding_type_id': type['id']
-                        }
+                        if type['id'] in self.conf['embedding']['types']:
+                            task_data = {
+                                'sequence': str(sequence.seq),
+                                'accession': sequence.id,
+                                'model_name': type['model_name'],
+                                'embedding_type_id': type['id']
+                            }
 
-                        if type['id'] not in model_batches:
-                            model_batches[type['id']] = []
-                        model_batches[type['id']].append(task_data)
+                            if type['id'] not in model_batches:
+                                model_batches[type['id']] = []
+                            model_batches[type['id']].append(task_data)
 
                 for model_type, batch_data in model_batches.items():
                     self.publish_task(batch_data, model_type)
