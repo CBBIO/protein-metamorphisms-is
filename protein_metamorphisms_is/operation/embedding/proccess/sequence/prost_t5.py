@@ -4,7 +4,15 @@ import torch
 
 
 def load_model(model_name):
-    return T5EncoderModel.from_pretrained(model_name).to(torch.device("cuda"))
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+        gpu_properties = torch.cuda.get_device_properties(device)
+        if gpu_properties.total_memory < 12 * 1024**3:  # Menos de 12GB
+            device = torch.device("cpu")
+    else:
+        device = torch.device("cpu")
+
+    return T5EncoderModel.from_pretrained(model_name).to(device)
 
 
 def load_tokenizer(model_name):
@@ -12,10 +20,15 @@ def load_tokenizer(model_name):
 
 
 def embedding_task(sequences, model, tokenizer, batch_size=32, embedding_type_id=None):
-    if not torch.cuda.is_available():
-        raise Exception("CUDA is not available. This script requires a GPU with CUDA.")
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+        gpu_properties = torch.cuda.get_device_properties(device)
+        if gpu_properties.total_memory < 12 * 1024**3:  # Menos de 12GB
+            device = torch.device("cpu")
+    else:
+        device = torch.device("cpu")
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model.to(device)
     model.eval()
     embedding_records = []
 
