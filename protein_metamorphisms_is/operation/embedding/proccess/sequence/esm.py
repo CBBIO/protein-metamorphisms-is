@@ -11,7 +11,7 @@ def load_tokenizer(model_name):
     return AutoTokenizer.from_pretrained(model_name)
 
 
-def embedding_task(sequences, model, tokenizer, embedding_type_id=None):
+def embedding_task(sequences, model, tokenizer, batch_size=32, embedding_type_id=None):
     """
     Processes sequences to generate embeddings.
 
