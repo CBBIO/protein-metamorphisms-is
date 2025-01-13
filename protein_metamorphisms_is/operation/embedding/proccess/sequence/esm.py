@@ -3,7 +3,8 @@ import torch
 
 
 def load_model(model_name):
-    return EsmModel.from_pretrained(model_name)
+    device = torch.device("cuda")
+    return EsmModel.from_pretrained(model_name).to(device)
 
 
 def load_tokenizer(model_name):
@@ -25,14 +26,7 @@ def embedding_task(sequences, model, tokenizer, embedding_type_id=None):
     Returns:
     A list of embedding records with sequence_id and embedding_type_id.
     """
-    if torch.cuda.is_available():
-        device = torch.device("cuda")
-        gpu_properties = torch.cuda.get_device_properties(device)
-        if gpu_properties.total_memory < 12 * 1024**3:  # less than 12GB VRAM
-            device = torch.device("cpu")
-    else:
-        device = torch.device("cpu")
-
+    device = torch.device("cuda")
     model.to(device)
 
     embedding_records = []
