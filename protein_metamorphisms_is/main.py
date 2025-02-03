@@ -1,7 +1,7 @@
 import argparse
 from protein_metamorphisms_is.helpers.config.yaml import read_yaml_config
 
-from protein_metamorphisms_is.sql.model import (
+from protein_metamorphisms_is.sql.model.model import (
     AccessionManager,
     PDBExtractor,
     UniProtExtractor,
@@ -19,7 +19,9 @@ def main(config_path='config/config.yaml'):
     AccessionManager(conf).fetch_accessions_from_api()
     AccessionManager(conf).load_accessions_from_csv()
     UniProtExtractor(conf).start()
+    SequenceEmbedding(conf).start()
     PDBExtractor(conf).start()
+    Structure3DiManager(conf).start()
     Structure3DiManager(conf).start()
     SequenceClustering(conf).start()
     StructuralSubClustering(conf).start()

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "protein_metamorphisms_is"
-version = "1.6.0"
+version = "2.0.0"
 description = "Comprehensive Python Module for Protein Data Management: Designed for streamlined integration and processing of protein information from both UniProt and PDB. Equipped with features for concurrent data fetching, robust error handling, and database synchronization."
 authors = ["frapercan <frapercan1@alum.us.es>"]
 readme = "README.md"
@@ -35,6 +35,7 @@ fastobo = "^0.12.3"
 responses = "^0.25.3"
 h5py = "^3.12.1"
 esm = "^3.1.1"
+pandas = "^2.2.3"
 
 
 

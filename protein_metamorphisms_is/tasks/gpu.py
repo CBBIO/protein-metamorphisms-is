@@ -222,28 +222,6 @@ class GPUTaskInitializer(QueueTaskInitializer):
             del self.model_instances[model_type]
             del self.tokenizer_instances[model_type]
 
-    def monitor_queues(self):
-        """
-        Monitor the RabbitMQ queues for GPU tasks.
-
-        This method periodically checks the status of the queues to determine
-        if they are empty. If all queues are empty, it stops the workers.
-
-        This method runs in a separate thread and monitors the queues every 5 seconds.
-        """
-        with self._create_rabbitmq_connection() as channel:
-            while not self.stop_event.is_set():
-                queues = [f"{self.computing_queue}_{model_type}" for model_type in self.conf['embedding']['types']]
-                empty_queues = 0
-                for queue in queues:
-                    queue_state = channel.queue_declare(queue=queue, passive=True)
-                    if queue_state.method.message_count == 0:
-                        empty_queues += 1
-
-                if empty_queues == len(queues):
-                    self.stop_event.set()
-                    break
-                time.sleep(5)
 
     def publish_task(self, batch_data, model_type):
         """

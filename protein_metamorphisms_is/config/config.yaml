@@ -13,6 +13,8 @@ rabbitmq_host: localhost
 rabbitmq_user: guest
 rabbitmq_password: guest
 
+monitor_interval: 1
+
 #Execution
 limit_execution: 100 # Debug Mode. False for complete run
 
@@ -46,7 +48,6 @@ server: "https://files.wwpdb.org/"
 data_directory: "~/data"
 file_format: "mmCif"
 
-models_path:
 
 ## Operations
 constants: "config/constants.yaml"
