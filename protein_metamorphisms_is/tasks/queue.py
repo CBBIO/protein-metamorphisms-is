@@ -52,7 +52,8 @@ class QueueTaskInitializer(BaseTaskInitializer):
             )
         )
         self.logger.info("QueueTaskInitializer has been successfully initialized.")
-        self.delete_all_queues()
+        if self.conf.get('delete_queues',False):
+            self.delete_all_queues()
 
     def setup_rabbitmq(self):
         """

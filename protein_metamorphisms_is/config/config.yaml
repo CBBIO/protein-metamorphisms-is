@@ -17,6 +17,7 @@ monitor_interval: 1
 
 #Execution
 limit_execution: 100 # Debug Mode. False for complete run
+delete_queues: True
 
 ### Information System/
 ## Load Accessions
