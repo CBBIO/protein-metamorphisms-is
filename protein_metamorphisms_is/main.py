@@ -11,6 +11,7 @@ from protein_metamorphisms_is.sql.model.model import (
     SequenceGOAnnotation,
     StructuralAlignmentManager,
     GoMultifunctionalityMetrics,
+    SequenceEmbeddingManager
 )
 
 
@@ -19,7 +20,7 @@ def main(config_path='config/config.yaml'):
     AccessionManager(conf).fetch_accessions_from_api()
     AccessionManager(conf).load_accessions_from_csv()
     UniProtExtractor(conf).start()
-    SequenceEmbedding(conf).start()
+    SequenceEmbeddingManager(conf).start()
     PDBExtractor(conf).start()
     Structure3DiManager(conf).start()
     Structure3DiManager(conf).start()
