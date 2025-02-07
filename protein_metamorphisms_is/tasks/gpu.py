@@ -51,7 +51,6 @@ Here is an example of how to subclass `GPUTaskInitializer`:
 import multiprocessing
 import pickle
 import threading
-import time
 from abc import abstractmethod
 
 import pika
@@ -221,7 +220,6 @@ class GPUTaskInitializer(QueueTaskInitializer):
         if model_type in self.model_instances:
             del self.model_instances[model_type]
             del self.tokenizer_instances[model_type]
-
 
     def publish_task(self, batch_data, model_type):
         """

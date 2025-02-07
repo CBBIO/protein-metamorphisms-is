@@ -1,5 +1,3 @@
-import sys
-
 from transformers import T5Tokenizer, T5EncoderModel
 import re
 import torch

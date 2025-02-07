@@ -42,7 +42,7 @@ class QueueTaskInitializer(BaseTaskInitializer):
         self.processes = []
         self.threads = []
         self.stop_event = multiprocessing.Event()
-        self.monitor_interval = conf.get('monitor_interval',30)
+        self.monitor_interval = conf.get('monitor_interval', 30)
         self.connection_params = pika.ConnectionParameters(
             host=self.conf['rabbitmq_host'],
             heartbeat=300,
@@ -52,7 +52,7 @@ class QueueTaskInitializer(BaseTaskInitializer):
             )
         )
         self.logger.info("QueueTaskInitializer has been successfully initialized.")
-        if self.conf.get('delete_queues',False):
+        if self.conf.get('delete_queues', False):
             self.delete_all_queues()
 
     def setup_rabbitmq(self):
@@ -134,7 +134,7 @@ class QueueTaskInitializer(BaseTaskInitializer):
                 )
                 p.start()
                 self.processes.append(p)
-                self.logger.info(f"Started computing worker {i+1}.")
+                self.logger.info(f"Started computing worker {i + 1}.")
 
             p = multiprocessing.Process(
                 target=self.run_db_inserter_worker,
@@ -218,7 +218,6 @@ class QueueTaskInitializer(BaseTaskInitializer):
                 self.logger.error(f"AMQPConnectionError encountered: {e}")
                 break
 
-
     def monitor_queues(self):
         """
         Monitorea dinámicamente las colas disponibles y las filtra según los patrones definidos.
@@ -245,13 +244,11 @@ class QueueTaskInitializer(BaseTaskInitializer):
                     self.stop_event.set()
                     break
 
-
                 all_queues_empty = all(
-                    not queue.get('messages_ready',0) and not queue.get('messages_unacknowledged',0)
+                    not queue.get('messages_ready', 0) and not queue.get('messages_unacknowledged', 0)
 
                     for queue in relevant_queues
                 )
-
 
                 if all_queues_empty:
                     self.logger.info("All relevant queues are empty. Sending stop signal.")

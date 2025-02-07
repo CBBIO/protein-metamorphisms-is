@@ -108,7 +108,7 @@ def main(config_path="./pipelines/fantasia/config.yaml", fasta_path=None):
     embedder = SequenceEmbedder(conf, current_date)
     embedder.start()
 
-    conf['max_workers'] = 1 # OperationalError on parallel embeddings search
+    conf['max_workers'] = 1  # OperationalError on parallel embeddings search
     lookup = EmbeddingLookUp(conf, current_date)
     lookup.start()
 
