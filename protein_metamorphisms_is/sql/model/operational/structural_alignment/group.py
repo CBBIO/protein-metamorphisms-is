@@ -7,8 +7,8 @@ class AlignmentGroup(Base):
     __tablename__ = 'alignment_group'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    comments = Column(String)
-    is_metamorphic = Column(Boolean)
+    comments = Column(String, default='No comments')
+    is_metamorphic = Column(Boolean, default=False)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, onupdate=func.now())
 
