@@ -45,7 +45,7 @@ class QueueTaskInitializer(BaseTaskInitializer):
         self.monitor_interval = conf.get('monitor_interval', 30)
         self.connection_params = pika.ConnectionParameters(
             host=self.conf['rabbitmq_host'],
-            heartbeat=300,
+            heartbeat=900,
             credentials=PlainCredentials(
                 self.conf['rabbitmq_user'],
                 self.conf['rabbitmq_password']
