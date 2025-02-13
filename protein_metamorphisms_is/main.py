@@ -5,6 +5,7 @@ from protein_metamorphisms_is.sql.model.model import (
     AccessionManager,
     PDBExtractor,
     UniProtExtractor,
+    SequenceEmbeddingManager,
     Structure3DiManager,
     SequenceClustering,
     StructuralSubClustering,

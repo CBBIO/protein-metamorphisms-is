@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, DateTime, func, ForeignKey
+from sqlalchemy import Column, Integer, DateTime, func, ForeignKey, String, Boolean
 from sqlalchemy.orm import relationship
 from protein_metamorphisms_is.sql.model.core.base import Base
 
@@ -7,6 +7,8 @@ class AlignmentGroup(Base):
     __tablename__ = 'alignment_group'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    comments = Column(String, default='No comments')
+    is_metamorphic = Column(Boolean, default=False)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, onupdate=func.now())
 
