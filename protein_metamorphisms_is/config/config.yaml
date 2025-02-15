@@ -1,5 +1,5 @@
 #System
-max_workers: 10
+max_workers: 5
 binaries_path: '../binaries'
 
 # DB CONFIGURATION
@@ -13,10 +13,10 @@ rabbitmq_host: localhost
 rabbitmq_user: guest
 rabbitmq_password: guest
 
-monitor_interval: 1
+monitor_interval: 10
 
 #Execution
-limit_execution: 100 # Debug Mode. False for complete run
+limit_execution: 50 # Debug Mode. False for complete run
 delete_queues: True
 
 ### Information System/
@@ -28,7 +28,7 @@ load_accesion_csv: ../data/fantasia.csv
 load_accesion_column: id
 
 # Fetch from API
-search_criteria: '(reviewed:true)'
+search_criteria: '(reviewed:true) AND (structure_3d:true)'
 limit: 200
 
 # UniProt Extraction
@@ -41,7 +41,6 @@ allowed_evidences:
   - IEP
   - TAS
   - IC
-
 
 # PDB Extraction
 resolution_threshold: 5
@@ -82,10 +81,11 @@ structural_alignment:
 embedding:
   types:
     - 1 # ESM
-#    - 2 # ProstT5
-#    - 3 # ProtT5
-  batch_size: 80
-  batch_size_embedding: 40
+  #    - 2 # ProstT5
+  #    - 3 # ProtT5
+  batch_size: 1000
+  batch_size_embedding: 1
+
 # GO Metrics
 obo: '../data/go-basic.obo'
 go_annotation_file: '../data/cgd.gaf'
