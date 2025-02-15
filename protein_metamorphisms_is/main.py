@@ -5,7 +5,6 @@ from protein_metamorphisms_is.sql.model.model import (
     AccessionManager,
     PDBExtractor,
     UniProtExtractor,
-    SequenceEmbeddingManager,
     Structure3DiManager,
     SequenceClustering,
     StructuralSubClustering,
@@ -19,15 +18,15 @@ from protein_metamorphisms_is.sql.model.model import (
 def main(config_path='config/config.yaml'):
     conf = read_yaml_config(config_path)
     AccessionManager(conf).fetch_accessions_from_api()
-    AccessionManager(conf).load_accessions_from_csv()
+    # AccessionManager(conf).load_accessions_from_csv()
     UniProtExtractor(conf).start()
-    SequenceEmbeddingManager(conf).start()
     PDBExtractor(conf).start()
     Structure3DiManager(conf).start()
     Structure3DiManager(conf).start()
     SequenceClustering(conf).start()
     StructuralSubClustering(conf).start()
     StructuralAlignmentManager(conf).start()
+    SequenceEmbeddingManager(conf).start()
     SequenceGOAnnotation(conf).start()
     GoMultifunctionalityMetrics(conf).start()
 
