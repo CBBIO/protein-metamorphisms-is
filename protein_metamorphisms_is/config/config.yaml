@@ -1,71 +1,118 @@
-#System
-max_workers: 10
+# ==============================
+# 🌍 Global System Configuration
+# ==============================
+
+# Maximum number of worker threads for parallel processing.
+max_workers: 2
+
+# Path to binary files for alignment algorithms.
 binaries_path: '../binaries'
 
-# DB CONFIGURATION
-DB_USERNAME: usuario
-DB_PASSWORD: clave
-DB_HOST: localhost
-DB_PORT: 5432
-DB_NAME: BioData
+# Monitoring interval in seconds (for processes that require periodic checks).
+monitor_interval: 10 # ⚠️ IMPORTANT: Low values as 1 can cause execution problems.
 
-rabbitmq_host: localhost
-rabbitmq_user: guest
-rabbitmq_password: guest
 
-monitor_interval: 1
+# ======================================
+# 🗄️ Database Configuration (PostgreSQL)
+# ======================================
 
-#Execution
-limit_execution: 100 # Debug Mode. False for complete run
+# Credentials and configuration for connecting to the PostgreSQL database.
+DB_USERNAME: usuario         # Database username.
+DB_PASSWORD: clave           # Database password.
+DB_HOST: localhost           # Host where the database server is running.
+DB_PORT: 5432                # Port used for the database connection.
+DB_NAME: BioData             # Name of the database to use.
+
+
+# =========================================
+# 📨 Message Queue Configuration (RabbitMQ)
+# =========================================
+
+# Configuration for the RabbitMQ message broker.
+rabbitmq_host: localhost     # RabbitMQ server hostname.
+rabbitmq_user: guest         # RabbitMQ username for authentication.
+rabbitmq_password: guest     # RabbitMQ password for authentication.
+
+
+# ==========================
+# 🏃 Execution Configuration
+# ==========================
+
+# Maximum number of items to process (for debugging).
+limit_execution: 20 # False for complete run.
+
+# Reset queues with each execution.
 delete_queues: True
 
-### Information System/
-## Load Accessions
-tag: 'GOA'
 
-# Load  from CSV
+# ===================================
+# 📜 Information System Configuration
+# ===================================
+
+## Load Accessions.
+tag: 'GOA' # Identifier tag for accession loading.
+
+# 📗 Load from CSV.
+# Path to the CSV file containing accessions.
 load_accesion_csv: ../data/fantasia.csv
+
+# Column name in the CSV file.
 load_accesion_column: id
 
-# Fetch from API
-search_criteria: '(reviewed:true)'
+# 🔬 Fetch from the UniProt API.
+# Query string for UniProt search.
+search_criteria: '(reviewed:true) AND (structure_3d:true)'
+
+# Number of results to fetch from UniProt.
 limit: 200
 
-# UniProt Extraction
+# Specifies the list of UniProt evidence codes used to filter annotations.
 allowed_evidences:
-  - EXP
-  - IDA
-  - IPI
-  - IMP
-  - IGI
-  - IEP
-  - TAS
-  - IC
+  - EXP # Inferred from Experiment.
+  - IDA # Inferred from Direct Assay.
+  - IPI # Inferred from Physical Interaction.
+  - IMP # Inferred from Mutant Phenotype.
+  - IGI # Inferred from Genetic Interaction.
+  - IEP # Inferred from Expression Pattern.
+  - TAS # Traceable Author Statement.
+  - IC # Inferred by Curator.
 
-
-# PDB Extraction
+# 💻 PDB Extraction
+# Sets the resolution in Ångströms, retaining only structures below this value.
 resolution_threshold: 5
-server: "https://files.wwpdb.org/"
+
+# Local path where the files will be stored.
 data_directory: "~/data"
+
+# File extension
 file_format: "mmCif"
 
 
-## Operations
+# ===========================
+# 🚀 Operations Configuration
+# ===========================
+
+# Path to the constants configuration file.
 constants: "config/constants.yaml"
 
-# Sequence Clustering
+# 🌳 Sequence Clustering
 ## Temporal files that will be created, check that the directories path exists
-fasta_path: "~/data/complete.fasta" #Check
-cdhit_out_path: "~/data/cd_hitout" # Temporal file that will be created, check that the directory path exists
-## --
+fasta_path: "~/data/complete.fasta"
+cdhit_out_path: "~/data/cd_hitout"
+
+# Identity threshold for clustering
 sequence_identity_threshold: 0.98
+
+# Minimum alignment coverage for clustering
 alignment_coverage: 0.95
+
+#Maximum memory usage for CD-HIT
 memory_usage: 25000
+
+#Boolean value to enable/disable most representative search
 most_representative_search: 1
 
-
-
-# Structural Alignment
+# 🔧 Structural Alignment
 structural_alignment:
   types:
     - 1
@@ -78,15 +125,22 @@ structural_alignment:
   task_timeout: 20
 
 
-# Embedding
+# 🧬 Embedding
 embedding:
+  # List of embedding types to compute (Comment with # at the beginning to de/activate).
   types:
     - 1 # ESM
 #    - 2 # ProstT5
 #    - 3 # ProtT5
+
+  # Queue according to this batch size.
   batch_size: 80
+
+  # Batch size to feed models.
   batch_size_embedding: 40
-# GO Metrics
+
+# 🧠 GO Metrics
+#Paths to OBO and GAF files.
 obo: '../data/go-basic.obo'
 go_annotation_file: '../data/cgd.gaf'
 
