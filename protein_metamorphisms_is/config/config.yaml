@@ -63,7 +63,7 @@ load_accesion_column: id
 # Query string for UniProt search.
 search_criteria: '(reviewed:true) AND (structure_3d:true)'
 
-# Number of results to fetch from UniProt.
+# Number of results to fetch from UniProt (pagination).
 limit: 200
 
 # Specifies the list of UniProt evidence codes used to filter annotations.
@@ -147,4 +147,3 @@ go_annotation_file: '../data/cgd.gaf'
 
 
 k: 5
-
