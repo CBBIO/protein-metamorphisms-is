@@ -79,7 +79,7 @@ allowed_evidences:
 
 # 💻 PDB Extraction
 # Sets the resolution in Ångströms, retaining only structures below this value.
-resolution_threshold: 5
+resolution_threshold: 2.5
 
 # Local path where the files will be stored.
 data_directory: "~/data"
