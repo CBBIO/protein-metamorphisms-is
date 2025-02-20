@@ -67,7 +67,7 @@ class PDBExtractor(QueueTaskInitializer):
         """
         super().__init__(conf)
         self.reference_attribute = 'id'  # Actualmente 'id' en la clase Structure
-        self.data_directory = self.conf.get("data_directory", "/data")
+        self.data_directory = os.path.expanduser(self.conf.get("data_directory", "/data"))
         self.pdb_directory = os.path.join(self.data_directory, 'pdb')
         self.models_directory = os.path.join(self.data_directory, 'models')
         self.setup_directories()
@@ -133,7 +133,7 @@ class PDBExtractor(QueueTaskInitializer):
         Returns:
             dict: Processed data, including chains and accessions.
         """
-        pdb_list = PDB.PDBList(server=self.conf.get("server", "ftp.wwpdb.org"), pdb=self.pdb_directory)
+        pdb_list = PDB.PDBList(pdb=self.pdb_directory)
         data = {"pdb_id": pdb_id, "chains": []}
         amino_acids = {
             'ALA', 'ARG', 'ASN', 'ASP', 'CYS', 'GLU', 'GLY', 'HIS', 'ILE', 'LEU',
