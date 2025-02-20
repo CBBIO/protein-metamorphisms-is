@@ -22,7 +22,7 @@ class GoMultifunctionalityMetrics(QueueTaskInitializer):
             conf (dict): Configuration dictionary containing paths to OBO and GAF files.
         """
         super().__init__(conf)
-        self.go = get_godag('go-basic.obo', optional_attrs='relationship')
+        self.go = get_godag('../data/go-basic.obo', optional_attrs='relationship')
         self.logger.info("GoMetrics instance created")
         self.reference_attribute = "go_terms_per_protein"
 
