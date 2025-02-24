@@ -96,6 +96,18 @@ Structural Alignment
 - `Structural Alignment <operation/structural_alignment/structural_alignment.html>`_: Alineamiento Estructural
 
 
+Multifunctionality Analysis
+=============================
+.. toctree::
+   :maxdepth: 3
+   :caption: Multifunctionality Analysis
+   :hidden:
+
+   operation/functional/multifunctionality
+
+- `Multifunctionality <operation/functional/multifunctionality.html>`_: Cálculo multifuncionalidad
+
+
 FAQ
 ===============
 .. toctree::
