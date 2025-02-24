@@ -38,8 +38,8 @@ Pipelines
 
 
 - `FANTASIA <https://github.com/CBBIO/FANTASIA>`_: Functional ANnoTAtion based on embedding space SImilArity.
-Using the information system, the FANTASIA pipeline has been set up and is now available in its corresponding repository.
-For full documentation you can visit `FANTASIA Documentation <https://fantasia.readthedocs.io/en/latest/>`_
+    Using the information system, the FANTASIA pipeline has been set up and is now available in its corresponding repository.
+    For full documentation you can visit `FANTASIA Documentation <https://fantasia.readthedocs.io/en/latest/>`_
 
 - Massive search of metamorphisms and multifunctionality (WIP)
 
@@ -68,6 +68,32 @@ Embedding
    operation/embedding/sequence_embedding
 
 - `Sequence Embedding <operation/embedding/sequence_embedding.html>`_: Facilitates encoding of protein and nucleotide sequences into dense vectors.
+
+
+Clustering
+===============
+.. toctree::
+   :maxdepth: 3
+   :caption: Clustering
+   :hidden:
+
+   operation/clustering/sequence_clustering
+   operation/clustering/structural_subclustering
+
+- `Sequence Clustering <operation/clustering/sequence_clustering.html>`_: Creates clusters ...
+- `Structural Subclustering <operation/clustering/structural_subclustering.html>`_: Creates clusters ...
+
+
+Structural Alignment
+=====================
+.. toctree::
+   :maxdepth: 3
+   :caption: Structural Alignment
+   :hidden:
+
+   operation/structural_alignment/structural_alignment
+
+- `Structural Alignment <operation/structural_alignment/structural_alignment.html>`_: Alineamiento Estructural
 
 
 FAQ
