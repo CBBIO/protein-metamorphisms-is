@@ -21,8 +21,7 @@ To create a custom GPU-based task, subclass `GPUTaskInitializer` and implement t
 
 - **Efficient Resource Management**: Dynamically load and unload GPU models to maximize resource utilization.
 - **Scalable Task Execution**: Handle large batches of data, optimizing throughput during model training and inference.
-- **Seamless Integration**: Fully integrates with RabbitMQ for distributed task management, ensuring reliable
-and scalable task execution.
+- **Seamless Integration**: Fully integrates with RabbitMQ for distributed task management, ensuring reliable and scalable task execution.
 - **Worker Management**: Manages GPU-specific worker processes to handle tasks in parallel.
 - **Extensibility**: Abstract methods are provided to allow developers to define custom GPU task logic.
 

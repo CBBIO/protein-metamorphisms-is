@@ -1,3 +1,8 @@
+"""
+Queue Tasks
+=============
+"""
+
 import multiprocessing
 import pickle
 import threading
@@ -220,8 +225,8 @@ class QueueTaskInitializer(BaseTaskInitializer):
 
     def monitor_queues(self):
         """
-        Monitorea dinámicamente las colas disponibles y las filtra según los patrones definidos.
-        Envía una señal de stop si todas las colas relevantes están vacías.
+        Dynamically monitors available queues and filters them based on defined patterns.
+        Sends a stop signal if all relevant queues are empty.
         """
         self.logger.info("Queue monitoring thread started.")
         while not self.stop_event.is_set():
@@ -370,12 +375,12 @@ class QueueTaskInitializer(BaseTaskInitializer):
 
     def delete_all_queues(self):
         """
-        Elimina todas las colas del servidor RabbitMQ mediante la API HTTP.
+        Deletes all queues from the RabbitMQ server using the HTTP API.
 
         Raises
         ------
         Exception
-            Si ocurre algún error durante la eliminación de colas.
+            If an error occurs during queue deletion.
         """
         from requests.auth import HTTPBasicAuth
 

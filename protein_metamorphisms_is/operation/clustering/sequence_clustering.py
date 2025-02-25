@@ -42,8 +42,7 @@ for the `SequenceClustering` class to function properly.
 The module interacts with several SQL/ORM entities for organizing and storing clustering results:
 
 - :class:`~protein_metamorphisms_is.sql.model.PDBChains`: Manages Protein Data Bank chains information.
-- :class:`~protein_metamorphisms_is.sql.model.Cluster`: Stores clustering results, including cluster
-identifiers and sequence information.
+- :class:`~protein_metamorphisms_is.sql.model.Cluster`: Stores clustering results, including cluster identifiers and sequence information.
 
 These entities facilitate the storage and retrieval of clustered protein sequence data in a relational database.
 

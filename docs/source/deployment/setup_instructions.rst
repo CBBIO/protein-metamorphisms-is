@@ -2,7 +2,7 @@ Setup Instructions
 ==================
 
 0. NVIDIA Requirements
----------------------
+-----------------------
 
 Before proceeding with the installation, ensure your system meets these NVIDIA requirements:
 
