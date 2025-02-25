@@ -40,12 +40,12 @@ class GoMultifunctionalityMetrics(QueueTaskInitializer):
 
     def load_pairs(self):
         """
-        Genera pares de términos GO únicos por categoría (P, C, F) en proteínas,
-        y asocia cada par con una lista de proteínas donde aparece.
+        Generates unique pairs of GO terms per category (P, C, F) in proteins
+        and associates each pair with a list of proteins where they appear.
 
         Returns:
-            list: Una lista de diccionarios que representan pares de términos GO
-                  únicos por categoría, junto con las proteínas asociadas.
+            list: A list of dictionaries representing unique pairs of GO terms
+                  per category, along with the associated proteins.
         """
         session = self.session
         pairs_dict = {}
@@ -141,10 +141,10 @@ class GoMultifunctionalityMetrics(QueueTaskInitializer):
 
     def store_entry(self, record):
         """
-        Almacena un GOTermPair, sus entradas y las proteínas relacionadas.
+        Stores a GOTermPair, its entries, and the related proteins.
 
         Args:
-            record (dict): Diccionario con los datos del par de términos GO y las proteínas asociadas.
+            record (dict): Dictionary containing the GO term pair data and the associated proteins.
         """
         session = self.session
         try:
