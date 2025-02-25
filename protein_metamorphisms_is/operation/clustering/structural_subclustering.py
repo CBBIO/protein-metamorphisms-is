@@ -92,10 +92,10 @@ class StructuralSubClustering(BaseTaskInitializer):
         cd_hit(
             i=fasta_path,
             o=cdhit_out_path,
-            c=0.65,
+            c=self.conf.get('structural_identity_threshold', 0.65),
             d=0,
             sc=1,
-            aL=self.conf.get('alignment_coverage', 0.9),
+            aL=self.conf.get('structural_alignment_coverage', 0.9),
             M=self.conf.get('memory_usage', 1024),
             T=self.conf.get('max_workers', 4),
             g=self.conf.get('most_representative_search', 1)

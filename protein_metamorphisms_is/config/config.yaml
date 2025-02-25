@@ -100,11 +100,19 @@ constants: "config/constants.yaml"
 fasta_path: "~/data/complete.fasta"
 cdhit_out_path: "~/data/cd_hitout"
 
-# Identity threshold for clustering
+## Sequence Clustering
+# Identity threshold for sequence clustering
 sequence_identity_threshold: 0.98
 
-# Minimum alignment coverage for clustering
+# Minimum alignment coverage for sequence clustering
 alignment_coverage: 0.95
+
+## Structural Subclustering
+# Identity threshold for structural subclustering
+structural_identity_threshold: 0.65
+
+# Minimum alignment coverage for structural subclustering
+structural_alignment_coverage: 0.95
 
 #Maximum memory usage for CD-HIT
 memory_usage: 25000
