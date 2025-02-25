@@ -37,10 +37,9 @@ Pipelines
    :hidden:
 
 
-   pipelines/fantasia/
-
-
-- `FANTASIA <pipelines/fantasia.html>`_: Functional ANnoTAtion based on embedding space SImilArity
+- `FANTASIA <https://github.com/CBBIO/FANTASIA>`_: Functional ANnoTAtion based on embedding space SImilArity.
+Using the information system, the FANTASIA pipeline has been set up and is now available in its corresponding repository.
+For full documentation you can visit `FANTASIA Documentation <https://fantasia.readthedocs.io/en/latest/>`_
 
 - Massive search of metamorphisms and multifunctionality (WIP)
 
@@ -78,5 +77,3 @@ FAQ
    :caption:  Guides
 
    deployment/setup_instructions
-   configuration/fantasia/parameters
-   run/fantasia/run

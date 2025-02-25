@@ -2,9 +2,6 @@ from protein_metamorphisms_is.operation.embedding.sequence_embedding import Sequ
 from protein_metamorphisms_is.operation.extraction.accessions import AccessionManager  # noqa: F401
 from protein_metamorphisms_is.operation.extraction.uniprot import UniProtExtractor  # noqa: F401
 
-from protein_metamorphisms_is.pipelines.fantasia.embedder import SequenceEmbedder  # noqa: F401
-from protein_metamorphisms_is.pipelines.fantasia.lookup import EmbeddingLookUp  # noqa: F401
-
 from protein_metamorphisms_is.operation.extraction.pdb import PDBExtractor  # noqa: F401
 from protein_metamorphisms_is.operation.clustering.sequence_clustering import SequenceClustering  # noqa: F401
 from protein_metamorphisms_is.operation.clustering.structural_subclustering import \
