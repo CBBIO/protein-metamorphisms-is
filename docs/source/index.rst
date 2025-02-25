@@ -80,8 +80,8 @@ Clustering
    operation/clustering/sequence_clustering
    operation/clustering/structural_subclustering
 
-- `Sequence Clustering <operation/clustering/sequence_clustering.html>`_: Creates clusters ...
-- `Structural Subclustering <operation/clustering/structural_subclustering.html>`_: Creates clusters ...
+- `Sequence Clustering <operation/clustering/sequence_clustering.html>`_: Create different clusters using the CD-HIT algorithm based on sequence identity in amino acids.
+- `Structural Subclustering <operation/clustering/structural_subclustering.html>`_: Within each cluster, create subclusters based on structural identity using structure embeddings.
 
 
 Structural Alignment
@@ -93,7 +93,7 @@ Structural Alignment
 
    operation/structural_alignment/structural_alignment
 
-- `Structural Alignment <operation/structural_alignment/structural_alignment.html>`_: Alineamiento Estructural
+- `Structural Alignment <operation/structural_alignment/structural_alignment.html>`_: Align the representative of each subcluster structurally.
 
 
 Multifunctionality Analysis
@@ -105,7 +105,7 @@ Multifunctionality Analysis
 
    operation/functional/multifunctionality
 
-- `Multifunctionality <operation/functional/multifunctionality.html>`_: Cálculo multifuncionalidad
+- `Multifunctionality <operation/functional/multifunctionality.html>`_: Analyze semantic distances in Gene Ontology (GO) terms to detect multifunctionality.
 
 
 FAQ
