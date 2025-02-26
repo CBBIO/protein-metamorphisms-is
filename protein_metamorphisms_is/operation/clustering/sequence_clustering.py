@@ -80,6 +80,7 @@ from protein_metamorphisms_is.sql.model.entities.sequence.sequence import Sequen
 from protein_metamorphisms_is.sql.model.operational.clustering.cluster import Cluster, ClusterEntry
 from protein_metamorphisms_is.tasks.base import BaseTaskInitializer
 from pycdhit import cd_hit, read_clstr
+import os
 
 
 class SequenceClustering(BaseTaskInitializer):
@@ -147,7 +148,7 @@ class SequenceClustering(BaseTaskInitializer):
         Args:
             sequences (list): A list of tuples containing sequence IDs and sequences.
         """
-        fasta_path = self.conf.get('fasta_path', './sequences.fasta')
+        fasta_path = os.path.expanduser(self.conf.get('fasta_path', './sequences.fasta'))
         self.logger.info(f"Writing sequences to FASTA file at {fasta_path}")
         with open(fasta_path, "w") as fasta_file:
             for seq_id, sequence in sequences:
@@ -164,8 +165,8 @@ class SequenceClustering(BaseTaskInitializer):
         Returns:
             DataFrame: A DataFrame containing the clustering results.
         """
-        fasta_file_path = self.conf.get('fasta_path', './sequences.fasta')
-        cdhit_out_path = self.conf.get('cdhit_out_path', './out.clstr')
+        fasta_file_path = os.path.expanduser(self.conf.get('fasta_path', './sequences.fasta'))
+        cdhit_out_path = os.path.expanduser(self.conf.get('cdhit_out_path', './out.clstr'))
         self.logger.info(f"Running CD-HIT on {fasta_file_path}")
         cd_hit(
             i=fasta_file_path,
