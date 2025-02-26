@@ -258,7 +258,6 @@ def get_chain_to_accession_map(cif_path):
                 accession = struct_ref_map[entity_id]
                 for chain in chains:
                     chain_accession_map[chain.strip()] = accession
-        print(chain_accession_map)
     except KeyError as e:
         print(f"Missing key in CIF file: {e}")
     print(chain_accession_map)
