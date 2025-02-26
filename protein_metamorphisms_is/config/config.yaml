@@ -3,7 +3,7 @@
 # ==============================
 
 # Maximum number of worker threads for parallel processing.
-max_workers: 2
+max_workers: 20
 
 # Path to binary files for alignment algorithms.
 binaries_path: '../binaries'
@@ -39,7 +39,7 @@ rabbitmq_password: guest     # RabbitMQ password for authentication.
 # ==========================
 
 # Maximum number of items to process (for debugging).
-limit_execution: 20 # False for complete run.
+limit_execution: False # False for complete run.
 
 # Reset queues with each execution.
 delete_queues: True
@@ -61,28 +61,17 @@ load_accesion_column: id
 
 # 🔬 Fetch from the UniProt API.
 # Query string for UniProt search.
-search_criteria: '(reviewed:true) AND (structure_3d:true)'
+search_criteria: '(structure_3d:true)'
 
 # Number of results to fetch from UniProt (pagination).
 limit: 200
-
-# Specifies the list of UniProt evidence codes used to filter annotations.
-allowed_evidences:
-  - EXP # Inferred from Experiment.
-  - IDA # Inferred from Direct Assay.
-  - IPI # Inferred from Physical Interaction.
-  - IMP # Inferred from Mutant Phenotype.
-  - IGI # Inferred from Genetic Interaction.
-  - IEP # Inferred from Expression Pattern.
-  - TAS # Traceable Author Statement.
-  - IC # Inferred by Curator.
 
 # 💻 PDB Extraction
 # Sets the resolution in Ångströms, retaining only structures below this value.
 resolution_threshold: 2.5
 
 # Local path where the files will be stored.
-data_directory: "~/data"
+data_directory: "/data"
 
 # File extension
 file_format: "mmCif"
@@ -151,6 +140,17 @@ embedding:
 #Paths to OBO and GAF files.
 obo: '../data/go-basic.obo'
 go_annotation_file: '../data/cgd.gaf'
+
+# Specifies the list of UniProt evidence codes used to filter annotations.
+allowed_evidences:
+  - EXP # Inferred from Experiment.
+  - IDA # Inferred from Direct Assay.
+  - IPI # Inferred from Physical Interaction.
+  - IMP # Inferred from Mutant Phenotype.
+  - IGI # Inferred from Genetic Interaction.
+  - IEP # Inferred from Expression Pattern.
+  - TAS # Traceable Author Statement.
+  - IC # Inferred by Curator.
 
 
 
