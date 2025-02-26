@@ -8,10 +8,10 @@ from protein_metamorphisms_is.sql.model.model import (
     Structure3DiManager,
     SequenceClustering,
     StructuralSubClustering,
-    SequenceGOAnnotation,
+    # SequenceGOAnnotation,
     StructuralAlignmentManager,
     GoMultifunctionalityMetrics,
-    SequenceEmbeddingManager
+    # SequenceEmbeddingManager
 )
 
 
@@ -26,7 +26,7 @@ def main(config_path='config/config.yaml'):
     StructuralSubClustering(conf).start()
     StructuralAlignmentManager(conf).start()
     # SequenceEmbeddingManager(conf).start()
-    SequenceGOAnnotation(conf).start()
+    # SequenceGOAnnotation(conf).start()
     GoMultifunctionalityMetrics(conf).start()
 
 
