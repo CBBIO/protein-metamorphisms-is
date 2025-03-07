@@ -3,8 +3,8 @@ import re
 import torch
 
 
-def load_model(model_name):
-    device = torch.device("cuda")
+def load_model(model_name, conf):
+    device = torch.device(conf['embedding'].get('device', "cuda"))
     return T5EncoderModel.from_pretrained(model_name).to(device)
 
 
@@ -12,8 +12,7 @@ def load_tokenizer(model_name):
     return T5Tokenizer.from_pretrained(model_name, do_lower_case=False)
 
 
-def embedding_task(sequences, model, tokenizer, batch_size=32, embedding_type_id=None):
-    device = torch.device("cuda")
+def embedding_task(sequences, model, tokenizer, device, batch_size=32, embedding_type_id=None):
     model.to(device)
     model.eval()
     embedding_records = []
