@@ -144,9 +144,10 @@ class SequenceEmbeddingManager(GPUTaskInitializer):
             model = self.model_instances[embedding_type_id]
             tokenizer = self.tokenizer_instances[embedding_type_id]
             module = self.types[embedding_type_id]['module']
+            device = self.conf['embedding'].get('device', "cuda")
 
             embedding_records = module.embedding_task(
-                batch_data, model, tokenizer, embedding_type_id=embedding_type_id
+                batch_data, model, tokenizer, embedding_type_id=embedding_type_id, device=device
             )
 
             return embedding_records

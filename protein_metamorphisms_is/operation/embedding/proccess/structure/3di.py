@@ -1,7 +1,7 @@
 from mini3di import Encoder
 
 
-def load_model(model_name):
+def load_model(model_name, conf):
     # mini3di doesn't require loading a model in the traditional sense
     return Encoder()
 

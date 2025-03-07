@@ -124,6 +124,7 @@ structural_alignment:
 
 # 🧬 Embedding
 embedding:
+  device: "cuda"
   # List of embedding types to compute (Comment with # at the beginning to de/activate).
   types:
     - 1 # ESM
