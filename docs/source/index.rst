@@ -117,9 +117,11 @@ API
 
    tasks/base_api
    tasks/queue_api
+   tasks/gpu_api
 
 - `Base Api <tasks/base_api.html>`_: Esto es una prueba de la API
 - `Queue Api <tasks/queue_api.html>`_: Otra API
+- `GPU Api <tasks/queue_api.html>`_: La API de GPU
 
 
 FAQ
