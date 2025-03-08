@@ -53,9 +53,11 @@ Extraction
 
    operation/extraction/accessions
    operation/extraction/uniprot
+   operation/extraction/pdb
 
 - `Accession Management <operation/extraction/accessions.html>`_: Manages the loading and processing of biological accession codes, ensuring data is correctly organized for subsequent analysis.
 - `UniProt Extraction <operation/extraction/uniprot.html>`_: Handles the downloading and processing of detailed protein information from UniProt, enriching the database with accurate and up-to-date data.
+- `PDB Extraction <operation/extraction/pdb.html>`_:  Handles the extraction, processing, and storage of protein structures from the Protein Data Bank (PDB), managing the entire workflow from downloading files to storing processed data.
 
 
 Embedding
