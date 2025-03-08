@@ -108,6 +108,20 @@ Multifunctionality Analysis
 - `Multifunctionality <operation/functional/multifunctionality.html>`_: Analyze semantic distances in Gene Ontology (GO) terms to detect multifunctionality.
 
 
+API
+======
+.. toctree::
+   :maxdepth: 2
+   :caption: API
+   :hidden:
+
+   tasks/base_api
+   tasks/queue_api
+
+- `Base Api <tasks/base_api.html>`_: Esto es una prueba de la API
+- `Queue Api <tasks/queue_api.html>`_: Otra API
+
+
 FAQ
 ===============
 .. toctree::
