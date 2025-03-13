@@ -154,64 +154,6 @@ def cif_to_pdb(cif_path, pdb_path):
     io.save(pdb_path)
 
 
-def obtener_cadenas_y_accesiones(pdb_id):
-    url = "https://data.rcsb.org/graphql"
-
-    # Consulta GraphQL para obtener información de cadenas y accesiones
-    query = f"""
-    {{
-      entry(entry_id: "{pdb_id}") {{
-        rcsb_id
-        polymer_entities {{
-          rcsb_polymer_entity_container_identifiers {{
-            auth_asym_ids
-          }}
-          rcsb_polymer_entity_container_identifiers {{
-            reference_sequence_identifiers {{
-              database_accession
-              database_name
-            }}
-          }}
-        }}
-      }}
-    }}
-    """
-
-    try:
-        # Realiza la solicitud POST al endpoint de GraphQL
-        response = requests.post(url, json={'query': query})
-        response.raise_for_status()  # Genera una excepción en caso de error HTTP
-
-        data = response.json()
-
-        # Verificar que se obtuvo una respuesta válida con los datos necesarios
-        if "data" not in data or "entry" not in data["data"]:
-            raise ValueError("No se encontraron datos para el PDB ID proporcionado.")
-
-        entry = data["data"]["entry"]
-
-        # Mapa de cadenas y accesiones
-        cadenas_accesiones = {}
-
-        # Extrae las cadenas y accesiones
-        for entity in entry.get("polymer_entities", []):
-            chains = entity.get("rcsb_polymer_entity_container_identifiers", {}).get("auth_asym_ids", [])
-            references = entity.get("rcsb_polymer_entity_container_identifiers", {}).get(
-                "reference_sequence_identifiers", [])
-
-            for chain in chains:
-                for ref in references:
-                    if ref.get("database_name") == "UniProt":
-                        cadenas_accesiones[chain] = ref.get("database_accession")
-
-        return cadenas_accesiones
-
-    except requests.exceptions.RequestException as e:
-        raise ConnectionError(f"Error en la solicitud a RCSB PDB: {e}")
-    except ValueError as e:
-        raise ValueError(f"Error en los datos recibidos: {e}")
-
-
 def get_chain_to_accession_map(cif_path):
     """
     Extracts the mapping of chain names to UniProt accessions from a CIF file.
