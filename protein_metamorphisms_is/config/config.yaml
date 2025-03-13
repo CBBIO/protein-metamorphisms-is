@@ -11,6 +11,8 @@ binaries_path: '../binaries'
 # Monitoring interval in seconds (for processes that require periodic checks).
 monitor_interval: 10 # ⚠️ IMPORTANT: Low values as 1 can cause execution problems.
 
+# Path to save logs, set False to disable the option
+log_path: '../logs_out/PIS.log'
 
 # ======================================
 # 🗄️ Database Configuration (PostgreSQL)
