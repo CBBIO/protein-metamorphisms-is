@@ -151,7 +151,6 @@ class AccessionManager(BaseTaskInitializer):
                     next_cursor = link_header.split("cursor=")[-1].split(">")[0]
                 else:
                     break  # No hay más páginas, termina el bucle
-            print(all_accessions)
             self.logger.info(f"Total accessions retrieved: {len(all_accessions)}")
             self._process_new_accessions(all_accessions, tag)
         except requests.RequestException as e:

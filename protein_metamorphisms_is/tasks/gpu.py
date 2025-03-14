@@ -201,7 +201,7 @@ class GPUTaskInitializer(QueueTaskInitializer):
         """
         type_obj = self.types[model_type]
         module = type_obj['module']
-        model = module.load_model(type_obj['model_name'])
+        model = module.load_model(type_obj['model_name'], self.conf)
         tokenizer = module.load_tokenizer(type_obj['model_name'])
         self.model_instances[model_type] = model
         self.tokenizer_instances[model_type] = tokenizer

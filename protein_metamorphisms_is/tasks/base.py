@@ -21,9 +21,13 @@ in the database.
 
 **Key Features**
 
-- **Session Management**: Integrates seamlessly with the database to manage sessions and maintain data consistency.
-- **Configuration Handling**: Loads and processes configuration constants from YAML files to ensure that all tasks are initialized with the correct settings.
-- **Extensibility**: Abstract methods are provided to allow developers to define specific task logic for their bioinformatics workflows.
+- **Session Management**: Integrates seamlessly with the database to manage sessions
+  and maintain data consistency.
+- **Configuration Handling**: Loads and processes configuration constants from YAML files
+  to ensure that all tasks are initialized with the correct settings.
+- **Extensibility**: Abstract methods are provided to allow developers to define
+  specific task logic for their bioinformatics workflows.
+
 
 **Example Usage**
 

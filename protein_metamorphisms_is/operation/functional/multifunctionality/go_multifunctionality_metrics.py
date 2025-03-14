@@ -97,7 +97,6 @@ class GoMultifunctionalityMetrics(QueueTaskInitializer):
             ]
 
             self.logger.info(f"Total unique pairs generated: {len(all_pairs)}")
-            print(all_pairs)
             return all_pairs
 
         except Exception as e:
