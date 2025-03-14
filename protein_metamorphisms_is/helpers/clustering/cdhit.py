@@ -30,7 +30,7 @@ def calculate_cdhit_word_length(identity_threshold, logger):
     elif identity_threshold >= 0.5:
         word_length = 3
     else:
-        word_length = 5 # Default case
+        word_length = 5  # Default case
 
     logger.info(f"For a threshold of {identity_threshold}, the calculated word length is: {word_length}")
     return word_length

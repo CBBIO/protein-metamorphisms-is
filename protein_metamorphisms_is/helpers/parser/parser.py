@@ -1,6 +1,4 @@
 import re
-
-import requests
 from Bio import SeqIO
 from Bio.PDB import MMCIFParser, PDBIO
 import gemmi

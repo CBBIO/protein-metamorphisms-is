@@ -3,15 +3,8 @@ from protein_metamorphisms_is.helpers.config.yaml import read_yaml_config
 
 from protein_metamorphisms_is.sql.model.model import (
     AccessionManager,
-    PDBExtractor,
     UniProtExtractor,
-    Structure3DiManager,
-    SequenceClustering,
-    StructuralSubClustering,
-    # SequenceGOAnnotation,
-    StructuralAlignmentManager,
-    GoMultifunctionalityMetrics,
-    # SequenceEmbeddingManager
+    SequenceEmbeddingManager
 )
 
 
@@ -21,8 +14,7 @@ def main(config_path='config/config.yaml'):
     AccessionManager(conf).fetch_accessions_from_api()
     # AccessionManager(conf).load_accessions_from_csv()
     UniProtExtractor(conf).start()
-    SequenceClustering(conf).start()
-
+    SequenceEmbeddingManager(conf).start()
 
 
 if __name__ == "__main__":
