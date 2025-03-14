@@ -92,7 +92,7 @@ class BaseTaskInitializer(ABC):
         Raises:
             Exception: If there is an issue initializing the session or loading constants.
         """
-        self.logger = setup_logger(self.__class__.__name__)
+        self.logger = setup_logger(self.__class__.__name__, conf['log_path'])
         self.logger.info(f"Initializing {self.__class__.__name__}")
         self.conf = conf
 
