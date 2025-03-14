@@ -113,7 +113,6 @@ class GPUTaskInitializer(QueueTaskInitializer):
             self.channel.queue_declare(queue=self.inserting_queue)
 
         except Exception:
-            self.close_rabbitmq()
             raise
 
     def start_workers(self):
