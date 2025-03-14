@@ -5,6 +5,7 @@ from protein_metamorphisms_is.sql.model.entities.structure.state import State
 from protein_metamorphisms_is.sql.model.operational.clustering.cluster import ClusterEntry, Cluster, Subcluster, \
     SubclusterEntry
 from protein_metamorphisms_is.tasks.base import BaseTaskInitializer
+from protein_metamorphisms_is.helpers.clustering.cdhit import calculate_cdhit_word_length
 
 from pycdhit import cd_hit, read_clstr
 import os
@@ -98,7 +99,8 @@ class StructuralSubClustering(BaseTaskInitializer):
             aL=self.conf.get('structural_alignment_coverage', 0.9),
             M=self.conf.get('memory_usage', 1024),
             T=self.conf.get('max_workers', 4),
-            g=self.conf.get('most_representative_search', 1)
+            g=self.conf.get('most_representative_search', 1),
+            n=calculate_cdhit_word_length(self.conf.get('structural_identity_threshold', 0.65), self.logger),
         )
         self.logger.info(f"Reading CD-HIT output from {cdhit_out_path}.clstr")
 

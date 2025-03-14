@@ -80,6 +80,7 @@ from protein_metamorphisms_is.sql.model.entities.sequence.sequence import Sequen
 from protein_metamorphisms_is.sql.model.operational.clustering.cluster import Cluster, ClusterEntry
 from protein_metamorphisms_is.tasks.base import BaseTaskInitializer
 from pycdhit import cd_hit, read_clstr
+from protein_metamorphisms_is.helpers.clustering.cdhit import calculate_cdhit_word_length
 import os
 
 
@@ -177,7 +178,8 @@ class SequenceClustering(BaseTaskInitializer):
             aL=self.conf.get('alignment_coverage', 0.9),
             M=self.conf.get('memory_usage', 1024),
             T=self.conf.get('max_workers', 4),
-            g=self.conf.get('most_representative_search', 1)
+            g=self.conf.get('most_representative_search', 1),
+            n=calculate_cdhit_word_length(self.conf.get('sequence_identity_threshold', 0.5), self.logger),
         )
         self.logger.info(f"Reading CD-HIT output from {cdhit_out_path}.clstr")
         return read_clstr(f"{cdhit_out_path}.clstr")
