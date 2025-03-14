@@ -50,6 +50,7 @@ class QueueTaskInitializer(BaseTaskInitializer):
         self.monitor_interval = conf.get('monitor_interval', 30)
         self.connection_params = pika.ConnectionParameters(
             host=self.conf['rabbitmq_host'],
+            port=self.conf.get('rabbitmq_port', 5672),
             heartbeat=900,
             credentials=PlainCredentials(
                 self.conf['rabbitmq_user'],
@@ -362,8 +363,13 @@ class QueueTaskInitializer(BaseTaskInitializer):
         """
         from requests.auth import HTTPBasicAuth
 
-        url = f"http://{self.conf['rabbitmq_host']}:15672/api/queues"
-        auth = HTTPBasicAuth(self.conf['rabbitmq_user'], self.conf['rabbitmq_password'])
+        rabbitmq_host = self.conf.get('rabbitmq_host', 'localhost')
+        rabbitmq_port = self.conf.get('rabbitmq_port', 15672)  # Ahora lee el puerto correctamente
+        rabbitmq_user = self.conf.get('rabbitmq_user', 'guest')
+        rabbitmq_password = self.conf.get('rabbitmq_password', 'guest')
+
+        url = f"http://{rabbitmq_host}:{rabbitmq_port}/api/queues"
+        auth = HTTPBasicAuth(rabbitmq_user, rabbitmq_password)
 
         try:
             response = requests.get(url, auth=auth)
