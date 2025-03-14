@@ -60,7 +60,7 @@ class TestStructuralSubClustering(unittest.TestCase):
         # Verificar que todas las entradas de los subclusters tienen un embedding válido asociado
         subcluster_entries = self.clustering.session.query(SubclusterEntry).all()
         for entry in subcluster_entries:
-            embedding = self.clustering.session.query(Structure3Di).get(entry.structure_3di_id)
+            embedding = self.clustering.session.get(Structure3Di, entry.structure_3di_id)
             self.assertIsNotNone(embedding, f"El embedding con ID {entry.structure_3di_id} no existe.")
 
     if __name__ == '__main__':
