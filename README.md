@@ -3,13 +3,11 @@
 [![Documentation Status](https://readthedocs.org/projects/protein-metamorphisms-is/badge/?version=latest)](https://protein-metamorphisms-is.readthedocs.io/en/latest/?badge=latest)
 ![Linting Status](https://github.com/CBBIO/protein-metamorphisms-is/actions/workflows/test-lint.yml/badge.svg?branch=main)
 
-# Exploration of “Metamorphism” and “Multi-functionality” in Proteins
+# **Protein Information System (PIS)**
 
-💡 This study focuses on exploring phenomena of metamorphism and multifunctionality in proteins, fundamental aspects for understanding protein evolution and functionality across various biological contexts. We begin with a massive search for protein sequences that exhibit high percentages of identity, indicative of functional conservation across different species. Subsequently, we identify structures that, in addition to meeting this high identity criterion, exhibit significant differences in their spatial configuration, suggesting possible structural metamorphisms.
+**Protein Information System (PIS)** is an integrated biological information system focused on extracting, processing, and managing protein-related data. PIS consolidates data from **UniProt**, **PDB**, and **GOA**, enabling the efficient retrieval and organization of protein sequences, structures, and functional annotations.
 
-The main objective is to develop a comprehensive dataset that includes sets of varied structural conformations, providing a solid basis for comparative and evolutionary structural analysis. We implement an initial clustering strategy using the CD-HIT algorithm, which groups sequences based on their similarity. The resulting groups are then re-clustered using a structural embedding generation model based on the ID3 alphabet. This clustering focuses on finding within a homologous set of proteins those with greater structural differences, allowing a detailed analysis of their three-dimensional differences.
-
-We have created an environment for analyzing structural distances that enables the analysis of inter-subcluster distances using leading structural alignment and distance algorithms such as Fatcat, US-Align, and CE-Align. High differences in these values are indicative of metamorphism. Concurrently, we employ similarity analysis techniques in Gene Ontology (GO) ontologies to discover proteins that, in addition to their structural conservation, exhibit multifunctionality. This includes an analysis of semantic distances per protein to identify disparate terms indicating multifunctionality.
+The primary goal of PIS is to provide a robust framework for large-scale protein data extraction, facilitating downstream functional analysis and annotation transfer. The system is designed for **high-performance computing (HPC) environments**, ensuring scalability and efficiency.
 
 ## 📈 **Current State of the Project**
 
@@ -23,7 +21,7 @@ We have created an environment for analyzing structural distances that enables t
 > [**Zenodo Stable Release**](https://zenodo.org/records/14546346)  
 > This version serves as a reference implementation and provides a consistent environment for annotation transfer tasks.
 
-## Prerequisites
+## **Prerequisites**
 
 - Python 3.11.6
 - RabbitMQ
@@ -31,35 +29,42 @@ We have created an environment for analyzing structural distances that enables t
 
 ---
 
-## Setup Instructions
+## **Setup Instructions**
 
 ### 1. Install Docker
 Ensure Docker is installed on your system. If it’s not, you can download it from [here](https://docs.docker.com/get-docker/).
 
-### 2. Set Up PostgreSQL with pgvector
+### 2. Starting Required Services
 
-Run the following command to start a PostgreSQL container with the pgvector extension:
+Ensure PostgreSQL and RabbitMQ services are running.
 
 ```bash
 docker run -d --name pgvectorsql \
+    --shm-size=64g \
     -e POSTGRES_USER=usuario \
     -e POSTGRES_PASSWORD=clave \
     -e POSTGRES_DB=BioData \
     -p 5432:5432 \
-    pgvector/pgvector:pg16
+    pgvector/pgvector:pg16 \
+    -c shared_buffers=16GB \
+    -c effective_cache_size=32GB \
+    -c work_mem=64MB
 ```
 
-Once the container is running, connect to the database and enable the `vector` extension:
+### 3. PostgreSQL Configuration
 
-```bash
-docker exec -it pgvectorsql psql -U usuario -d BioData -c "CREATE EXTENSION IF NOT EXISTS vector;"
-```
+The configuration parameters provided above have been optimized for a machine with **128GB of RAM and 32 CPU cores**, allowing up to **20 concurrent workers**. These settings enhance PostgreSQL’s performance when handling large datasets and computationally intensive queries.
 
-### 3. (Optional) Connect to the Database
+- `--shm-size=64g`: Allocates **64GB of shared memory** to the container, preventing PostgreSQL from running out of memory in high-performance environments.
+- `-c shared_buffers=16GB`: Allocates **16GB of RAM** for PostgreSQL’s shared memory buffers. This should typically be **25-40%** of total system memory.
+- `-c effective_cache_size=32GB`: Sets PostgreSQL’s estimated available memory for disk caching to **32GB**. This helps the query planner make better decisions.
+- `-c work_mem=64MB`: Defines **64MB of memory per worker** for operations like sorting and hashing. This is crucial when handling parallel query execution.
+
+### 4. (Optional) Connect to the Database
 
 You can use **pgAdmin 4**, a graphical interface for managing and interacting with PostgreSQL databases, or any other SQL client.
 
-### 4. Set Up RabbitMQ
+### 5. Set Up RabbitMQ
 
 Start a RabbitMQ container using the command below:
 
@@ -70,7 +75,7 @@ docker run -d --name rabbitmq \
     rabbitmq:management
 ```
 
-### 5. (Optional) Manage RabbitMQ
+### 6. (Optional) Manage RabbitMQ
 
 Once RabbitMQ is running, you can access its management interface at [RabbitMQ Management Interface](http://localhost:15672/#/queues).
 
@@ -78,15 +83,15 @@ Once RabbitMQ is running, you can access its management interface at [RabbitMQ M
 
 ## **Get started:**
 
-To execute the full process chain, simply run:
+To execute the full extraction process, simply run:
 
 ```bash
 python main.py
 ```
 
-This command will trigger the complete workflow, starting from the initial data preprocessing stages and continuing through to the final analysis and output generation.
+This command will trigger the complete workflow, starting from the initial data preprocessing stages and continuing through to the final data organization and storage.
 
 ## **Customizing the Workflow:**
 
-You can customize the sequence of tasks executed by modifying `main.py` or adjusting the relevant parameters in the `config.yaml` file. This allows you to tailor the process flow to meet specific research needs or to experiment with different methodologies.
+You can customize the sequence of tasks executed by modifying `main.py` or adjusting the relevant parameters in the `config.yaml` file. This allows you to tailor the extraction process to meet specific research needs or to experiment with different data processing configurations.
 
