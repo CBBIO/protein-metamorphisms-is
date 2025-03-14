@@ -12,7 +12,7 @@ binaries_path: '../binaries'
 monitor_interval: 10 # ⚠️ IMPORTANT: Low values as 1 can cause execution problems.
 
 # Path to save logs, set False to disable the option
-log_path: '../logs_out/PIS.log'
+log_path: '~/data/PIS.log'
 
 # ======================================
 # 🗄️ Database Configuration (PostgreSQL)
@@ -41,7 +41,7 @@ rabbitmq_password: guest     # RabbitMQ password for authentication.
 # ==========================
 
 # Maximum number of items to process (for debugging).
-limit_execution: False # False for complete run.
+limit_execution: 50 # False for complete run.
 
 # Reset queues with each execution.
 delete_queues: True
@@ -52,7 +52,7 @@ delete_queues: True
 # ===================================
 
 ## Load Accessions.
-tag: 'GOA' # Identifier tag for accession loading.
+tag: 'GOA2024' # Identifier tag for accession loading.
 
 # 📗 Load from CSV.
 # Path to the CSV file containing accessions.
@@ -73,7 +73,7 @@ limit: 200
 resolution_threshold: 2.5
 
 # Local path where the files will be stored.
-data_directory: "/data"
+data_directory: "~/data"
 
 # File extension
 file_format: "mmCif"
@@ -126,7 +126,7 @@ structural_alignment:
 
 # 🧬 Embedding
 embedding:
-  device: "cuda"
+  device: "cpu"
   # List of embedding types to compute (Comment with # at the beginning to de/activate).
   types:
     - 1 # ESM

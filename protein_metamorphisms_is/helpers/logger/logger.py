@@ -1,9 +1,14 @@
 import logging
+import os
 
 
 def setup_logger(name, log_path):
     logger = logging.getLogger(name)
     logger.setLevel(logging.INFO)
+
+    log_dir = os.path.dirname(log_path)
+    if log_dir and not os.path.exists(log_dir):
+        os.makedirs(log_dir)
 
     handler = logging.StreamHandler()
     handler.setLevel(logging.INFO)
