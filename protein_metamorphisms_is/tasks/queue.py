@@ -74,6 +74,7 @@ class QueueTaskInitializer(BaseTaskInitializer):
             connection = pika.BlockingConnection(
                 pika.ConnectionParameters(
                     host=self.conf['rabbitmq_host'],
+                    port=self.conf.get('rabbitmq_port', 5672),
                     credentials=credentials
                 )
             )
@@ -364,11 +365,11 @@ class QueueTaskInitializer(BaseTaskInitializer):
         from requests.auth import HTTPBasicAuth
 
         rabbitmq_host = self.conf.get('rabbitmq_host', 'localhost')
-        rabbitmq_port = self.conf.get('rabbitmq_port_http', 15672)  # Ahora lee el puerto correctamente
+        rabbitmq_port_http = self.conf.get('rabbitmq_port_http', 15672)
         rabbitmq_user = self.conf.get('rabbitmq_user', 'guest')
         rabbitmq_password = self.conf.get('rabbitmq_password', 'guest')
 
-        url = f"http://{rabbitmq_host}:{rabbitmq_port}/api/queues"
+        url = f"http://{rabbitmq_host}:{rabbitmq_port_http}/api/queues"
         auth = HTTPBasicAuth(rabbitmq_user, rabbitmq_password)
 
         try:
@@ -396,7 +397,9 @@ class QueueTaskInitializer(BaseTaskInitializer):
             self.logger.info("No queues to delete.")
             return
 
-        url_base = f"http://{self.conf['rabbitmq_host']}:15672/api/queues"
+        rabbitmq_port_http = self.conf.get('rabbitmq_port_http', 15672)
+        url_base = f"http://{self.conf['rabbitmq_host']}:{rabbitmq_port_http}/api/queues"
+
         auth = HTTPBasicAuth(self.conf['rabbitmq_user'], self.conf['rabbitmq_password'])
 
         for queue in queues:
