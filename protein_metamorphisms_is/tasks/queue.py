@@ -364,7 +364,7 @@ class QueueTaskInitializer(BaseTaskInitializer):
         from requests.auth import HTTPBasicAuth
 
         rabbitmq_host = self.conf.get('rabbitmq_host', 'localhost')
-        rabbitmq_port = self.conf.get('rabbitmq_port', 15672)  # Ahora lee el puerto correctamente
+        rabbitmq_port = self.conf.get('rabbitmq_port_http', 15672)  # Ahora lee el puerto correctamente
         rabbitmq_user = self.conf.get('rabbitmq_user', 'guest')
         rabbitmq_password = self.conf.get('rabbitmq_password', 'guest')
 
