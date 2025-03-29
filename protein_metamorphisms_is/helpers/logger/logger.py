@@ -10,6 +10,8 @@ def setup_logger(name, log_path):
     if log_dir and not os.path.exists(log_dir):
         os.makedirs(log_dir)
 
+    logger.propagate = False
+
     handler = logging.StreamHandler()
     handler.setLevel(logging.INFO)
 

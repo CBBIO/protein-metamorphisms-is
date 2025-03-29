@@ -1,3 +1,4 @@
+import numpy as np
 from transformers import T5Tokenizer, T5EncoderModel
 import re
 import torch
@@ -5,7 +6,11 @@ import torch
 
 def load_model(model_name, conf):
     device = torch.device(conf['embedding'].get('device', "cuda"))
-    return T5EncoderModel.from_pretrained(model_name).to(device)
+    model = T5EncoderModel.from_pretrained(model_name).to(device)
+    if conf['embedding'].get("use_fp16", True):
+        model = model.half()
+    return model
+
 
 
 def load_tokenizer(model_name):
@@ -53,7 +58,8 @@ def embedding_task(sequences, model, tokenizer, device, batch_size=32, embedding
                         "sequence_id": seq["sequence_id"],  # Include sequence_id
                         "embedding_type_id": embedding_type_id,  # Include embedding_type_id
                         "sequence": sequences[i + idx]["sequence"],  # Original sequence
-                        "embedding": embeddings[idx].cpu().numpy().tolist(),  # Embedding vector
+                        "embedding": embeddings[idx].cpu().numpy().astype(np.float16),
+
                         "shape": embeddings[idx].shape
                     }
                     embedding_records.append(record)
