@@ -128,18 +128,19 @@ structural_alignment:
 
 # 🧬 Embedding
 embedding:
-  device: "cpu"
+  device: "cuda"
+  use_fp16: True
   # List of embedding types to compute (Comment with # at the beginning to de/activate).
   types:
-    - 1 # ESM
+#    - 1 # ESM
 #    - 2 # ProstT5
-#    - 3 # ProtT5
+    - 3 # ProtT5
 
   # Queue according to this batch size.
-  batch_size: 80
+  batch_size: 32
 
   # Batch size to feed models.
-  batch_size_embedding: 40
+  batch_size_embedding: 32
 
 # 🧠 GO Metrics
 #Paths to OBO and GAF files.

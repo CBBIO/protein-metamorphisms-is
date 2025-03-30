@@ -1,4 +1,4 @@
-from pgvector.sqlalchemy import Vector
+from pgvector.sqlalchemy import HALFVEC
 from sqlalchemy import Column, Integer, String, ForeignKey, ARRAY, DateTime, func
 from sqlalchemy.orm import relationship, mapped_column
 
@@ -34,7 +34,7 @@ class SequenceEmbedding(Base):
     id = Column(Integer, primary_key=True)
     sequence_id = Column(Integer, ForeignKey('sequence.id'), nullable=False)
     embedding_type_id = Column(Integer, ForeignKey('sequence_embedding_type.id'))
-    embedding = mapped_column(Vector())
+    embedding = mapped_column(HALFVEC(1024))  # ✔️ correcto
     shape = Column(ARRAY(Integer))
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, onupdate=func.now())

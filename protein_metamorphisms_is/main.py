@@ -1,5 +1,6 @@
 import argparse
 from protein_metamorphisms_is.helpers.config.yaml import read_yaml_config
+from protein_metamorphisms_is.operation.extraction.protein_annotations_file import GOAnnotationsQueueProcessor
 
 from protein_metamorphisms_is.sql.model.model import (
     AccessionManager,
@@ -11,9 +12,10 @@ from protein_metamorphisms_is.sql.model.model import (
 def main(config_path='config/config.yaml'):
     conf = read_yaml_config(config_path)
 
-    AccessionManager(conf).fetch_accessions_from_api()
+    # AccessionManager(conf).fetch_accessions_from_api()
     # AccessionManager(conf).load_accessions_from_csv()
-    UniProtExtractor(conf).start()
+    # UniProtExtractor(conf).start()
+    # GOAnnotationsQueueProcessor(conf).start()
     SequenceEmbeddingManager(conf).start()
 
 
