@@ -12,7 +12,7 @@ binaries_path: '../binaries'
 monitor_interval: 10 # ⚠️ IMPORTANT: Low values as 1 can cause execution problems.
 
 # Path to save logs, set False to disable the option
-log_path: '~/data/PIS.log'
+log_path: '~/data/logs/'
 
 # ======================================
 # 🗄️ Database Configuration (PostgreSQL)
