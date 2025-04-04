@@ -18,7 +18,7 @@ The primary goal of PIS is to provide a robust framework for large-scale protein
 
 ### **Stable Version of the Information System**
 > 🛠️ **A stable version of the information system for working with UniProt and annotation transfer is available at:**  
-> [**Zenodo Stable Release**](https://zenodo.org/records/14546346)  
+> [**Zenodo Stable Release**](https://zenodo.org/records/15095845)  
 > This version serves as a reference implementation and provides a consistent environment for annotation transfer tasks.
 
 ## **Prerequisites**
@@ -40,25 +40,13 @@ Ensure PostgreSQL and RabbitMQ services are running.
 
 ```bash
 docker run -d --name pgvectorsql \
-    --shm-size=64g \
     -e POSTGRES_USER=usuario \
     -e POSTGRES_PASSWORD=clave \
     -e POSTGRES_DB=BioData \
     -p 5432:5432 \
-    pgvector/pgvector:pg16 \
-    -c shared_buffers=16GB \
-    -c effective_cache_size=32GB \
-    -c work_mem=64MB
+    pgvector/pgvector:pg16 
+
 ```
-
-### 3. PostgreSQL Configuration
-
-The configuration parameters provided above have been optimized for a machine with **128GB of RAM and 32 CPU cores**, allowing up to **20 concurrent workers**. These settings enhance PostgreSQL’s performance when handling large datasets and computationally intensive queries.
-
-- `--shm-size=64g`: Allocates **64GB of shared memory** to the container, preventing PostgreSQL from running out of memory in high-performance environments.
-- `-c shared_buffers=16GB`: Allocates **16GB of RAM** for PostgreSQL’s shared memory buffers. This should typically be **25-40%** of total system memory.
-- `-c effective_cache_size=32GB`: Sets PostgreSQL’s estimated available memory for disk caching to **32GB**. This helps the query planner make better decisions.
-- `-c work_mem=64MB`: Defines **64MB of memory per worker** for operations like sorting and hashing. This is crucial when handling parallel query execution.
 
 ### 4. (Optional) Connect to the Database
 
