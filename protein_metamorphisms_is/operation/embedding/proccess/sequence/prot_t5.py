@@ -12,7 +12,6 @@ def load_model(model_name, conf):
     return model
 
 
-
 def load_tokenizer(model_name):
     return T5Tokenizer.from_pretrained(model_name, do_lower_case=False)
 

@@ -5,6 +5,7 @@ from protein_metamorphisms_is.sql.model.entities.protein.protein import Protein
 from protein_metamorphisms_is.sql.model.entities.sequence.sequence import Sequence
 from protein_metamorphisms_is.tasks.queue import QueueTaskInitializer
 
+
 class GOAnnotationsQueueProcessor(QueueTaskInitializer):
     def __init__(self, conf):
         super().__init__(conf)
@@ -54,9 +55,7 @@ class GOAnnotationsQueueProcessor(QueueTaskInitializer):
         protein_entry_id = data['protein_entry_id']
         go_terms = data['go_terms']
 
-
         sequence = self.get_sequence_from_external_source(protein_entry_id)
-
 
         # Return a structured object containing protein data and annotations
         result = {
@@ -188,8 +187,6 @@ class GOAnnotationsQueueProcessor(QueueTaskInitializer):
         except requests.exceptions.RequestException as e:
             self.logger.error(f"Failed to fetch sequence for {protein_entry_id} from UniProt: {e}")
             return None
-
-
 
     def get_or_create_protein(self, protein_entry_id):
         """
