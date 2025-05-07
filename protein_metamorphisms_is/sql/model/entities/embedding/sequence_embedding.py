@@ -34,7 +34,7 @@ class SequenceEmbedding(Base):
     id = Column(Integer, primary_key=True)
     sequence_id = Column(Integer, ForeignKey('sequence.id'), nullable=False)
     embedding_type_id = Column(Integer, ForeignKey('sequence_embedding_type.id'))
-    embedding = mapped_column(HALFVEC(1024))  # ✔️ correcto
+    embedding = mapped_column(HALFVEC())  # ✔️ correcto
     shape = Column(ARRAY(Integer))
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, onupdate=func.now())

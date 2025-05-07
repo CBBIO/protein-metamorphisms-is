@@ -1,7 +1,20 @@
-from sqlalchemy import create_engine, QueuePool
+from sqlalchemy import create_engine, QueuePool, text
 from sqlalchemy.orm import sessionmaker
-
 from protein_metamorphisms_is.sql.model.core.base import Base
+
+import logging
+
+
+def ensure_pgvector_extension(engine):
+    logger = logging.getLogger("protein_metamorphisms_is")
+    logger.setLevel(logging.INFO)
+    try:
+        with engine.begin() as conn:
+            logger.info("Ensuring pgvector extension is enabled...")
+            conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+            logger.info("pgvector extension verified or created successfully.")
+    except Exception as e:
+        logger.error(f"Could not create pgvector extension: {e}")
 
 
 class DatabaseManager:
@@ -13,38 +26,33 @@ class DatabaseManager:
     def create_engine(self):
         """
         Create the SQLAlchemy engine with a QueuePool for connection management.
+        Ensures the pgvector extension is enabled before creating any tables.
         """
-        DATABASE_URI = (f"postgresql+psycopg2://{self.conf['DB_USERNAME']}:"
-                        f"{self.conf['DB_PASSWORD']}"
-                        f"@{self.conf['DB_HOST']}:"
-                        f"{self.conf['DB_PORT']}/"
-                        f"{self.conf['DB_NAME']}")
-        # Crear el motor con el pool configurado
+        DATABASE_URI = (
+            f"postgresql+psycopg2://{self.conf['DB_USERNAME']}:"
+            f"{self.conf['DB_PASSWORD']}"
+            f"@{self.conf['DB_HOST']}:{self.conf['DB_PORT']}/"
+            f"{self.conf['DB_NAME']}"
+        )
+
         engine = create_engine(
             DATABASE_URI,
-            pool_size=0,          # Número máximo de conexiones en el pool
-            max_overflow=0,       # Conexiones adicionales permitidas en caso de saturación
-            poolclass=QueuePool,   # Clase de pool a utilizar
-            pool_pre_ping=True     # Verificar conexiones antes de reutilizarlas
+            pool_size=0,
+            max_overflow=0,
+            poolclass=QueuePool,
+            pool_pre_ping=True,
         )
+
+        ensure_pgvector_extension(engine)
         Base.metadata.create_all(engine)
 
         return engine
 
     def get_session(self):
-        """
-        Return a new session instance.
-        """
         return self.Session()
 
     def get_engine(self):
-        """
-        Return the SQLAlchemy engine instance.
-        """
         return self.engine
 
     def get_pool(self):
-        """
-        Return the pool object used by the engine.
-        """
         return self.engine.pool

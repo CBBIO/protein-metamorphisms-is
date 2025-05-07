@@ -65,7 +65,7 @@ load_accesion_column: id
 
 # 🔬 Fetch from the UniProt API.
 # Query string for UniProt search.
-search_criteria: '(structure_3d:true)'
+search_criteria: '(go_exp:* OR go_ida:* OR go_ipi:* OR go_imp:* OR go_igi:* OR go_iep:* OR go_tas:* OR go_ic:*)'
 
 # Number of results to fetch from UniProt (pagination).
 limit: 200
@@ -122,7 +122,7 @@ structural_alignment:
 
   retry_timeout: 1
   retry_count: 5
-  batch_size: 1000
+  batch_size: 1
   task_timeout: 20
 
 
@@ -132,15 +132,15 @@ embedding:
   use_fp16: True
   # List of embedding types to compute (Comment with # at the beginning to de/activate).
   types:
-#    - 1 # ESM
-#    - 2 # ProstT5
+    - 1 # ESM
+    - 2 # ProstT5
     - 3 # ProtT5
 
   # Queue according to this batch size.
-  batch_size: 32
+  batch_size: 1
 
   # Batch size to feed models.
-  batch_size_embedding: 32
+  batch_size_embedding: 1
 
 # 🧠 GO Metrics
 #Paths to OBO and GAF files.
