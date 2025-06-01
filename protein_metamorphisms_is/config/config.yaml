@@ -58,7 +58,7 @@ tag: 'GOA2024' # Identifier tag for accession loading.
 
 # 📗 Load from CSV.
 # Path to the CSV file containing accessions.
-load_accesion_csv: ../data/sf_dataset_with_accession.csv
+load_accesion_csv: ../data/sample.csv
 
 # Column name in the CSV file.
 load_accesion_column: uniprot_id

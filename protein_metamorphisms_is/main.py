@@ -1,8 +1,6 @@
 import logging
 
 from protein_metamorphisms_is.helpers.services.services import check_services
-from protein_metamorphisms_is.operation.embedding.structure_3di import Structure3DiManager
-
 
 
 def main(config_path='config/config.yaml'):
@@ -15,7 +13,6 @@ def main(config_path='config/config.yaml'):
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     handler.setFormatter(formatter)
     logger.addHandler(handler)
-
 
     # Step 1: Import ORM-based logic & check model coherence
     from protein_metamorphisms_is.sql.model.model import (
@@ -30,9 +27,8 @@ def main(config_path='config/config.yaml'):
 
     check_services(conf, logger)
 
-
     # Step 3: Run components
-    AccessionManager(conf).load_accessions_from_csv()
+    AccessionManager(conf).fetch_accessions_from_api()
     UniProtExtractor(conf).start()
     PDBExtractor(conf).start()
     SequenceEmbeddingManager(conf).start()
