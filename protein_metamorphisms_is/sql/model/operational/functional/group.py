@@ -1,6 +1,10 @@
 from sqlalchemy import Column, Integer, DateTime, func, ForeignKey, String
 from sqlalchemy.orm import relationship
 from protein_metamorphisms_is.sql.model.core.base import Base
+from protein_metamorphisms_is.sql.model.entities.protein.protein import Protein
+
+
+Protein.go_term_pairs = relationship("GOTermPair", back_populates="protein")
 
 
 class GOTermPair(Base):
