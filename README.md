@@ -1,6 +1,6 @@
-[![PyPI - Version](https://img.shields.io/pypi/v/protein-metamorphisms-is)](https://pypi.org/project/protein-metamorphisms-is/)
-[![Documentation Status](https://readthedocs.org/projects/protein-metamorphisms-is/badge/?version=latest)](https://protein-metamorphisms-is.readthedocs.io/en/latest/?badge=latest)
-![Linting Status](https://github.com/CBBIO/protein-metamorphisms-is/actions/workflows/test-lint.yml/badge.svg?branch=main)
+[![PyPI - Version](https://img.shields.io/pypi/v/protein-information-system)](https://pypi.org/project/protein-information-system/)
+[![Documentation Status](https://readthedocs.org/projects/protein-information-system/badge/?version=latest)](https://protein-information-system.readthedocs.io/en/latest/?badge=latest)
+![Linting Status](https://github.com/CBBIO/protein-information-system/actions/workflows/test-lint.yml/badge.svg?branch=main)
 
 # **Protein Information System (PIS)**
 
