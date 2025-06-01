@@ -181,14 +181,6 @@ class AccessionManager(BaseTaskInitializer):
         self.session.commit()
         self.logger.info(f"Added {len(new_accessions)} new accessions to the database.")
 
-    def enqueue(self):
-        """
-        Abstract method for enqueuing tasks.
-
-        This method should be implemented in subclasses to define how accession tasks are enqueued.
-        """
-        pass
-
     def store_entry(self, record):
         """
         (Not used)
