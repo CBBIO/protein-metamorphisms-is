@@ -3,7 +3,7 @@
 # ==============================
 
 # Maximum number of worker threads for parallel processing.
-max_workers: 20
+max_workers: 10
 
 # Path to binary files for alignment algorithms.
 binaries_path: '../binaries'
@@ -43,7 +43,7 @@ rabbitmq_password: guest     # RabbitMQ password for authentication.
 # ==========================
 
 # Maximum number of items to process (for debugging).
-limit_execution: 50 # False for complete run.
+limit_execution: 500 # False for complete run.
 
 # Reset queues with each execution.
 delete_queues: True
@@ -58,14 +58,17 @@ tag: 'GOA2024' # Identifier tag for accession loading.
 
 # 📗 Load from CSV.
 # Path to the CSV file containing accessions.
-load_accesion_csv: ../data/fantasia.csv
+load_accesion_csv: ../data/sf_dataset_with_accession.csv
 
 # Column name in the CSV file.
-load_accesion_column: id
+load_accesion_column: uniprot_id
 
 # 🔬 Fetch from the UniProt API.
 # Query string for UniProt search.
 search_criteria: '(go_exp:* OR go_ida:* OR go_ipi:* OR go_imp:* OR go_igi:* OR go_iep:* OR go_tas:* OR go_ic:*)'
+# Query string for Protein Data Bank search.
+# search_criteria: '(structure_3d:true)'
+
 
 # Number of results to fetch from UniProt (pagination).
 limit: 200
@@ -147,16 +150,9 @@ embedding:
 obo: '../data/go-basic.obo'
 go_annotation_file: '../data/cgd.gaf'
 
-# Specifies the list of UniProt evidence codes used to filter annotations.
-allowed_evidences:
-  - EXP # Inferred from Experiment.
-  - IDA # Inferred from Direct Assay.
-  - IPI # Inferred from Physical Interaction.
-  - IMP # Inferred from Mutant Phenotype.
-  - IGI # Inferred from Genetic Interaction.
-  - IEP # Inferred from Expression Pattern.
-  - TAS # Traceable Author Statement.
-  - IC # Inferred by Curator.
+# Specifies the list of UniProt evidence codes used to filter annotations. set empty list for all evidences. []
+allowed_evidences: []
+
 
 
 
