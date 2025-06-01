@@ -18,7 +18,7 @@ class Sequence(Base):
     chain = relationship("Chain", back_populates="sequence", uselist=False)
 
     # Nueva relación
-    go_annotations = relationship("SequenceGoTermAnnotation", back_populates="sequence")  # Relación 1:N
+    # go_annotations = relationship("SequenceGoTermAnnotation", back_populates="sequence")  # Relación 1:N
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

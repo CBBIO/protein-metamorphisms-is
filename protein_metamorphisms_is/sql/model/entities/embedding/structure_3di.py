@@ -13,4 +13,4 @@ class Structure3Di(Base):
     updated_at = Column(DateTime, onupdate=func.now())
 
     state = relationship("State")
-    subcluster_entries = relationship("SubclusterEntry", back_populates="structure_3di")
+    # subcluster_entries = relationship("SubclusterEntry", back_populates="structure_3di")

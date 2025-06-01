@@ -14,41 +14,59 @@ from protein_metamorphisms_is.helpers.parser.parser import extract_float
 
 
 class UniProtExtractor(QueueTaskInitializer):
-    """
-    The UniProtExtractor class is responsible for extracting, processing, and storing protein data
-    from the UniProt database. It extends the QueueTaskInitializer to handle task queuing and
-    database integration seamlessly.
+    class UniProtExtractor(QueueTaskInitializer):
+        """
+        The UniProtExtractor class is responsible for extracting, processing, and storing protein data
+        from the UniProt database. It extends QueueTaskInitializer to integrate with the task queue system.
 
-    **Purpose**
+        **Purpose**
 
-    The UniProtExtractor class provides functionalities to manage and process protein data
-    from UniProt, ensuring it is properly stored and cross-referenced in the database.
+        This component handles the end-to-end retrieval of protein entries from UniProt, including:
+        - sequence data,
+        - structural references (PDB),
+        - and GO annotations.
 
-    **Key Features**
+        **Dependency**
 
-    - **Task Management**: Supports enqueuing tasks for processing accession codes from UniProt.
-    - **Protein Data Retrieval**: Downloads detailed protein information using BioPython's ExPASy and SwissProt modules.
-    - **Database Integration**: Ensures extracted data is stored and linked correctly in the database.
-    - **Cross-Reference Handling**: Processes references to PDB structures and Gene Ontology (GO) terms.
+        Accessions must be preloaded into the database **before** running this extractor.
+        This can be done using the `AccessionManager` class via either:
 
-    **Example Usage**
+        - `load_accessions_from_csv()`: loads accession codes from a curated CSV file.
+        - `fetch_accessions_from_api()`: retrieves accessions using UniProt API based on semantic criteria.
 
-    Below is an example demonstrating how to use the `UniProtExtractor` class:
+        Once accession entries exist, `UniProtExtractor.enqueue()` will publish them to the queue for processing.
 
-    .. code-block:: python
+        **Key Features**
 
-        from protein_metamorphisms_is.tasks.uniprot import UniProtExtractor
+        - Enqueues tasks based on accession codes already present in the database.
+        - Downloads and parses SwissProt records using BioPython.
+        - Extracts cross-references to PDB and GOA, storing them with full relational integrity.
+        - Designed to be scalable and robust for use in HPC environments.
 
-        # Configuration for UniProtExtractor
-        config = {
-            'allowed_evidences': ['EXP', 'IDA'],
-                }
+        **Example Usage**
 
-        # Initialize and start the extractor
-        uniprot_extractor = UniProtExtractor(config)
-        uniprot_extractor.start()
+        .. code-block:: python
 
-    """
+            from protein_metamorphisms_is.tasks.accessions import AccessionManager
+            from protein_metamorphisms_is.tasks.uniprot import UniProtExtractor
+
+            # Step 1: Load accession codes
+            config = {
+                'load_accesion_csv': '../data/cafa5.csv',
+                'load_accesion_column': 'id',
+                'tag': 'CAFA5',
+                'allowed_evidences': ['EXP', 'IDA'],
+                'limit_execution': 100
+            }
+            accession_manager = AccessionManager(config)
+            accession_manager.load_accessions_from_csv()
+
+            # Step 2: Enqueue and process entries
+            extractor = UniProtExtractor(config)
+            extractor.enqueue()
+            extractor.start()
+
+        """
 
     def __init__(self, conf):
         """
@@ -62,7 +80,13 @@ class UniProtExtractor(QueueTaskInitializer):
 
     def enqueue(self):
         """
-        Reads all accession codes from the database and publishes them as tasks to be processed.
+           Enqueues tasks for all accession codes found in the database.
+
+            This method reads all previously stored accession codes and sends each as
+            a task to the queue for processing.
+
+            This function assumes that accessions have already been loaded into the database
+            (e.g., using `AccessionManager`).
         """
         try:
             # Recuperar accesiones de la base de datos
@@ -346,7 +370,7 @@ class UniProtExtractor(QueueTaskInitializer):
         try:
             evidence = reference[3].split(":")[0] if reference[
                 3] else "UNKNOWN"  # Usa un valor por defecto si falta evidence
-            if evidence not in self.conf['allowed_evidences']:
+            if self.conf['allowed_evidences'] and evidence not in self.conf['allowed_evidences']:
                 self.logger.debug(
                     f"Skipping GO reference {reference[1]} for {protein.id} due to disallowed evidence type.")
                 return
