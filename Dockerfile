@@ -17,4 +17,4 @@ RUN pip3 install  protein-metamorphisms-is
 
 
 # Configura el comando predeterminado para ejecutar tu paquete
-CMD ["python3", "-m", "protein_metamorphisms_is"]
+CMD ["python3", "-m", "protein_information_system"]

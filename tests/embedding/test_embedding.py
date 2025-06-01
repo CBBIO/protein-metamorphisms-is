@@ -4,17 +4,17 @@ import unittest
 import pytest
 from sqlalchemy.dialects.mssql.information_schema import sequences
 
-from protein_metamorphisms_is.helpers.config.yaml import read_yaml_config
-from protein_metamorphisms_is.operation.embedding.sequence_embedding import SequenceEmbeddingManager
-from protein_metamorphisms_is.operation.extraction.uniprot import UniProtExtractor
-from protein_metamorphisms_is.sql.model.entities.embedding.sequence_embedding import SequenceEmbedding, \
+from protein_information_system.helpers.config.yaml import read_yaml_config
+from protein_information_system.operation.embedding.sequence_embedding import SequenceEmbeddingManager
+from protein_information_system.operation.extraction.uniprot import UniProtExtractor
+from protein_information_system.sql.model.entities.embedding.sequence_embedding import SequenceEmbedding, \
     SequenceEmbeddingType
-from protein_metamorphisms_is.sql.model.entities.go_annotation.go_annotation import ProteinGOTermAnnotation
-from protein_metamorphisms_is.sql.model.entities.go_annotation.go_term import GOTerm
-from protein_metamorphisms_is.sql.model.entities.protein.accesion import Accession
-from protein_metamorphisms_is.sql.model.entities.protein.protein import Protein
-from protein_metamorphisms_is.sql.model.entities.sequence.sequence import Sequence
-from protein_metamorphisms_is.sql.model.entities.structure.structure import Structure
+from protein_information_system.sql.model.entities.go_annotation.go_annotation import ProteinGOTermAnnotation
+from protein_information_system.sql.model.entities.go_annotation.go_term import GOTerm
+from protein_information_system.sql.model.entities.protein.accesion import Accession
+from protein_information_system.sql.model.entities.protein.protein import Protein
+from protein_information_system.sql.model.entities.sequence.sequence import Sequence
+from protein_information_system.sql.model.entities.structure.structure import Structure
 
 @pytest.mark.order(4)
 class TestSequenceEmbeddingManager(unittest.TestCase):

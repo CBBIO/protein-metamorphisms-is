@@ -64,9 +64,9 @@ sphinx-copybutton = "^0.5.2"
 
 [tool.taskipy.tasks]
 html_docs = "make html -C docs"
-lint = "poetry run flake8 protein_metamorphisms_is"
+lint = "poetry run flake8 protein_information_system"
 autopep = "autopep8 --in-place --recursive . --max-line-length=79"
-coverage = "poetry run coverage run -m --source=protein_metamorphisms_is pytest tests && poetry run coverage report -m"
+coverage = "poetry run coverage run -m --source=protein_information_system pytest tests && poetry run coverage report -m"
 
 
 

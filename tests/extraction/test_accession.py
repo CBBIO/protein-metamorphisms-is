@@ -4,9 +4,9 @@ import os
 
 import pytest
 
-from protein_metamorphisms_is.helpers.config.yaml import read_yaml_config
-from protein_metamorphisms_is.operation.extraction.accessions import AccessionManager
-from protein_metamorphisms_is.sql.model.entities.protein.accesion import Accession
+from protein_information_system.helpers.config.yaml import read_yaml_config
+from protein_information_system.operation.extraction.accessions import AccessionManager
+from protein_information_system.sql.model.entities.protein.accesion import Accession
 
 @pytest.mark.order(1)
 class TestAccessionManager(unittest.TestCase):

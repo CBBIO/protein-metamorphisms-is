@@ -1,3 +1,3 @@
-.. automodule:: protein_metamorphisms_is.tasks.base
+.. automodule:: protein_information_system.tasks.base
     :members:
     :show-inheritance:

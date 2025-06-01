@@ -1,3 +1,3 @@
-.. automodule:: protein_metamorphisms_is.tasks.gpu
+.. automodule:: protein_information_system.tasks.gpu
     :members:
     :show-inheritance:

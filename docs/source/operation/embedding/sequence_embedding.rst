@@ -2,7 +2,7 @@ Sequence Embeddings Module
 ==========================
 
 
-.. automodule:: protein_metamorphisms_is.operation.embedding.sequence_embedding
+.. automodule:: protein_information_system.operation.embedding.sequence_embedding
     :members:
     :show-inheritance:
 
