@@ -58,46 +58,11 @@ Embedding
    :hidden:
 
    operation/embedding/sequence_embedding
+   operation/embedding/structure_embedding
 
-- `Sequence Embedding <operation/embedding/sequence_embedding.html>`_: Facilitates encoding of protein and nucleotide sequences into dense vectors.
+- `Sequence Embedding <operation/embedding/sequence_embedding.html>`_: Facilitates encoding of protein and nucleotide sequences into dense vectors using pre-trained language models.
+- `Structure Embedding <operation/embedding/structure_embedding.html>`_: Computes 3Di embeddings from atomic protein structures by parsing and standardizing their 3D conformations. These embeddings capture local geometric patterns and enable structure-based comparison and annotation.
 
-
-Clustering
-===============
-.. toctree::
-   :maxdepth: 3
-   :caption: Clustering
-   :hidden:
-
-   operation/clustering/sequence_clustering
-   operation/clustering/structural_subclustering
-
-- `Sequence Clustering <operation/clustering/sequence_clustering.html>`_: Create different clusters using the CD-HIT algorithm based on sequence identity in amino acids.
-- `Structural Subclustering <operation/clustering/structural_subclustering.html>`_: Within each cluster, create subclusters based on structural identity using structure embeddings.
-
-
-Structural Alignment
-=====================
-.. toctree::
-   :maxdepth: 3
-   :caption: Structural Alignment
-   :hidden:
-
-   operation/structural_alignment/structural_alignment
-
-- `Structural Alignment <operation/structural_alignment/structural_alignment.html>`_: Align the representative of each subcluster structurally.
-
-
-Multifunctionality Analysis
-=============================
-.. toctree::
-   :maxdepth: 3
-   :caption: Multifunctionality Analysis
-   :hidden:
-
-   operation/functional/multifunctionality
-
-- `Multifunctionality <operation/functional/multifunctionality.html>`_: Analyze semantic distances in Gene Ontology (GO) terms to detect multifunctionality.
 
 
 FAQ
