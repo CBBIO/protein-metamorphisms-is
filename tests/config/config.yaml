@@ -54,7 +54,7 @@ delete_queues: True
 # ===================================
 
 ## Load Accessions.
-tag: 'GOA2024' # Identifier tag for accession loading.
+tag: 'STRUCTURE' # Identifier tag for accession loading.
 
 # 📗 Load from CSV.
 # Path to the CSV file containing accessions.
@@ -132,8 +132,10 @@ embedding:
   # List of embedding types to compute (Comment with # at the beginning to de/activate).
   types:
     - 1 # ESM
-#    - 2 # ProstT5
-#    - 3 # ProtT5
+    - 2 # ProstT5
+    - 3 # ProtT5
+    - 4 # Ankh
+
 
   # Queue according to this batch size.
   batch_size: 80
