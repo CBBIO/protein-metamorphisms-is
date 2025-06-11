@@ -50,13 +50,16 @@ Ensure PostgreSQL and RabbitMQ services are running.
 
 ```bash
 docker run -d --name pgvectorsql \
+    --shm-size=1g \
     -e POSTGRES_USER=usuario \
     -e POSTGRES_PASSWORD=clave \
     -e POSTGRES_DB=BioData \
     -p 5432:5432 \
     pgvector/pgvector:pg16 
-
 ```
+> ⚠️ Set `--shm-size=1g` or higher to avoid performance issues.
+
+
 
 ### 4. (Optional) Connect to the Database
 
