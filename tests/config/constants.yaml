@@ -11,8 +11,6 @@ structural_alignment_types:
     description: "FATCAT (Flexible structure AlignmenT by Chaining Aligned fragment pairs allowing Twists), Protein structures are flexible and undergo structural rearrangements as part of their function. FATCAT (Flexible structure AlignmenT by Chaining Aligned fragment pairs allowing Twists) is an approach for flexible protein structure comparison. It simultaneously addresses the two major goals of flexible structure alignment; optimizing the alignment and minimizing the number of rigid-body movements (twists) around pivot points (hinges) introduced in the reference structure."
     task_name: fatcat
 
-
-
 structural_complexity_levels:
   - name: "Protein Chains"
     description: A protein chain refers to a single, linear sequence of amino acids that are covalently bonded together through peptide bonds. This chain, also known as a polypeptide, represents the primary structure of a protein. The sequence in which the amino acids are arranged dictates the protein's unique characteristics and functions. After synthesis, the protein chain undergoes folding, where it adopts a specific three-dimensional structure essential for its biological activity. Protein chains can function independently or combine with other chains (which can be identical or different) to form a functional protein complex. The term "protein chains" emphasizes the linear aspect of proteins before they fold into their functional conformations.
@@ -29,11 +27,14 @@ sequence_embedding_types:
     description: "Prot-T5 embeddings leverage the capabilities of the T5 (Text-to-Text Transfer Transformer) model adapted for protein sequences, offering advanced sequence representation by considering both local and global sequence features."
     task_name: prost_t5
     model_name: Rostlab/ProstT5
-  - name: "Ankh"
-    description: "Ankh embeddings are derived from the Ankh protein language model, which provides efficient and high-performing representations of protein sequences using fewer parameters and compute resources than previous models. It captures rich biochemical and structural features, enabling improved predictions for a wide range of protein-related tasks."
-    task_name: ankh
-    model_name: ElnaggarLab/ankh-base
-
+  - name: "Prot-T5"
+    description: "Prot-T5 embeddings leverage the capabilities of the T5 (Text-to-Text Transfer Transformer) model adapted for protein sequences, offering advanced sequence representation by considering both local and global sequence features."
+    task_name: prot_t5
+    model_name: Rostlab/prot_t5_xl_uniref50
+  - name: "Ankh3-Large"
+    description: "Ankh3 is a T5-based protein language model optimized for accurate and efficient embeddings. Using the [NLU] prefix and trained on diverse protein data, it captures semantic and structural information relevant to protein function."
+    task_name: ankh3
+    model_name: ElnaggarLab/ankh3-large
 
 structure_embedding_types:
   - name: "3di"
