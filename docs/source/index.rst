@@ -65,10 +65,19 @@ Embedding
 
 
 
-FAQ
+Deployment
+===============
+.. toctree::
+   :maxdepth: 2
+   :caption:  Deployment
+
+   deployment/setup_instructions
+
+
+Faq
 ===============
 .. toctree::
    :maxdepth: 2
    :caption:  Guides
 
-   deployment/setup_instructions
+   lookup_table_generation

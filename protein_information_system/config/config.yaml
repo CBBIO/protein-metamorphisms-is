@@ -43,7 +43,7 @@ rabbitmq_password: guest     # RabbitMQ password for authentication.
 # ==========================
 
 # Maximum number of items to process (for debugging).
-limit_execution: 500 # False for complete run.
+limit_execution: 100 # False for complete run.
 
 # Reset queues with each execution.
 delete_queues: True
@@ -54,7 +54,7 @@ delete_queues: True
 # ===================================
 
 ## Load Accessions.
-tag: 'GOA2024' # Identifier tag for accession loading.
+tag: 'METAMORPHISM' # Identifier tag for accession loading.
 
 # 📗 Load from CSV.
 # Path to the CSV file containing accessions.
@@ -65,9 +65,9 @@ load_accesion_column: uniprot_id
 
 # 🔬 Fetch from the UniProt API.
 # Query string for UniProt search.
-search_criteria: '(go_exp:* OR go_ida:* OR go_ipi:* OR go_imp:* OR go_igi:* OR go_iep:* OR go_tas:* OR go_ic:*)'
+#search_criteria: '(go_exp:* OR go_ida:* OR go_ipi:* OR go_imp:* OR go_igi:* OR go_iep:* OR go_tas:* OR go_ic:*)'
 # Query string for Protein Data Bank search.
-# search_criteria: '(structure_3d:true)'
+search_criteria: '(structure_3d:true)'
 
 
 # Number of results to fetch from UniProt (pagination).
@@ -75,7 +75,7 @@ limit: 200
 
 # 💻 PDB Extraction
 # Sets the resolution in Ångströms, retaining only structures below this value.
-resolution_threshold: 2.5
+resolution_threshold: 5
 
 # Local path where the files will be stored.
 data_directory: "~/data"
@@ -122,10 +122,12 @@ structural_alignment:
     - 1
     - 2
     - 3
+    - 4
 
   retry_timeout: 1
   retry_count: 5
   batch_size: 1
+  batch_size_3di: 1000
   task_timeout: 20
 
 
@@ -138,6 +140,7 @@ embedding:
     - 1 # ESM
     - 2 # ProstT5
     - 3 # ProtT5
+    - 4
 
   # Queue according to this batch size.
   batch_size: 1

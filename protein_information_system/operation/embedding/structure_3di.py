@@ -65,12 +65,15 @@ class Structure3DiManager(QueueTaskInitializer):
         """
 
         states = self.session.query(State).all()
-        if self.conf['limit_execution']:
+        if self.conf.get('limit_execution'):
             states = states[:self.conf['limit_execution']]
-        for state in states:
-            self.publish_task(state.__dict__)
 
-    def process(self, model_info):
+        batch_size = self.conf.get('batch_size_3di', 600)
+        for i in range(0, len(states), batch_size):
+            batch = states[i:i + batch_size]
+            self.publish_task([s.__dict__ for s in batch])
+
+    def process(self, batch):
         """
         Loads and parses a 3D structural model, prepares it for encoding, and returns the embedding result.
 
@@ -97,16 +100,20 @@ class Structure3DiManager(QueueTaskInitializer):
         - If the structure file is empty or malformed, the method logs a warning and returns None.
         """
 
-        file_path = os.path.join(self.conf['data_directory'], 'models', model_info['file_path'])
-        try:
-            structure = self.parser.get_structure("model", file_path)
-            bio_model = next(structure.get_models())
-        except StopIteration:
-            self.logger.warning("No model found in the structure.")
-            return
+        results = []
+        for model_info in batch:
+            try:
+                file_path = os.path.join(self.conf['data_directory'], 'models', model_info['file_path'])
+                structure = self.parser.get_structure("model", file_path)
+                bio_model = next(structure.get_models())
+                new_chain = self.prepare_new_chain(bio_model)
+                result = self.process_chain(new_chain, model_info)
+                if result:
+                    results.append(result)
+            except Exception as e:
+                self.logger.warning(f"Failed to process model {model_info.get('id')}: {e}", exc_info=True)
 
-        new_chain = self.prepare_new_chain(bio_model)
-        return self.process_chain(new_chain, model_info)
+        return results
 
     def prepare_new_chain(self, bio_model):
         """
@@ -180,7 +187,7 @@ class Structure3DiManager(QueueTaskInitializer):
         }
         return embedding_result
 
-    def store_entry(self, record):
+    def store_entry(self, records):
         """
         Persists the 3Di embedding of a structural model into the database.
 
@@ -201,14 +208,15 @@ class Structure3DiManager(QueueTaskInitializer):
         - Logs success or failure events accordingly.
         """
 
-        new_embedding = Structure3Di(
-            state_id=record['model_id'],
-            embedding=record['embedding'],
-        )
-        try:
-            self.session.add(new_embedding)
-            self.session.commit()
-            self.logger.info(f"Stored embedding for model ID {record['model_id']} successfully.")
-        except Exception as e:
-            self.session.rollback()
-            self.logger.error(f"Failed to store embedding: {e}", exc_info=True)
+        for record in records:
+            new_embedding = Structure3Di(
+                state_id=record['model_id'],
+                embedding=record['embedding'],
+            )
+            try:
+                self.session.add(new_embedding)
+                self.session.commit()
+                self.logger.info(f"Stored embedding for model ID {record['model_id']} successfully.")
+            except Exception as e:
+                self.session.rollback()
+                self.logger.error(f"Failed to store embedding for {record['model_id']}: {e}", exc_info=True)
