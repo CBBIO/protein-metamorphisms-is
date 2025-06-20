@@ -3,14 +3,17 @@ import torch
 import numpy as np
 import gc
 
+
 def load_model(model_name, conf):
     device = torch.device(conf['embedding'].get('device', "cuda"))
     dtype = torch.float16 if device.type == "cuda" else torch.float32
     model = T5EncoderModel.from_pretrained(model_name, torch_dtype=dtype).to(device).eval()
     return model
 
+
 def load_tokenizer(model_name):
     return T5Tokenizer.from_pretrained(model_name)
+
 
 def embedding_task(sequences, model, tokenizer, device, batch_size=8, embedding_type_id=None):
     model.to(device)
