@@ -29,9 +29,7 @@ from typing import Dict, List, Optional, Tuple
 
 from Bio import SeqIO
 
-from protein_information_system.sql.model.entities.go_annotation.go_annotation import (
-    ProteinGOTermAnnotation,
-)
+# from protein_information_system.sql.model.entities.go_annotation.go_annotation import (ProteinGOTermAnnotation,)
 from protein_information_system.sql.model.entities.go_annotation.go_term import GOTerm
 from protein_information_system.sql.model.entities.protein.accesion import Accession
 from protein_information_system.sql.model.entities.protein.protein import Protein
@@ -195,8 +193,10 @@ class GOAnnotationsQueueProcessor(QueueTaskInitializer):
             )
         return sequence
 
-    def store_entry(self, data: dict) -> None:
-        """Persist a processed protein entry into the database.
+    """   Este es el antiguo método de insercion que creaba las tabalas referentes a Proteinas y Go terms 
+     def store_entry(self, data: dict) -> None:
+        
+         Persist a processed protein entry into the database.
 
         This method performs the following steps in a transactional manner:
 
@@ -222,7 +222,8 @@ class GOAnnotationsQueueProcessor(QueueTaskInitializer):
               - "protein": str, protein identifier
               - "sequence": Optional[str], raw protein sequence
               - "go_terms": List[Tuple[str, str]], list of (go_id, category)
-        """
+        " "
+        
         from sqlalchemy import select, insert
 
         try:
@@ -284,14 +285,15 @@ class GOAnnotationsQueueProcessor(QueueTaskInitializer):
 
             # 5) Build the payload for missing associations only
             missing = [
-                {
-                    "protein_id": protein.id,
-                    "go_id": go_id,
-                    "evidence_code": "UNKNOWN",  # default evidence code
-                }
-                for go_id in go_ids_to_link
-                if go_id not in existing_go_ids
-            ]
+                    {
+                        "protein_id": protein.id,
+                        "go_id": go_id,
+                        "evidence_code": "UNKNOWN",
+                        "publication_id": None,
+                    }
+                    for go_id in go_ids_to_link
+                    if go_id not in existing_go_ids
+                ]
 
             # 6) Bulk insert missing associations in a single statement
             if missing:
@@ -312,8 +314,113 @@ class GOAnnotationsQueueProcessor(QueueTaskInitializer):
             self.logger.error(
                 f"Failed to store data for protein entry {data['protein']}: {e}"
             )
-            raise
+            raise 
+        """
+    
+                    
+    def store_entry(self, data: dict) -> None:
+        """
+        Persist Protein, Accession, Sequence and GOTerm records.
 
+        Protein-GO associations are not created here. They are created by
+        QuickGOAnnotationExtractor with evidence and publication information.
+        """
+        try:
+            protein = self.get_or_create_protein(data["protein"])
+
+            self.get_or_create_accession(
+                code=data["protein"],
+                protein_id=protein.id,
+                primary=True,
+            )
+
+            if not data.get("sequence"):
+                self.logger.warning(
+                    "No sequence for %s; skipping protein.sequence link.",
+                    protein.id,
+                )
+            else:
+                sequence = self.get_or_create_sequence(data["sequence"])
+                self.session.flush()
+                protein.sequence_id = sequence.id
+
+            incoming_pairs = list(set(data.get("go_terms", [])))
+            stored_go_terms = 0
+            skipped_go_terms = 0
+
+            for go_id, category in incoming_pairs:
+                normalized_go_id = (
+                    str(go_id).strip()
+                    if go_id is not None
+                    else ""
+                )
+
+                normalized_category = (
+                    str(category).strip()
+                    if category is not None
+                    else ""
+                )
+
+                if not normalized_go_id:
+                    self.logger.warning(
+                        "Skipping GO term with an empty identifier "
+                        "for protein %s.",
+                        protein.id,
+                    )
+                    skipped_go_terms += 1
+                    continue
+
+                if (
+                    not normalized_category
+                    or normalized_category.upper() == "UNKNOWN"
+                ):
+                    self.logger.warning(
+                        "GO %s has no valid category; attempting reuse only.",
+                        normalized_go_id,
+                    )
+
+                    go_term_entry = (
+                        self.session.query(GOTerm)
+                        .filter_by(go_id=normalized_go_id)
+                        .first()
+                    )
+
+                    if go_term_entry is None:
+                        skipped_go_terms += 1
+                        continue
+                else:
+                    go_term_entry = self.get_or_create_go_term(
+                        normalized_go_id,
+                        normalized_category,
+                    )
+
+                stored_go_terms += 1
+
+            self.session.commit()
+
+            self.logger.info(
+                "Protein %s successfully updated: "
+                "%s GO term(s) stored and %s skipped. "
+                "No protein-GO associations were inserted.",
+                protein.id,
+                stored_go_terms,
+                skipped_go_terms,
+            )
+
+        except Exception as exc:
+            self.session.rollback()
+
+            self.logger.error(
+                "Failed to store data for protein entry %s: %s",
+                data.get("protein"),
+                exc,
+                exc_info=True,
+            )
+
+            raise
+    
+    
+    
     def get_or_create_sequence(self, sequence: str) -> Sequence:
         """Create or retrieve a :class:`Sequence` entity by raw sequence value.
 
@@ -349,10 +456,12 @@ class GOAnnotationsQueueProcessor(QueueTaskInitializer):
             )
         return existing_sequence
 
+
+    """
     def get_or_create_association(
         self, protein_id: str, go_id: str, evidence_code: str = "UNKNOWN"
     ) -> Optional[ProteinGOTermAnnotation]:
-        """Create or retrieve a protein–GO association.
+         Create or retrieve a protein–GO association.
 
         Parameters
         ----------
@@ -368,7 +477,7 @@ class GOAnnotationsQueueProcessor(QueueTaskInitializer):
         Optional[ProteinGOTermAnnotation]
             Existing ORM association if found, otherwise ``None`` (a new one is queued
             in the session but not yet flushed when created).
-        """
+         
         try:
             existing = (
                 self.session.query(ProteinGOTermAnnotation)
@@ -398,85 +507,115 @@ class GOAnnotationsQueueProcessor(QueueTaskInitializer):
                 f"Error retrieving or creating GO term association: {e}"
             )
             raise
+    """        
 
-    def get_or_create_protein(self, protein_entry_id: str) -> Protein:
-        """Create or retrieve a :class:`Protein` by UniProt accession.
 
-        Parameters
-        ----------
-        protein_entry_id : str
-            UniProt accession used as the primary key in the ``Protein`` table.
 
-        Returns
-        -------
-        Protein
-            ORM instance for the protein.
+ 
+    def get_or_create_go_term(
+        self,
+        go_id: str,
+        category: str,
+    ) -> GOTerm:
         """
-        protein: Optional[Protein] = (
-            self.session.query(Protein).filter_by(id=protein_entry_id).first()
+        Creates or retrieves a GO term without committing the transaction.
+
+        The final commit is managed by store_entry().
+        """
+        normalized_go_id = (
+            str(go_id).strip()
+            if go_id is not None
+            else ""
         )
-        if not protein:
-            protein = Protein(id=protein_entry_id)
-            self.session.add(protein)
-            self.session.commit()
-            self.logger.debug(
-                f"Created new protein record for protein entry ID {protein_entry_id}."
-            )
-        else:
-            self.logger.debug(
-                f"Protein record found for protein entry ID {protein_entry_id}."
-            )
-        return protein
 
-    def get_or_create_go_term(self, go_id: str, category: str) -> GOTerm:
-        """Create or update a :class:`GOTerm` with its category.
+        normalized_category = (
+            str(category).strip()
+            if category is not None
+            else ""
+        )
 
-        Parameters
-        ----------
-        go_id : str
-            GO term identifier (e.g., ``GO:0008150``).
-        category : str
-            GO category label (``BP``, ``MF``, or ``CC``). The DB schema enforces
-            non-null constraints; empty/``None`` categories are rejected.
+        if not normalized_go_id:
+            raise ValueError("GO term identifier cannot be empty.")
 
-        Returns
-        -------
-        GOTerm
-            ORM instance corresponding to the GO term.
-
-        Raises
-        ------
-        ValueError
-            If ``category`` is empty or ``None``.
-        """
-        category = None if category is None else str(category).strip()
-        if not category:
+        if (
+            not normalized_category
+            or normalized_category.upper() == "UNKNOWN"
+        ):
             raise ValueError(
-                f"Category is required to create GO term {go_id} (go_terms.category is NOT NULL)."
+                f"A valid category is required to create GO term "
+                f"'{normalized_go_id}'."
             )
 
-        go_term_entry: Optional[GOTerm] = (
-            self.session.query(GOTerm).filter_by(go_id=go_id).first()
+        go_term = (
+            self.session.query(GOTerm)
+            .filter(GOTerm.go_id == normalized_go_id)
+            .first()
         )
-        if not go_term_entry:
-            go_term_entry = GOTerm(go_id=go_id, category=category)
-            self.session.add(go_term_entry)
-            self.session.commit()
+
+        if go_term is None:
+            go_term = GOTerm(
+                go_id=normalized_go_id,
+                category=normalized_category,
+            )
+
+            self.session.add(go_term)
+
             self.logger.debug(
-                f"Created new GO term entry for GO term {go_id} with category '{category}'."
+                "Created GO term '%s' with category '%s'.",
+                normalized_go_id,
+                normalized_category,
+            )
+
+        elif not go_term.category:
+            go_term.category = normalized_category
+
+            self.logger.debug(
+                "Added category '%s' to GO term '%s'.",
+                normalized_category,
+                normalized_go_id,
+            )
+
+        elif go_term.category != normalized_category:
+            self.logger.warning(
+                "GO term '%s' already has category '%s'; "
+                "incoming category '%s' was ignored.",
+                normalized_go_id,
+                go_term.category,
+                normalized_category,
+            )
+
+        return go_term
+
+    def get_or_create_protein(
+        self,
+        protein_entry_id: str,
+    ) -> Protein:
+        """
+        Creates or retrieves a Protein without committing the transaction.
+        """
+        protein = (
+            self.session.query(Protein)
+            .filter(Protein.id == protein_entry_id)
+            .first()
+        )
+
+        if protein is None:
+            protein = Protein(id=protein_entry_id)
+
+            self.session.add(protein)
+            self.session.flush()
+
+            self.logger.debug(
+                "Created protein '%s'.",
+                protein_entry_id,
             )
         else:
-            # If an existing category differs from the incoming one, update policy is to override
-            if getattr(go_term_entry, "category", None) != category:
-                self.logger.info(
-                    "GO term %s exists with category '%s', incoming '%s'. Updating to incoming.",
-                    go_id,
-                    getattr(go_term_entry, "category", None),
-                    category,
-                )
-                go_term_entry.category = category
-                self.session.commit()
-        return go_term_entry
+            self.logger.debug(
+                "Protein '%s' already exists.",
+                protein_entry_id,
+            )
+
+        return protein
 
     def get_or_create_accession(
         self, code: str, protein_id: str, primary: bool = True, tag: Optional[str] = None

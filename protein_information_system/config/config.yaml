@@ -58,16 +58,14 @@ tag: 'METAMORPH' # Identifier tag for accession loading.
 
 # 📗 Load from CSV.
 # Path to the CSV file containing accessions.
-load_accesion_csv: ../data/sample.csv
+load_accesion_csv: ../data/pruebasGO_Termns.csv
 
 # Column name in the CSV file.
 load_accesion_column: id
 
 # 🔬 Fetch from the UniProt API.
 # Query string for UniProt search.
-search_criteria: '(go_exp:* OR go_ida:* OR go_ipi:* OR go_imp:* OR go_igi:* OR go_iep:* OR go_tas:* OR go_ic:*)'
-# Query string for Protein Data Bank search.
-#search_criteria: '(structure_3d:true)'
+search_criteria: '(go_exp:* OR go_ida:* OR go_ipi:* OR go_imp:* OR go_igi:* OR go_iep:* OR go_iba:* OR go_ibd:* OR go_ikr:* OR go_ird:* OR go_iss:* OR go_iso:* OR go_isa:* OR go_ism:* OR go_igc:* OR go_rca:* OR go_tas:* OR go_nas:* OR go_ic:* OR go_nd:* OR go_iea:*)'
 
 
 # Number of results to fetch from UniProt (pagination).
@@ -84,8 +82,8 @@ data_directory: "~/data"
 file_format: "mmCif"
 
 # === CAFA input files ===
-goa_annotations_file: "../data/train_terms.tsv"       # Ruta al archivo CAFA TSV
-goa_sequences_fasta: "../data/train_sequences.fasta"      # Ruta al archivo FASTA con las secuencias
+goa_annotations_file: "../data/cafa3_gt.tsv"       # Ruta al archivo CAFA TSV
+goa_sequences_fasta: "../data/uniprot_sprot_exp.fasta"      # Ruta al archivo FASTA con las secuencias
 
 
 # ===========================
@@ -130,12 +128,4 @@ embedding:
 
 # 🧠 GO Metrics
 # Specifies the list of UniProt evidence codes used to filter annotations. set empty list for all evidences. []
-allowed_evidences:
-  - EXP # Inferred from Experiment.
-  - IDA # Inferred from Direct Assay.
-  - IPI # Inferred from Physical Interaction.
-  - IMP # Inferred from Mutant Phenotype.
-  - IGI # Inferred from Genetic Interaction.
-  - IEP # Inferred from Expression Pattern.
-  - TAS # Traceable Author Statement.
-  - IC # Inferred by Curator.
+allowed_evidences: []

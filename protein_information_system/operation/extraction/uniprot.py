@@ -3,7 +3,6 @@ import traceback
 from Bio import ExPASy, SwissProt
 from sqlalchemy import exists
 
-from protein_information_system.sql.model.entities.go_annotation.go_annotation import ProteinGOTermAnnotation
 from protein_information_system.sql.model.entities.go_annotation.go_term import GOTerm
 from protein_information_system.sql.model.entities.protein.accesion import Accession
 from protein_information_system.sql.model.entities.protein.protein import Protein
@@ -14,59 +13,58 @@ from protein_information_system.helpers.parser.parser import extract_float
 
 
 class UniProtExtractor(QueueTaskInitializer):
-    class UniProtExtractor(QueueTaskInitializer):
-        """
-        The UniProtExtractor class is responsible for extracting, processing, and storing protein data
-        from the UniProt database. It extends QueueTaskInitializer to integrate with the task queue system.
+    """
+    The UniProtExtractor class is responsible for extracting, processing, and storing protein data
+    from the UniProt database. It extends QueueTaskInitializer to integrate with the task queue system.
 
-        **Purpose**
+    **Purpose**
 
-        This component handles the end-to-end retrieval of protein entries from UniProt, including:
-        - sequence data,
-        - structural references (PDB),
-        - and GO annotations.
+    This component handles the end-to-end retrieval of protein entries from UniProt, including:
+    - sequence data,
+    - structural references (PDB),
+    - and GO annotations.
 
-        **Dependency**
+    **Dependency**
 
-        Accessions must be preloaded into the database **before** running this extractor.
-        This can be done using the `AccessionManager` class via either:
+    Accessions must be preloaded into the database **before** running this extractor.
+    This can be done using the `AccessionManager` class via either:
 
-        - `load_accessions_from_csv()`: loads accession codes from a curated CSV file.
-        - `fetch_accessions_from_api()`: retrieves accessions using UniProt API based on semantic criteria.
+    - `load_accessions_from_csv()`: loads accession codes from a curated CSV file.
+    - `fetch_accessions_from_api()`: retrieves accessions using UniProt API based on semantic criteria.
 
-        Once accession entries exist, `UniProtExtractor.enqueue()` will publish them to the queue for processing.
+    Once accession entries exist, `UniProtExtractor.enqueue()` will publish them to the queue for processing.
 
-        **Key Features**
+    **Key Features**
 
-        - Enqueues tasks based on accession codes already present in the database.
-        - Downloads and parses SwissProt records using BioPython.
-        - Extracts cross-references to PDB and GOA, storing them with full relational integrity.
-        - Designed to be scalable and robust for use in HPC environments.
+    - Enqueues tasks based on accession codes already present in the database.
+    - Downloads and parses SwissProt records using BioPython.
+    - Extracts cross-references to PDB and GOA, storing them with full relational integrity.
+    - Designed to be scalable and robust for use in HPC environments.
 
-        **Example Usage**
+    **Example Usage**
 
-        .. code-block:: python
+    .. code-block:: python
 
-            from protein_information_system.tasks.accessions import AccessionManager
-            from protein_information_system.tasks.uniprot import UniProtExtractor
+        from protein_information_system.tasks.accessions import AccessionManager
+        from protein_information_system.tasks.uniprot import UniProtExtractor
 
-            # Step 1: Load accession codes
-            config = {
-                'load_accesion_csv': '../data/cafa5.csv',
-                'load_accesion_column': 'id',
-                'tag': 'CAFA5',
-                'allowed_evidences': ['EXP', 'IDA'],
-                'limit_execution': 100
-            }
-            accession_manager = AccessionManager(config)
-            accession_manager.load_accessions_from_csv()
+        # Step 1: Load accession codes
+        config = {
+            'load_accesion_csv': '../data/cafa5.csv',
+            'load_accesion_column': 'id',
+            'tag': 'CAFA5',
+            'allowed_evidences': ['EXP', 'IDA'],
+            'limit_execution': 100
+        }
+        accession_manager = AccessionManager(config)
+        accession_manager.load_accessions_from_csv()
 
-            # Step 2: Enqueue and process entries
-            extractor = UniProtExtractor(config)
-            extractor.enqueue()
-            extractor.start()
+        # Step 2: Enqueue and process entries
+        extractor = UniProtExtractor(config)
+        extractor.enqueue()
+        extractor.start()
 
-        """
+    """
 
     def __init__(self, conf):
         """
@@ -367,27 +365,44 @@ class UniProtExtractor(QueueTaskInitializer):
             raise e
 
     def handle_go_reference(self, protein, reference):
+        """
+        Stores or updates the GO term catalogue entry from a UniProt reference.
+
+        Protein-GO associations are intentionally not created here.
+        QuickGOAnnotationExtractor is exclusively responsible for creating
+        ProteinGOTermAnnotation records with PMID information.
+        """
         try:
-            evidence = reference[3].split(":")[0] if reference[
-                3] else "UNKNOWN"  # Usa un valor por defecto si falta evidence
-            if self.conf['allowed_evidences'] and evidence not in self.conf['allowed_evidences']:
+            evidence = reference[3].split(":")[0] if reference[3] else "UNKNOWN"
+
+            if (
+                self.conf.get("allowed_evidences")
+                and evidence not in self.conf["allowed_evidences"]
+            ):
                 self.logger.debug(
-                    f"Skipping GO reference {reference[1]} for {protein.id} due to disallowed evidence type.")
+                    "Skipping GO reference %s for %s due to disallowed evidence type.",
+                    reference[1],
+                    protein.id,
+                )
                 return
 
-            # Crear o recuperar el término GO
             go_term = self.get_or_create_go_term(reference)
 
-            # Verificar si la asociación ya existe
-            association = self.get_or_create_association(protein.id, go_term.go_id, evidence_code=evidence)
+            self.logger.debug(
+                "Stored GO term %s from UniProt for protein %s without "
+                "creating a protein-GO association.",
+                go_term.go_id,
+                protein.id,
+            )
 
-            if association is None:
-                self.logger.info(f"Association between {protein.id} and GO Term {go_term.go_id} already exists.")
-            else:
-                self.logger.debug(f"Created new association between {protein.id} and GO Term {go_term.go_id}.")
         except Exception as e:
-            self.logger.error(f"Failed to handle GO reference for {protein.id}: {e}\n{traceback.format_exc()}")
-            raise e
+            self.logger.error(
+                "Failed to handle GO reference for %s: %s\n%s",
+                protein.id,
+                e,
+                traceback.format_exc(),
+            )
+            raise
 
     def get_or_create_go_term(self, reference):
         """
@@ -411,36 +426,4 @@ class UniProtExtractor(QueueTaskInitializer):
             return go_term
         except Exception as e:
             self.logger.error(f"Error retrieving or creating GO term {go_id}: {e}\n{traceback.format_exc()}")
-            raise e
-
-    def get_or_create_association(self, entry_name, go_id, evidence_code, is_transferred=False,
-                                  source_cluster_id=None, target_cluster_id=None, distance=None,
-                                  embedding_type_id=None):
-        """
-        Create or retrieve a GOAnnotation entry.
-        """
-        try:
-            # Verificar si la asociación ya existe
-            exists_query = exists().where(
-                ProteinGOTermAnnotation.protein_id == entry_name).where(
-                ProteinGOTermAnnotation.go_id == go_id)
-
-            association_exists = self.session.query(exists_query).scalar()
-
-            if not association_exists:
-                self.logger.debug(f"Creating new association for {entry_name} and GO term {go_id}.")
-                # Crear la asociación con el evidence_code proporcionado
-                association = ProteinGOTermAnnotation(
-                    protein_id=entry_name,
-                    go_id=go_id,
-                    evidence_code=evidence_code  # Agregar evidence_code
-                )
-                self.session.add(association)
-                return association
-            else:
-                self.logger.debug(f"Association between {entry_name} and GO term {go_id} already exists.")
-                return None
-        except Exception as e:
-            self.logger.error(
-                f"Failed to retrieve or create association for {entry_name} and GO term {go_id}: {e}")
             raise e

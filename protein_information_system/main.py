@@ -24,6 +24,7 @@ def main(config_path='config/config.yaml'):
     from protein_information_system.sql.model.model import (
         AccessionManager,
         UniProtExtractor,
+        QuickGOAnnotationExtractor,
         PDBExtractor,
         SequenceEmbeddingManager,
         Structure3DiManager,
@@ -35,13 +36,14 @@ def main(config_path='config/config.yaml'):
     check_services(conf, logger)
 
     # Step 3: Run components
-    GOAnnotationsQueueProcessor(conf).start()
-    AccessionManager(conf).fetch_accessions_from_api()
-    AccessionManager(conf).load_accessions_from_csv()
-    UniProtExtractor(conf).start()
-    PDBExtractor(conf).start()
-    SequenceEmbeddingManager(conf).start()
-    Structure3DiManager(conf).start()
+    #GOAnnotationsQueueProcessor(conf).start()
+    #AccessionManager(conf).fetch_accessions_from_api()
+    #AccessionManager(conf).load_accessions_from_csv()
+    #UniProtExtractor(conf).start()
+    QuickGOAnnotationExtractor(conf).start()
+    #PDBExtractor(conf).start()
+    #SequenceEmbeddingManager(conf).start()
+    #Structure3DiManager(conf).start()
 
 
 if __name__ == '__main__':

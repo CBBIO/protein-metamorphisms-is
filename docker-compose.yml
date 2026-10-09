@@ -3,35 +3,54 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: protein-metamorphisms
+    container_name: moonlight-protein
     depends_on:
-      - pgvectorsql
-      - rabbitmq
+      pgvectorsql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
     environment:
       POSTGRES_USER: usuario
       POSTGRES_PASSWORD: clave
       POSTGRES_DB: BioData
     ports:
-      - "8000:8000"  # Cambia el puerto según sea necesario
+      - "8000:8000"
 
   pgvectorsql:
-    image: postgres:latest
+    image: pgvector/pgvector:pg17
     container_name: pgvectorsql
+    restart: unless-stopped
     environment:
       POSTGRES_USER: usuario
       POSTGRES_PASSWORD: clave
       POSTGRES_DB: BioData
     ports:
       - "5432:5432"
-    command: postgres
+    volumes:
+      - pis_postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U usuario"]
+      test:
+        - CMD-SHELL
+        - pg_isready -U usuario -d BioData
       interval: 10s
+      timeout: 5s
       retries: 5
 
   rabbitmq:
     image: rabbitmq:management
     container_name: rabbitmq
+    restart: unless-stopped
     ports:
       - "15672:15672"
       - "5672:5672"
+    healthcheck:
+      test:
+        - CMD
+        - rabbitmq-diagnostics
+        - check_running
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pis_postgres_data:
